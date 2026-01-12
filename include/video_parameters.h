@@ -88,9 +88,16 @@ struct VideoParameters {
         params.colour_burst_end = 138;
         params.active_video_start = 185;
         params.active_video_end = 1107;
-        params.white_16b_ire = 0xD300;
-        params.black_16b_ire = 0x4000;
-        params.blanking_16b_ire = 0x4000;
+        
+        // PAL signal levels (16-bit scale):
+        // Sync tip: -300mV → 0x0000 (0)
+        // Blanking: 0mV → 0x4000 (16384) - 25% of 16-bit range
+        // Black: 0mV → 0x4000 (same as blanking, PAL has no setup)
+        // White: 700mV → 0xE000 (57344) - leaves headroom for chroma
+        // Absolute max with chroma: 903.3mV → ~0xFFFF
+        params.white_16b_ire = 0xE000;      // 700mV (peak white)
+        params.black_16b_ire = 0x4000;      // 0mV (same as blanking in PAL)
+        params.blanking_16b_ire = 0x4000;   // 0mV
         params.is_subcarrier_locked = true;
         params.is_mapped = false;
         params.is_widescreen = false;

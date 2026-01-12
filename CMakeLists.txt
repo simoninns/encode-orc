@@ -28,6 +28,8 @@ set(SOURCES
     src/cli_parser.cpp
     src/metadata_writer.cpp
     src/blanking_encoder.cpp
+    src/pal_encoder.cpp
+    src/color_conversion.cpp
 )
 
 # Create executable
