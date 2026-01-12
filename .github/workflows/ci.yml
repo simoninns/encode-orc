@@ -7,7 +7,7 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  build:
+  build-and-test:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
@@ -35,11 +35,21 @@ jobs:
     - name: Build
       run: cmake --build build --config ${{ matrix.build_type }}
     
-    - name: Test
-      run: cd build && ctest -C ${{ matrix.build_type }} --output-on-failure
+    - name: Run Tests
+      run: |
+        cd tests
+        bash run-tests.sh
     
     - name: Verify executable
       run: ./build/encode-orc --version
+    
+    - name: Upload test artifacts
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-output-${{ matrix.os }}-${{ matrix.build_type }}
+        path: test-output/
+        retention-days: 7
   
   code-quality:
     runs-on: ubuntu-latest
@@ -55,7 +65,7 @@ jobs:
     - name: Check code formatting (if .clang-format exists)
       run: |
         if [ -f .clang-format ]; then
-          find src include -name '*.cpp' -o -name '*.hpp' | xargs clang-format --dry-run --Werror
+          find src include -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror
         else
           echo "No .clang-format file found, skipping format check"
         fi

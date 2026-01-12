@@ -81,7 +81,7 @@ struct VideoParameters {
         VideoParameters params;
         params.system = VideoSystem::PAL;
         params.fSC = 4433618.75;  // PAL subcarrier frequency
-        params.sample_rate = 4.0 * params.fSC;
+        params.sample_rate = 17734475.0;  // Exact 4×fSC for ld-decode compatibility
         params.field_width = 1135;
         params.field_height = 313;
         params.colour_burst_start = 98;
@@ -104,7 +104,7 @@ struct VideoParameters {
         VideoParameters params;
         params.system = VideoSystem::NTSC;
         params.fSC = 315.0e6 / 88.0;  // NTSC subcarrier frequency
-        params.sample_rate = 4.0 * params.fSC;
+        params.sample_rate = 14318181.818181818;  // Exact 4×fSC for ld-decode compatibility
         params.field_width = 910;
         params.field_height = 263;
         params.colour_burst_start = 89;  // Approximate (19 cycles after 0H)

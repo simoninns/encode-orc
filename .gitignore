@@ -37,6 +37,7 @@ _deps/
 
 # Testing output
 Testing/
+test-output/
 *.tbc
 *.tbc.db
 *.tbcy

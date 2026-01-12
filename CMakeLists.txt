@@ -26,6 +26,8 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 set(SOURCES
     src/main.cpp
     src/cli_parser.cpp
+    src/metadata_writer.cpp
+    src/blanking_encoder.cpp
 )
 
 # Create executable

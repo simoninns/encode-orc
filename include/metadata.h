@@ -175,12 +175,12 @@ struct CaptureMetadata {
     
     /**
      * @brief Add a dropout to the metadata
-     * @param field_id Field containing the dropout
+     * @param field_id Field containing the dropout (unused, for future use)
      * @param line Line number within the field
      * @param start_x Start pixel position
      * @param end_x End pixel position
      */
-    void add_dropout(int32_t field_id, int32_t line, int32_t start_x, int32_t end_x) {
+    void add_dropout(int32_t /*field_id*/, int32_t line, int32_t start_x, int32_t end_x) {
         Dropout dropout;
         dropout.field_line = line;
         dropout.startx = start_x;
