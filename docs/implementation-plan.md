@@ -23,6 +23,14 @@
 - Video format parameters (PAL/NTSC dimensions, frame rates)
 - Metadata structures matching ld-decode's schema
 
+**1.4 Blanking-Level Validation Output**
+- Generate minimal .tbc files with all samples at blanking IRE level
+- Implement for both PAL and NTSC formats
+- Create proper field structure (correct dimensions and field counts)
+- Generate complete .tbc.db metadata files
+- Validate output can be read by ld-decode tools
+- **Purpose**: Validates file formats, metadata schema, and field structure before implementing complex encoding algorithms
+
 ### Phase 2: Video Standards Implementation
 
 **2.1 PAL Support**
@@ -151,7 +159,7 @@
 ### Recommended Development Order
 
 1. **Start with Phase 1**: Build infrastructure first
-2. **Implement blanking-level validation output**: Create minimal .tbc files (PAL and NTSC) with all samples at blanking IRE level, plus proper metadata in .tbc.db files. This validates file formats, field structure, and metadata generation before implementing complex encoding
+2. **Implement Phase 1.4**: Create minimal .tbc files (PAL and NTSC) with all samples at blanking IRE level, plus proper metadata in .tbc.db files. This validates file formats, field structure, and metadata generation before implementing complex encoding
 3. **Implement Phase 2 (PAL Composite only)**: Get one complete path working with actual video encoding
 4. **Add Phase 3**: File output for PAL Composite
 5. **Add Phase 4.1**: RGB input processing

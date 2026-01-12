@@ -1,4 +1,13 @@
-#include "cli_parser.hpp"
+/*
+ * File:        main.cpp
+ * Module:      encode-orc
+ * Purpose:     Main application entry point
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: 2026 Simon Inns
+ */
+
+#include "cli_parser.h"
 #include <iostream>
 #include <sqlite3.h>
 

@@ -1,4 +1,13 @@
-#include "cli_parser.hpp"
+/*
+ * File:        cli_parser.cpp
+ * Module:      encode-orc
+ * Purpose:     Command-line argument parser implementation
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: 2026 Simon Inns
+ */
+
+#include "cli_parser.h"
 #include <iostream>
 #include <cstring>
 

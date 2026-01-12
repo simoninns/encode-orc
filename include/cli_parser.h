@@ -1,5 +1,14 @@
-#ifndef ENCODE_ORC_CLI_PARSER_HPP
-#define ENCODE_ORC_CLI_PARSER_HPP
+/*
+ * File:        cli_parser.h
+ * Module:      encode-orc
+ * Purpose:     Command-line argument parser interface
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: 2026 Simon Inns
+ */
+
+#ifndef ENCODE_ORC_CLI_PARSER_H
+#define ENCODE_ORC_CLI_PARSER_H
 
 #include <string>
 #include <optional>
@@ -41,4 +50,4 @@ void print_version();
 
 } // namespace encode_orc
 
-#endif // ENCODE_ORC_CLI_PARSER_HPP
+#endif // ENCODE_ORC_CLI_PARSER_H
