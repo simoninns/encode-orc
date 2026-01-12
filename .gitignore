@@ -1,0 +1,55 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# Compiled binaries
+encode-orc
+*.exe
+*.out
+*.app
+
+# Compiled object files
+*.o
+*.obj
+*.lo
+*.so
+*.dylib
+*.dll
+*.a
+*.lib
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+_deps/
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing output
+Testing/
+*.tbc
+*.tbc.db
+*.tbcy
+*.tbcc
+
+# Debug files
+*.dSYM/
+*.pdb
+
+# Package managers
+conan/
+vcpkg_installed/
+
+# Temporary files
+*.tmp
+*.log
