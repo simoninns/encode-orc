@@ -21,8 +21,7 @@ jobs:
     
     - name: Install dependencies (Fedora)
       run: |
-        dnf groupinstall -y "Development Tools"
-        dnf install -y cmake sqlite-devel
+        dnf install -y gcc gcc-c++ make cmake sqlite-devel
     
     - name: Configure CMake
       run: cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
