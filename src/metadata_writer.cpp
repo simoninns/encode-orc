@@ -101,6 +101,15 @@ bool MetadataWriter::create_schema() {
             ntsc_white_flag INTEGER CHECK (ntsc_white_flag IN (0,1)),
             PRIMARY KEY (capture_id, field_id)
         );
+        
+        CREATE TABLE IF NOT EXISTS vbi (
+            capture_id INTEGER NOT NULL REFERENCES capture(capture_id) ON DELETE CASCADE,
+            field_id INTEGER NOT NULL,
+            vbi0 INTEGER,
+            vbi1 INTEGER,
+            vbi2 INTEGER,
+            PRIMARY KEY (capture_id, field_id)
+        );
     )";
     
     return execute_sql(schema_sql);
@@ -198,6 +207,45 @@ bool MetadataWriter::write_fields(const CaptureMetadata& metadata) {
     return execute_sql("COMMIT;");
 }
 
+bool MetadataWriter::write_vbi(const CaptureMetadata& metadata) {
+    // Only write VBI data if it exists
+    if (metadata.vbi_data.empty()) {
+        return true;  // No VBI data, but not an error
+    }
+    
+    // Use a transaction for better performance
+    if (!execute_sql("BEGIN TRANSACTION;")) {
+        return false;
+    }
+    
+    for (size_t field_id = 0; field_id < metadata.vbi_data.size(); ++field_id) {
+        const auto& vbi = metadata.vbi_data[field_id];
+        
+        // Skip fields without VBI data
+        if (!vbi.has_value()) {
+            continue;
+        }
+        
+        std::ostringstream sql;
+        sql << "INSERT INTO vbi ("
+            << "capture_id, field_id, vbi0, vbi1, vbi2"
+            << ") VALUES ("
+            << metadata.capture_id << ", "
+            << field_id << ", "
+            << vbi->vbi0 << ", "
+            << vbi->vbi1 << ", "
+            << vbi->vbi2
+            << ");";
+        
+        if (!execute_sql(sql.str().c_str())) {
+            execute_sql("ROLLBACK;");
+            return false;
+        }
+    }
+    
+    return execute_sql("COMMIT;");
+}
+
 bool MetadataWriter::write_metadata(const CaptureMetadata& metadata) {
     if (!db_) {
         error_message_ = "Database not open";
@@ -211,6 +259,11 @@ bool MetadataWriter::write_metadata(const CaptureMetadata& metadata) {
     
     // Write field records
     if (!write_fields(metadata)) {
+        return false;
+    }
+    
+    // Write VBI records if present
+    if (!write_vbi(metadata)) {
         return false;
     }
     

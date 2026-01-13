@@ -12,6 +12,7 @@ add_test(NAME test_color_values COMMAND test_color_values)
 add_executable(analyze_signal
     analyze_signal.cpp
     ../src/pal_encoder.cpp
+    ../src/biphase_encoder.cpp
     ../src/color_conversion.cpp
 )
 target_link_libraries(analyze_signal PRIVATE SQLite::SQLite3)

@@ -8,6 +8,7 @@
  */
 
 #include "video_encoder.h"
+#include "biphase_encoder.h"
 #include <iostream>
 #include <fstream>
 
@@ -60,10 +61,12 @@ bool VideoEncoder::encode_test_card(const std::string& output_filename,
             
             if (system == VideoSystem::PAL) {
                 PALEncoder pal_encoder(params);
-                encoded_frame = pal_encoder.encode_frame(test_card, field_number);
+                // Pass frame_num as the VBI frame number
+                encoded_frame = pal_encoder.encode_frame(test_card, field_number, frame_num);
             } else {
                 NTSCEncoder ntsc_encoder(params);
-                encoded_frame = ntsc_encoder.encode_frame(test_card, field_number);
+                // Pass frame_num as the VBI frame number
+                encoded_frame = ntsc_encoder.encode_frame(test_card, field_number, frame_num);
             }
             
             // Write field 1
@@ -95,6 +98,44 @@ bool VideoEncoder::encode_test_card(const std::string& output_filename,
         metadata.git_branch = "main";
         metadata.git_commit = "v0.1.0-dev";
         metadata.capture_notes = "EBU color bars test pattern from encode-orc";
+        
+        // Add VBI data for each field (frame numbers on lines 16, 17, 18)
+        metadata.vbi_data.resize(total_fields);
+        for (int32_t frame_num = 0; frame_num < num_frames; ++frame_num) {
+            VBIData vbi;
+            
+            // Line 16: Programme status code (IEC 60857-1986 - 10.1.8)
+            // Format: 0x8BA000 or 0x8DC000 (CX off/on) + x3x4x5
+            // x3: disc size (12"=0/8"=1), side (1=0/2=1), teletext (no=0/yes=1), audio bit
+            // x4: audio status bits
+            // x5: parity bits
+            // Configuration: 12", side 1, no teletext, stereo, CX off
+            // x3 = 0x0, x4 = 0x0 (stereo), x5 = 0x0 (parity for all zeros)
+            vbi.vbi0 = 0x8BA000;  // CX off, 12", side 1, stereo, correct parity
+            
+            if (frame_num == 0) {
+                // Frame 0: Lead-in code (IEC 60857-1986 - 10.1.1)
+                vbi.vbi1 = 0x88FFFF;  // Line 17: Lead-in
+                vbi.vbi2 = 0x88FFFF;  // Line 18: Lead-in
+            } else {
+                // Encode frame number as LaserDisc CAV picture number (24-bit value)
+                uint8_t vbi_byte0, vbi_byte1, vbi_byte2;
+                BiphaseEncoder::encode_cav_picture_number(frame_num, vbi_byte0, vbi_byte1, vbi_byte2);
+                
+                // Combine bytes back into 24-bit value
+                int32_t cav_picture_number = (static_cast<int32_t>(vbi_byte0) << 16) |
+                                             (static_cast<int32_t>(vbi_byte1) << 8) |
+                                             static_cast<int32_t>(vbi_byte2);
+                
+                // vbi1 = line 17 (CAV picture number)
+                // vbi2 = line 18 (CAV picture number, redundant)
+                vbi.vbi1 = cav_picture_number;   // Line 17: CAV picture number
+                vbi.vbi2 = cav_picture_number;   // Line 18: CAV picture number (redundant)
+            }
+            
+            metadata.vbi_data[frame_num * 2] = vbi;      // Field 1
+            metadata.vbi_data[frame_num * 2 + 1] = vbi;  // Field 2
+        }
         
         // Write metadata
         std::string metadata_filename = output_filename + ".db";

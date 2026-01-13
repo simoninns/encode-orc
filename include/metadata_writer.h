@@ -91,6 +91,11 @@ private:
     bool write_fields(const CaptureMetadata& metadata);
     
     /**
+     * @brief Write vbi table
+     */
+    bool write_vbi(const CaptureMetadata& metadata);
+    
+    /**
      * @brief Execute SQL statement
      */
     bool execute_sql(const char* sql);

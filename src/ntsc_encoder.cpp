@@ -8,6 +8,7 @@
  */
 
 #include "ntsc_encoder.h"
+#include "biphase_encoder.h"
 #include <cstring>
 #include <algorithm>
 
@@ -28,21 +29,22 @@ NTSCEncoder::NTSCEncoder(const VideoParameters& params)
     samples_per_cycle_ = sample_rate_ / subcarrier_freq_;
 }
 
-Frame NTSCEncoder::encode_frame(const FrameBuffer& frame_buffer, int32_t field_number) {
+Frame NTSCEncoder::encode_frame(const FrameBuffer& frame_buffer, int32_t field_number, int32_t frame_number_for_vbi) {
     Frame frame(params_.field_width, params_.field_height);
     
     // Encode first field (even lines: 0, 2, 4, ...)
-    frame.field1() = encode_field(frame_buffer, field_number, true);
+    frame.field1() = encode_field(frame_buffer, field_number, true, frame_number_for_vbi);
     
     // Encode second field (odd lines: 1, 3, 5, ...)
-    frame.field2() = encode_field(frame_buffer, field_number + 1, false);
+    frame.field2() = encode_field(frame_buffer, field_number + 1, false, frame_number_for_vbi);
     
     return frame;
 }
 
 Field NTSCEncoder::encode_field(const FrameBuffer& frame_buffer, 
                                 int32_t field_number, 
-                                bool is_first_field) {
+                                bool is_first_field,
+                                int32_t frame_number_for_vbi) {
     Field field(params_.field_width, params_.field_height);
     
     // Verify input format
@@ -66,9 +68,14 @@ Field NTSCEncoder::encode_field(const FrameBuffer& frame_buffer,
         }
         // Lines 4-20: VBI (Vertical Blanking Interval)
         else if (line < ACTIVE_LINES_START) {
-            generate_blanking_line(line_buffer);
-            generate_sync_pulse(line_buffer, line);
-            generate_color_burst(line_buffer, line, field_number);
+            // Lines 15, 16, 17 (0-indexed) = field lines 16, 17, 18 contain biphase frame numbers
+            if (frame_number_for_vbi >= 0 && (line == 15 || line == 16 || line == 17)) {
+                generate_biphase_vbi_line(line_buffer, line, field_number, frame_number_for_vbi);
+            } else {
+                generate_blanking_line(line_buffer);
+                generate_sync_pulse(line_buffer, line);
+                generate_color_burst(line_buffer, line, field_number);
+            }
         }
         // Lines 21-263: Active video
         else if (line < ACTIVE_LINES_END) {
@@ -287,6 +294,46 @@ uint16_t NTSCEncoder::clamp_signal(double value) const {
     if (int_value < 0) return 0;
     if (int_value > 65535) return 65535;
     return static_cast<uint16_t>(int_value);
+}
+
+void NTSCEncoder::generate_biphase_vbi_line(uint16_t* line_buffer, int32_t line_number, 
+                                           int32_t field_number, int32_t frame_number) {
+    // Start with a standard blanking line with sync and color burst
+    generate_blanking_line(line_buffer);
+    generate_sync_pulse(line_buffer, line_number);
+    generate_color_burst(line_buffer, line_number, field_number);
+    
+    // Calculate line period (H) for NTSC: approximately 63.56 µs
+    double line_period_h = 63.556e-6;  // ~63.56 µs for NTSC
+    
+    // Get biphase signal position
+    int32_t biphase_start = BiphaseEncoder::get_signal_start_position(sample_rate_, line_period_h);
+    
+    // Encode frame number as LaserDisc CAV picture number (3 bytes in BCD format)
+    uint8_t vbi_byte0, vbi_byte1, vbi_byte2;
+    BiphaseEncoder::encode_cav_picture_number(frame_number, vbi_byte0, vbi_byte1, vbi_byte2);
+    
+    // Generate biphase signal from the three bytes
+    // High level: white level, Low level: black level
+    std::vector<uint16_t> biphase_signal = BiphaseEncoder::encode(
+        vbi_byte0, vbi_byte1, vbi_byte2,
+        sample_rate_,
+        static_cast<uint16_t>(white_level_),
+        static_cast<uint16_t>(black_level_)
+    );
+    
+    // Insert biphase signal into the line
+    int32_t signal_end = biphase_start + static_cast<int32_t>(biphase_signal.size());
+    if (signal_end > params_.field_width) {
+        signal_end = params_.field_width;
+    }
+    
+    for (int32_t i = biphase_start; i < signal_end; ++i) {
+        int32_t signal_index = i - biphase_start;
+        if (signal_index < static_cast<int32_t>(biphase_signal.size())) {
+            line_buffer[i] = biphase_signal[signal_index];
+        }
+    }
 }
 
 } // namespace encode_orc

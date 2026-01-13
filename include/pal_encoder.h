@@ -41,18 +41,20 @@ public:
      * @brief Encode a progressive frame to two interlaced PAL fields
      * @param frame_buffer Input frame in YUV444P16 format
      * @param field_number Starting field number (for V-switch calculation)
+     * @param frame_number_for_vbi Frame number to encode in VBI (optional, -1 to disable)
      * @return Frame containing two encoded PAL composite fields
      */
-    Frame encode_frame(const FrameBuffer& frame_buffer, int32_t field_number);
+    Frame encode_frame(const FrameBuffer& frame_buffer, int32_t field_number, int32_t frame_number_for_vbi = -1);
     
     /**
      * @brief Encode a single field from half of a progressive frame
      * @param frame_buffer Input frame in YUV444P16 format
      * @param field_number Field number (for V-switch and line selection)
      * @param is_first_field true for first field (even lines), false for second (odd lines)
+     * @param frame_number_for_vbi Frame number to encode in VBI (optional, -1 to disable)
      * @return Encoded PAL composite field
      */
-    Field encode_field(const FrameBuffer& frame_buffer, int32_t field_number, bool is_first_field);
+    Field encode_field(const FrameBuffer& frame_buffer, int32_t field_number, bool is_first_field, int32_t frame_number_for_vbi = -1);
     
     // VITS functionality archived - will be restored in Phase 3
     // /**
@@ -140,6 +142,16 @@ private:
      * @param line_buffer Pointer to line data
      */
     void generate_blanking_line(uint16_t* line_buffer);
+    
+    /**
+     * @brief Generate VBI line with biphase frame number
+     * @param line_buffer Pointer to line data
+     * @param line_number Line number within field (0-indexed)
+     * @param field_number Field number in sequence
+     * @param frame_number Frame number to encode
+     */
+    void generate_biphase_vbi_line(uint16_t* line_buffer, int32_t line_number, 
+                                   int32_t field_number, int32_t frame_number);
     
     /**
      * @brief Calculate PAL V-switch sign for a given field

@@ -40,18 +40,20 @@ public:
      * @brief Encode a progressive frame to two interlaced NTSC fields
      * @param frame_buffer Input frame in YUV444P16 format (actually YIQ for NTSC)
      * @param field_number Starting field number
+     * @param frame_number_for_vbi Frame number to encode in VBI (optional, -1 to disable)
      * @return Frame containing two encoded NTSC composite fields
      */
-    Frame encode_frame(const FrameBuffer& frame_buffer, int32_t field_number);
+    Frame encode_frame(const FrameBuffer& frame_buffer, int32_t field_number, int32_t frame_number_for_vbi = -1);
     
     /**
      * @brief Encode a single field from half of a progressive frame
      * @param frame_buffer Input frame in YUV444P16 format (actually YIQ for NTSC)
      * @param field_number Field number
      * @param is_first_field true for first field (even lines), false for second (odd lines)
+     * @param frame_number_for_vbi Frame number to encode in VBI (optional, -1 to disable)
      * @return Encoded NTSC composite field
      */
-    Field encode_field(const FrameBuffer& frame_buffer, int32_t field_number, bool is_first_field);
+    Field encode_field(const FrameBuffer& frame_buffer, int32_t field_number, bool is_first_field, int32_t frame_number_for_vbi = -1);
 
 private:
     VideoParameters params_;
@@ -119,6 +121,16 @@ private:
      * @param line_buffer Pointer to line data
      */
     void generate_blanking_line(uint16_t* line_buffer);
+    
+    /**
+     * @brief Generate VBI line with biphase frame number
+     * @param line_buffer Pointer to line data
+     * @param line_number Line number within field (0-indexed)
+     * @param field_number Field number in sequence
+     * @param frame_number Frame number to encode
+     */
+    void generate_biphase_vbi_line(uint16_t* line_buffer, int32_t line_number, 
+                                   int32_t field_number, int32_t frame_number);
     
     /**
      * @brief Clamp a value to the valid signal range
