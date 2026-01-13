@@ -28,6 +28,19 @@ PALEncoder::PALEncoder(const VideoParameters& params)
     samples_per_cycle_ = sample_rate_ / subcarrier_freq_;
 }
 
+// VITS functionality archived - will be restored in Phase 3
+// void PALEncoder::enableVITS(VITSStandard standard) {
+//     vits_composer_ = createVITSComposer(params_, standard);
+// }
+// 
+// void PALEncoder::disableVITS() {
+//     vits_composer_.reset();
+// }
+// 
+// bool PALEncoder::isVITSEnabled() const {
+//     return vits_composer_ != nullptr && vits_composer_->isEnabled();
+// }
+
 Frame PALEncoder::encode_frame(const FrameBuffer& frame_buffer, int32_t field_number) {
     Frame frame(params_.field_width, params_.field_height);
     
@@ -110,6 +123,12 @@ Field PALEncoder::encode_field(const FrameBuffer& frame_buffer,
             generate_color_burst(line_buffer, line, field_number);
         }
     }
+    
+    // VITS functionality archived - will be restored in Phase 3
+    // Apply VITS signals if enabled
+    // if (vits_composer_ && vits_composer_->isEnabled()) {
+    //     vits_composer_->composeVITSField(field, field_number);
+    // }
     
     return field;
 }

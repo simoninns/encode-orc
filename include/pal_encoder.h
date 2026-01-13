@@ -13,8 +13,10 @@
 #include "field.h"
 #include "frame_buffer.h"
 #include "video_parameters.h"
+// #include "vits_composer.h"  // VITS functionality archived - will be restored in Phase 3
 #include <cstdint>
 #include <cmath>
+#include <memory>
 
 namespace encode_orc {
 
@@ -51,9 +53,29 @@ public:
      * @return Encoded PAL composite field
      */
     Field encode_field(const FrameBuffer& frame_buffer, int32_t field_number, bool is_first_field);
+    
+    // VITS functionality archived - will be restored in Phase 3
+    // /**
+    //  * @brief Enable VITS (Vertical Interval Test Signals)
+    //  * @param standard VITS standard to use (IEC 60856-1986, ITU-T J.63, etc.)
+    //  */
+    // void enableVITS(VITSStandard standard);
+    // 
+    // /**
+    //  * @brief Disable VITS
+    //  */
+    // void disableVITS();
+    // 
+    // /**
+    //  * @brief Check if VITS is enabled
+    //  */
+    // bool isVITSEnabled() const;
 
 private:
     VideoParameters params_;
+    
+    // VITS composer (optional) - archived, will be restored in Phase 3
+    // std::unique_ptr<VITSComposer> vits_composer_;
     
     // PAL-specific constants
     static constexpr double PI = 3.141592653589793238463;

@@ -27,12 +27,16 @@ void print_usage(const char* program_name) {
     std::cout << "  -i, --input FILE        Input RGB file (optional)\n";
     std::cout << "  -t, --testcard NAME     Generate test card: smpte, pm5544, testcard-f\n";
     std::cout << "  -n, --frames NUM        Number of frames to generate (default: 1)\n";
+    std::cout << "  --vits STANDARD         Enable VITS (Vertical Interval Test Signals)\n";
+    std::cout << "                          Standards: none (default), iec60856-pal,\n";
+    std::cout << "                          itu-j63-pal (future), iec60856-ntsc (future)\n";
     std::cout << "  -v, --verbose           Enable verbose output\n";
     std::cout << "  -h, --help              Show this help message\n";
     std::cout << "  --version               Show version information\n";
     std::cout << "\n";
     std::cout << "Examples:\n";
     std::cout << "  " << program_name << " -o output.tbc -f pal-composite -t smpte -n 100\n";
+    std::cout << "  " << program_name << " -o ld.tbc -f pal-composite -t smpte --vits iec60856-pal -n 100\n";
     std::cout << "  " << program_name << " -o output.tbc -f ntsc-yc -i input.rgb\n";
 }
 
@@ -86,6 +90,22 @@ CLIOptions parse_arguments(int argc, char* argv[]) {
                     }
                 } catch (const std::exception&) {
                     std::cerr << "Error: invalid number of frames\n";
+                    options.show_help = true;
+                }
+            } else {
+                std::cerr << "Error: " << arg << " requires an argument\n";
+                options.show_help = true;
+            }
+        } else if (arg == "--vits") {
+            if (i + 1 < argc) {
+                options.vits_standard = argv[++i];
+                // Validate VITS standard
+                if (options.vits_standard != "none" &&
+                    options.vits_standard != "iec60856-pal" &&
+                    options.vits_standard != "iec60856-ntsc" &&
+                    options.vits_standard != "itu-j63-pal") {
+                    std::cerr << "Error: unknown VITS standard '" << options.vits_standard << "'\n";
+                    std::cerr << "Valid options: none, iec60856-pal, iec60856-ntsc, itu-j63-pal\n";
                     options.show_help = true;
                 }
             } else {

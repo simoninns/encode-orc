@@ -23,6 +23,7 @@ struct CLIOptions {
     std::string format;  // "pal-composite", "ntsc-composite", "pal-yc", "ntsc-yc"
     std::optional<std::string> input_filename;
     std::optional<std::string> testcard;
+    std::string vits_standard = "none";  // "none", "iec60856-pal", "itu-j63-pal", etc.
     int num_frames = 1;
     bool verbose = false;
     bool show_help = false;
