@@ -13,6 +13,7 @@
 #include "video_parameters.h"
 #include "test_card_generator.h"
 #include "pal_encoder.h"
+#include "ntsc_encoder.h"
 #include "tbc_writer.h"
 #include "metadata_writer.h"
 #include <string>

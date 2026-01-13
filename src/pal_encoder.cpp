@@ -181,17 +181,19 @@ void PALEncoder::generate_color_burst(uint16_t* line_buffer, int32_t line_number
     // This is the "swinging burst" characteristic of PAL
     double burst_phase_offset = v_switch * (135.0 * PI / 180.0);
     
-    // Generate color burst
+    // Calculate burst amplitude once (constant for all samples in burst)
+    // Burst amplitude: peak-to-peak is 3/7 of black-white range [Poynton p532 eq 44.3]
+    // Single-sided peak = (3/7) / 2 = 3/14 of luma_range
+    // This gives ±300mV for 700mV white level
+    int32_t luma_range = white_level_ - blanking_level_;
+    int32_t burst_amplitude = static_cast<int32_t>((3.0 / 14.0) * luma_range);
+    
+    // Generate color burst with constant amplitude
     for (int32_t sample = burst_start; sample < burst_end; ++sample) {
         // Color burst must be phase-locked with active video chroma for proper decoding
         double time_phase = 2.0 * PI * subcarrier_freq_ * sample / sample_rate_;
         double phase = 2.0 * PI * prev_cycles + time_phase + burst_phase_offset;
         
-        // Burst amplitude: peak-to-peak is 3/7 of black-white range [Poynton p532 eq 44.3]
-        // Single-sided peak = (3/7) / 2 = 3/14 of luma_range
-        // This gives ±300mV for 700mV white level
-        int32_t luma_range = white_level_ - blanking_level_;
-        int32_t burst_amplitude = static_cast<int32_t>((3.0 / 14.0) * luma_range);
         double burst_signal = std::sin(phase);
         
         int32_t sample_value = blanking_level_ + 

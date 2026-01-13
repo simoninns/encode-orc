@@ -26,7 +26,7 @@ public:
      * @brief Type of test card to generate
      */
     enum class Type {
-        SMPTE_BARS,      // EBU color bars (100/0/75/0) for PAL
+        COLOR_BARS,      // EBU color bars for PAL, EIA color bars for NTSC
         PM5544,          // Philips PM5544 test card
         TESTCARD_F       // BBC Test Card F
     };
@@ -47,10 +47,10 @@ private:
     static FrameBuffer generate_ebu_bars(const VideoParameters& params);
     
     /**
-     * @brief Generate SMPTE color bars
+     * @brief Generate EIA color bars
      * Standard NTSC color bars pattern
      */
-    static FrameBuffer generate_smpte_bars(const VideoParameters& params);
+    static FrameBuffer generate_eia_bars(const VideoParameters& params);
     
     /**
      * @brief Helper to convert RGB to YUV for 16-bit values

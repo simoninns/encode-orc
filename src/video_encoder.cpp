@@ -40,9 +40,6 @@ bool VideoEncoder::encode_test_card(const std::string& output_filename,
         // Generate test card
         FrameBuffer test_card = TestCardGenerator::generate(test_card_type, params);
         
-        // Create PAL encoder
-        PALEncoder pal_encoder(params);
-        
         // Open TBC file for writing
         if (verbose) {
             std::cout << "Writing TBC file: " << output_filename << "\n";
@@ -59,7 +56,15 @@ bool VideoEncoder::encode_test_card(const std::string& output_filename,
         for (int32_t frame_num = 0; frame_num < num_frames; ++frame_num) {
             // Encode the frame (produces 2 fields)
             int32_t field_number = frame_num * 2;
-            Frame encoded_frame = pal_encoder.encode_frame(test_card, field_number);
+            Frame encoded_frame;
+            
+            if (system == VideoSystem::PAL) {
+                PALEncoder pal_encoder(params);
+                encoded_frame = pal_encoder.encode_frame(test_card, field_number);
+            } else {
+                NTSCEncoder ntsc_encoder(params);
+                encoded_frame = ntsc_encoder.encode_frame(test_card, field_number);
+            }
             
             // Write field 1
             const Field& field1 = encoded_frame.field1();

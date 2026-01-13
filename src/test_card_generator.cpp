@@ -16,12 +16,13 @@ namespace encode_orc {
 
 FrameBuffer TestCardGenerator::generate(Type type, const VideoParameters& params) {
     switch (type) {
-        case Type::SMPTE_BARS:
-            // For both PAL and NTSC, generate the appropriate bars
+        case Type::COLOR_BARS:
+            // Generate appropriate color bars for the system
+            // PAL uses EBU color bars, NTSC uses EIA color bars
             if (params.system == VideoSystem::PAL) {
                 return generate_ebu_bars(params);
             } else {
-                return generate_smpte_bars(params);
+                return generate_eia_bars(params);
             }
         case Type::PM5544:
         case Type::TESTCARD_F:
@@ -134,9 +135,9 @@ FrameBuffer TestCardGenerator::generate_ebu_bars(const VideoParameters& params) 
     return frame;
 }
 
-FrameBuffer TestCardGenerator::generate_smpte_bars(const VideoParameters& params) {
-    // SMPTE color bars for NTSC
-    // Similar to EBU but with NTSC color specifications
+FrameBuffer TestCardGenerator::generate_eia_bars(const VideoParameters& params) {
+    // EIA color bars for NTSC
+    // Similar to EBU but with NTSC color specifications and brightness levels
     
     // Frame dimensions: 720x486 for NTSC (standard active picture)
     int32_t width = 720;

@@ -73,8 +73,9 @@ int main(int argc, char* argv[]) {
     if (options.testcard) {
         // Map test card name to type
         encode_orc::TestCardGenerator::Type test_card_type;
-        if (*options.testcard == "smpte") {
-            test_card_type = encode_orc::TestCardGenerator::Type::SMPTE_BARS;
+        if (*options.testcard == "color-bars" || *options.testcard == "ebu" || *options.testcard == "eia" || *options.testcard == "smpte") {
+            // Support multiple names for color bars: color-bars, ebu, eia, smpte (deprecated)
+            test_card_type = encode_orc::TestCardGenerator::Type::COLOR_BARS;
         } else if (*options.testcard == "pm5544") {
             test_card_type = encode_orc::TestCardGenerator::Type::PM5544;
         } else if (*options.testcard == "testcard-f") {
