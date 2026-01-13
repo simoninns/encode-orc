@@ -30,6 +30,8 @@ set(SOURCES
     src/blanking_encoder.cpp
     src/pal_encoder.cpp
     src/color_conversion.cpp
+    src/test_card_generator.cpp
+    src/video_encoder.cpp
 )
 
 # Create executable

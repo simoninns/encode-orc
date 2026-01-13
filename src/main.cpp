@@ -9,6 +9,8 @@
 
 #include "cli_parser.h"
 #include "blanking_encoder.h"
+#include "video_encoder.h"
+#include "test_card_generator.h"
 #include "video_parameters.h"
 #include <iostream>
 #include <sqlite3.h>
@@ -67,17 +69,40 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    // Create blanking encoder
-    encode_orc::BlankingEncoder encoder;
-    
-    // Encode blanking-level output
-    if (!encoder.encode(options.output_filename, system, options.num_frames, options.verbose)) {
-        std::cerr << "Error: " << encoder.get_error() << "\n";
-        return 1;
-    }
-    
-    if (!options.verbose) {
-        std::cout << "Successfully generated " << options.num_frames << " frames of blanking-level video\n";
+    // Check if test card is specified
+    if (options.testcard) {
+        // Map test card name to type
+        encode_orc::TestCardGenerator::Type test_card_type;
+        if (*options.testcard == "smpte") {
+            test_card_type = encode_orc::TestCardGenerator::Type::SMPTE_BARS;
+        } else if (*options.testcard == "pm5544") {
+            test_card_type = encode_orc::TestCardGenerator::Type::PM5544;
+        } else if (*options.testcard == "testcard-f") {
+            test_card_type = encode_orc::TestCardGenerator::Type::TESTCARD_F;
+        } else {
+            std::cerr << "Error: Unknown test card type: " << *options.testcard << "\n";
+            return 1;
+        }
+        
+        // Use video encoder for test card generation
+        encode_orc::VideoEncoder encoder;
+        if (!encoder.encode_test_card(options.output_filename, system, 
+                                     test_card_type, options.num_frames, 
+                                     options.verbose)) {
+            std::cerr << "Error: " << encoder.get_error() << "\n";
+            return 1;
+        }
+    } else {
+        // Use blanking encoder for blanking-level output
+        encode_orc::BlankingEncoder encoder;
+        if (!encoder.encode(options.output_filename, system, options.num_frames, options.verbose)) {
+            std::cerr << "Error: " << encoder.get_error() << "\n";
+            return 1;
+        }
+        
+        if (!options.verbose) {
+            std::cout << "Successfully generated " << options.num_frames << " frames of blanking-level video\n";
+        }
     }
     
     return 0;

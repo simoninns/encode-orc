@@ -152,7 +152,7 @@ void PALEncoder::generate_color_burst(uint16_t* line_buffer, int32_t line_number
     // PAL color burst
     // Position: Starts approximately 5.6 µs after sync (back porch)
     // Duration: 10 cycles of subcarrier (approximately 2.25 µs)
-    // Amplitude: ±300 mV (for 700mV white reference)
+    // Amplitude: ±150 mV (300mV peak-to-peak for 700mV white reference)
     
     int32_t burst_start = params_.colour_burst_start;
     int32_t burst_end = params_.colour_burst_end;
