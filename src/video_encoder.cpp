@@ -61,6 +61,7 @@ bool VideoEncoder::encode_test_card(const std::string& output_filename,
             
             if (system == VideoSystem::PAL) {
                 PALEncoder pal_encoder(params);
+                pal_encoder.enable_vits();  // Enable VITS for PAL
                 // Pass frame_num as the VBI frame number
                 encoded_frame = pal_encoder.encode_frame(test_card, field_number, frame_num);
             } else {

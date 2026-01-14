@@ -29,6 +29,7 @@ set(SOURCES
     src/metadata_writer.cpp
     src/blanking_encoder.cpp
     src/pal_encoder.cpp
+    src/pal_vits_generator.cpp
     src/ntsc_encoder.cpp
     src/biphase_encoder.cpp
     src/color_conversion.cpp

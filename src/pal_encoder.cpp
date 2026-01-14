@@ -8,6 +8,7 @@
  */
 
 #include "pal_encoder.h"
+#include "pal_vits_generator.h"
 #include "biphase_encoder.h"
 #include <cstring>
 #include <algorithm>
@@ -15,7 +16,8 @@
 namespace encode_orc {
 
 PALEncoder::PALEncoder(const VideoParameters& params) 
-    : params_(params) {
+    : params_(params),
+      vits_enabled_(false) {
     
     // Set signal levels
     sync_level_ = 0x0000;  // Sync tip at 0 IRE (0V)
@@ -29,18 +31,20 @@ PALEncoder::PALEncoder(const VideoParameters& params)
     samples_per_cycle_ = sample_rate_ / subcarrier_freq_;
 }
 
-// VITS functionality archived - will be restored in Phase 3
-// void PALEncoder::enableVITS(VITSStandard standard) {
-//     vits_composer_ = createVITSComposer(params_, standard);
-// }
-// 
-// void PALEncoder::disableVITS() {
-//     vits_composer_.reset();
-// }
-// 
-// bool PALEncoder::isVITSEnabled() const {
-//     return vits_composer_ != nullptr && vits_composer_->isEnabled();
-// }
+void PALEncoder::enable_vits() {
+    if (!vits_generator_) {
+        vits_generator_ = std::make_unique<PALVITSGenerator>(params_);
+    }
+    vits_enabled_ = true;
+}
+
+void PALEncoder::disable_vits() {
+    vits_enabled_ = false;
+}
+
+bool PALEncoder::is_vits_enabled() const {
+    return vits_enabled_ && vits_generator_ != nullptr;
+}
 
 Frame PALEncoder::encode_frame(const FrameBuffer& frame_buffer, int32_t field_number, int32_t frame_number_for_vbi) {
     Frame frame(params_.field_width, params_.field_height);
@@ -84,7 +88,30 @@ Field PALEncoder::encode_field(const FrameBuffer& frame_buffer,
             // Lines 15, 16, 17 (0-indexed) = field lines 16, 17, 18 contain biphase frame numbers
             if (frame_number_for_vbi >= 0 && (line == 15 || line == 16 || line == 17)) {
                 generate_biphase_vbi_line(line_buffer, line, field_number, frame_number_for_vbi);
-            } else {
+            }
+            // VITS lines (if enabled)
+            else if (is_vits_enabled()) {
+                // First field VITS lines (0-indexed in field)
+                if (is_first_field && line == 18) {  // Line 332 in PAL frame (odd-first field parity)
+                    vits_generator_->generate_uk_national_line332(line_buffer, field_number);
+                }
+                else if (is_first_field && line == 19) {  // Line 333 in PAL frame
+                    vits_generator_->generate_multiburst_line333(line_buffer, field_number);
+                }
+                // Second field VITS lines (0-indexed in field)
+                else if (!is_first_field && line == 18) {  // Line 19 in PAL frame
+                    vits_generator_->generate_itu_composite_line19(line_buffer, field_number);
+                }
+                else if (!is_first_field && line == 19) {  // Line 20 in PAL frame
+                    vits_generator_->generate_itu_its_line20(line_buffer, field_number);
+                }
+                else {
+                    generate_blanking_line(line_buffer);
+                    generate_sync_pulse(line_buffer, line);
+                    generate_color_burst(line_buffer, line, field_number);
+                }
+            }
+            else {
                 generate_blanking_line(line_buffer);
                 generate_sync_pulse(line_buffer, line);
                 generate_color_burst(line_buffer, line, field_number);
@@ -130,12 +157,6 @@ Field PALEncoder::encode_field(const FrameBuffer& frame_buffer,
             generate_color_burst(line_buffer, line, field_number);
         }
     }
-    
-    // VITS functionality archived - will be restored in Phase 3
-    // Apply VITS signals if enabled
-    // if (vits_composer_ && vits_composer_->isEnabled()) {
-    //     vits_composer_->composeVITSField(field, field_number);
-    // }
     
     return field;
 }

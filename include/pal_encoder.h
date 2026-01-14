@@ -13,7 +13,7 @@
 #include "field.h"
 #include "frame_buffer.h"
 #include "video_parameters.h"
-// #include "vits_composer.h"  // VITS functionality archived - will be restored in Phase 3
+#include "pal_vits_generator.h"
 #include <cstdint>
 #include <cmath>
 #include <memory>
@@ -56,28 +56,27 @@ public:
      */
     Field encode_field(const FrameBuffer& frame_buffer, int32_t field_number, bool is_first_field, int32_t frame_number_for_vbi = -1);
     
-    // VITS functionality archived - will be restored in Phase 3
-    // /**
-    //  * @brief Enable VITS (Vertical Interval Test Signals)
-    //  * @param standard VITS standard to use (IEC 60856-1986, ITU-T J.63, etc.)
-    //  */
-    // void enableVITS(VITSStandard standard);
-    // 
-    // /**
-    //  * @brief Disable VITS
-    //  */
-    // void disableVITS();
-    // 
-    // /**
-    //  * @brief Check if VITS is enabled
-    //  */
-    // bool isVITSEnabled() const;
+    /**
+     * @brief Enable VITS (Vertical Interval Test Signals)
+     */
+    void enable_vits();
+    
+    /**
+     * @brief Disable VITS
+     */
+    void disable_vits();
+    
+    /**
+     * @brief Check if VITS is enabled
+     */
+    bool is_vits_enabled() const;
 
 private:
     VideoParameters params_;
     
-    // VITS composer (optional) - archived, will be restored in Phase 3
-    // std::unique_ptr<VITSComposer> vits_composer_;
+    // VITS generator (optional)
+    std::unique_ptr<PALVITSGenerator> vits_generator_;
+    bool vits_enabled_;
     
     // PAL-specific constants
     static constexpr double PI = 3.141592653589793238463;
