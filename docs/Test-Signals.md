@@ -29,7 +29,7 @@ Assumptions unless stated otherwise:
 ---
 
 ## ITU Composite Test Signal for PAL (Figure 8.41)
-![Video Demystified P331 Figure 8.41](vits-diagrams/vd-p331-8_41.jpeg)
+![Video Demystified P331 Figure 8.41](test-signals/ITU-Composite-PAL-with-IRE.png)
 **VITS line:** 19
 
 ### Timing Breakdown (approx.)
@@ -58,7 +58,7 @@ Assumptions unless stated otherwise:
 ---
 
 ## United Kingdom PAL National Test Signal #1 (Figure 8.42)
-![Video Demystified P332 Figure 8.42](vits-diagrams/vd-p332-8_42.jpeg)
+![Video Demystified P332 Figure 8.42](test-signals/UK-PAL-National.png)
 **VITS line:** 332
 
 ### Distinguishing Features
@@ -83,7 +83,7 @@ Assumptions unless stated otherwise:
 ---
 
 ## ITU Combination ITS Test Signal for PAL (Figure 8.45)
-![Video Demystified P335 Figure 8.45](vits-diagrams/vd-p335-8_45.jpeg)
+![Video Demystified P335 Figure 8.45](test-signals/ITU-Combination-ITS-PAL.png)
 **VITS line:** 20
 
 ### Structure
@@ -112,7 +112,7 @@ Assumptions unless stated otherwise:
 ---
 
 ## ITU Multiburst Test Signal for PAL (Figure 8.38)
-![Video Demystified P329 Figure 8.38](vits-diagrams/vd-p329-8_38.jpeg)
+![Video Demystified P329 Figure 8.38](test-signals/multiburst-PAL.png)
 **VITS line:** 333
 
 ### Burst Frequencies (luminance multiburst)
@@ -153,7 +153,7 @@ Assumptions unless stated otherwise:
 ---
 
 ## Vertical Interval Reference Signal (VIRS)
-![FCC Recommendation 73-699 and CCIR Recommendation 314-4](vits-diagrams/virs-73-699.png)
+![FCC Recommendation 73-699 and CCIR Recommendation 314-4](test-signals/virs-73-699.png)
 **VITS lines:** 19 and 282
 
 ### Structure
@@ -178,7 +178,7 @@ Assumptions unless stated otherwise:
 ---
 
 ## NTC-7 Combination Test Signal for NTSC (Figure 8.43)
-![Video Demystified P333 Figure 8.43](vits-diagrams/vd-p333-8.43.jpeg)
+![Video Demystified P333 Figure 8.43](test-signals/NTC-7-Combination-NTSC.png)
 **VITS line:**  20
 
 ### Components
@@ -200,7 +200,7 @@ Assumptions unless stated otherwise:
 ---
 
 ## NTC-7 Composite Test Signal for NTSC (Figure 8.40)
-![Video Demystified P330 Figure 8.40](vits-diagrams/vd-p330-8_40.jpeg)
+![Video Demystified P330 Figure 8.40](test-signals/NTC-7-Composite-NTSC.png)
 **VITS line:**  283
 ### Elements
 
@@ -213,23 +213,3 @@ Assumptions unless stated otherwise:
 * Full-chain NTSC composite validation
 * Pulse response reveals **group delay**
 * Staircase confirms **gamma and gain**
-
----
-
-## Practical Notes for FPGA / Encoder Work
-
-* **2T pulse width**
-  ≈0.45 µs → critical for verifying pixel clock vs line timing
-* **10T / 12.5T pulses**
-  Reveal mid-band shaping errors (often missed by multiburst alone)
-* **Staircase DC accuracy**
-  Exposes clamp and black-level drift
-* **Multiburst at >5 MHz (PAL)**
-  Particularly useful for LaserDisc RF chain validation
-
----
-
-If you want, the next step can be:
-
-* a **cycle-accurate PAL/NTSC line timeline** suitable for HDL
-* or a **table converting each feature into pixel counts** at common sample rates (13.5 MHz, 27 MHz, etc.)
