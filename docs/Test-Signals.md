@@ -36,9 +36,10 @@ Assumptions unless stated otherwise:
 
 * Sync → burst end: ~12 µs
 * 100 IRE flat white: ~12 µs to ~22 µs
-* 2T pulse: centered ~24–26 µs
-  (≈0.45 µs wide → bandwidth stress at ~2.2 MHz)
-* Staircase section begins: ~30 µs
+* 2T pulse: 
+  * centered on 26 µs
+  * (≈0.45 µs wide → bandwidth stress at ~2.2 MHz) CHECK THIS
+* Staircase section begins: ~30 µs (30,40,44,48.52,56,60)
 * End of active content: ~60 µs
 
 ### Levels
