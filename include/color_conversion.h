@@ -61,6 +61,18 @@ public:
      * @return Output frame in RGB48 format
      */
     static FrameBuffer yiq_to_rgb_ntsc(const FrameBuffer& yiq_frame);
+    
+    /**
+     * @brief Convert single RGB pixel to YUV using ITU-R BT.601
+     * @param r Red component (0-65535)
+     * @param g Green component (0-65535)
+     * @param b Blue component (0-65535)
+     * @param y Output Y component
+     * @param u Output U component
+     * @param v Output V component
+     */
+    static void rgb_to_yuv_pixel(uint16_t r, uint16_t g, uint16_t b,
+                                 uint16_t& y, uint16_t& u, uint16_t& v);
 
 private:
     /**

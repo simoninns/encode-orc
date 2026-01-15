@@ -14,21 +14,6 @@
 
 namespace encode_orc {
 
-TestCardGenerator::Type pattern_to_testcard_type(const std::string& pattern, std::string& error) {
-    std::string pat = pattern;
-    std::transform(pat.begin(), pat.end(), pat.begin(), ::tolower);
-    
-    if (pat == "color-bars" || pat == "ebu" || pat == "eia" || pat == "smpte") {
-        return TestCardGenerator::Type::COLOR_BARS;
-    } else if (pat == "pm5544") {
-        return TestCardGenerator::Type::PM5544;
-    } else if (pat == "testcard-f") {
-        return TestCardGenerator::Type::TESTCARD_F;
-    }
-    
-    error = "Unknown test card pattern: " + pattern;
-    return TestCardGenerator::Type::COLOR_BARS;
-}
 
 bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                        std::string& error_message) {
@@ -87,28 +72,10 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                         section.source_type = source["type"].as<std::string>();
                     }
                     
-                    if (section.source_type == "testcard" && source["pattern"]) {
-                        TestCardSource tc;
-                        tc.pattern = source["pattern"].as<std::string>();
-                        section.testcard_source = tc;
-                    } else if (section.source_type == "rgb-file") {
-                        RGBFileSource rgb;
-                        if (source["path"]) {
-                            rgb.path = source["path"].as<std::string>();
-                        }
-                        if (source["width"]) {
-                            rgb.width = source["width"].as<int32_t>();
-                        }
-                        if (source["height"]) {
-                            rgb.height = source["height"].as<int32_t>();
-                        }
-                        if (source["frame_start"]) {
-                            rgb.frame_start = source["frame_start"].as<int32_t>();
-                        }
-                        if (source["frame_end"]) {
-                            rgb.frame_end = source["frame_end"].as<int32_t>();
-                        }
-                        section.rgb_source = rgb;
+                    if (section.source_type == "rgb30-image" && source["file"]) {
+                        RGB30ImageSource rgb30;
+                        rgb30.file = source["file"].as<std::string>();
+                        section.rgb30_image_source = rgb30;
                     }
                 }
                 
@@ -219,13 +186,13 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
             return false;
         }
         
-        if (section.source_type == "testcard") {
-            if (!section.testcard_source) {
-                error_message = "Test card source missing for section: " + section.name;
+        if (section.source_type == "rgb30-image") {
+            if (!section.rgb30_image_source) {
+                error_message = "RGB30 image source missing for section: " + section.name;
                 return false;
             }
             if (!section.duration) {
-                error_message = "Duration is required for test card section: " + section.name;
+                error_message = "Duration is required for RGB30 image section: " + section.name;
                 return false;
             }
             if (section.duration.value() <= 0) {

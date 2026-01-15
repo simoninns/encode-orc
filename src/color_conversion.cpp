@@ -206,4 +206,29 @@ FrameBuffer ColorConverter::yiq_to_rgb_ntsc(const FrameBuffer& yiq_frame) {
     return rgb_frame;
 }
 
+void ColorConverter::rgb_to_yuv_pixel(uint16_t r, uint16_t g, uint16_t b,
+                                      uint16_t& y, uint16_t& u, uint16_t& v) {
+    // Convert single RGB pixel to YUV using ITU-R BT.601
+    // Y  =  0.299*R + 0.587*G + 0.114*B
+    // U  = -0.147*R - 0.289*G + 0.436*B + 0.5
+    // V  =  0.615*R - 0.515*G - 0.100*B + 0.5
+    
+    double r_norm = static_cast<double>(r) / 65535.0;
+    double g_norm = static_cast<double>(g) / 65535.0;
+    double b_norm = static_cast<double>(b) / 65535.0;
+    
+    double y_norm = 0.299 * r_norm + 0.587 * g_norm + 0.114 * b_norm;
+    double u_norm = -0.147 * r_norm - 0.289 * g_norm + 0.436 * b_norm + 0.5;
+    double v_norm = 0.615 * r_norm - 0.515 * g_norm - 0.100 * b_norm + 0.5;
+    
+    // Clamp and convert to 16-bit
+    if (y_norm < 0.0) y_norm = 0.0; else if (y_norm > 1.0) y_norm = 1.0;
+    if (u_norm < 0.0) u_norm = 0.0; else if (u_norm > 1.0) u_norm = 1.0;
+    if (v_norm < 0.0) v_norm = 0.0; else if (v_norm > 1.0) v_norm = 1.0;
+    
+    y = static_cast<uint16_t>(y_norm * 65535.0);
+    u = static_cast<uint16_t>(u_norm * 65535.0);
+    v = static_cast<uint16_t>(v_norm * 65535.0);
+}
+
 } // namespace encode_orc

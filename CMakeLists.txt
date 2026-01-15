@@ -40,7 +40,7 @@ set(SOURCES
     src/ntsc_vits_generator.cpp
     src/biphase_encoder.cpp
     src/color_conversion.cpp
-    src/test_card_generator.cpp
+    src/rgb30_loader.cpp
     src/video_encoder.cpp
 )
 

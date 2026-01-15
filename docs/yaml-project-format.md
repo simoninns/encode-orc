@@ -60,62 +60,23 @@ sections:
 
 Each section in the `sections` list represents a continuous sequence of frames with consistent encoding parameters.
 
-### Basic Section Structure
+### Section Structure
 
 ```yaml
 sections:
   - name: "Section Name"
     duration: 100  # Number of frames in this section
     source:
-      type: "testcard"  # or "rgb-file"
-      # ... source-specific parameters ...
+      type: "rgb30-image"  # Only supported source type
+      file: "path/to/image.raw"
     
-    # LaserDisc section settings (inherits project standard/mode)
+    # LaserDisc section settings
     laserdisc:
       disc_area: "programme-area"  # lead-in, programme-area, or lead-out
       # ... section-specific parameters: picture_start, chapter, timecode_start, vbi, vits ...
 ```
 
----
 
-## Source Types
-
-### Test Card Source
-
-For generating standard test patterns:
-
-```yaml
-source:
-  type: "testcard"
-  pattern: "color-bars"  # color-bars, pm5544, testcard-f, ebu, eia, smpte
-```
-
-**Supported test patterns:**
-- `color-bars` / `ebu` / `eia` / `smpte` - Standard color bars (EBU for PAL, EIA for NTSC)
-- `pm5544` - Philips PM5544 test card
-- `testcard-f` - BBC Test Card F
-
-### RGB File Source
-
-For encoding from raw RGB files:
-
-```yaml
-source:
-  type: "rgb-file"
-  path: "path/to/input.rgb"
-  width: 720  # Optional, auto-detect if not specified
-  height: 576  # Optional (PAL: 576, NTSC: 480)
-  frame_start: 0  # Optional: which frame to start from in the RGB file
-  frame_end: 100  # Optional: which frame to end at (exclusive)
-```
-
-**Notes**: 
-- The RGB file must contain RGB data for the **active video area only**. Standard dimensions are:
-  - **PAL**: 720×576 pixels (active area)
-  - **NTSC**: 720×480 pixels (active area)
-- The RGB data should be in raw format (sequential RGB bytes per pixel, no header).
-- If the section `duration` is **not specified**, it will automatically be set to the number of available frames in the RGB file (considering `frame_start` and `frame_end` if provided).
-- If the section `duration` **exceeds** the number of frames available in the RGB file, the input RGB frames will be automatically repeated/looped to fill the requested duration.
 
 ---
 
@@ -394,11 +355,11 @@ sections:
 
 ## Complete Example Projects
 
-### Example 1: Simple PAL Test Disc
+### Example 1: Simple PAL Test with RGB30
 
 ```yaml
 name: "PAL Color Bars Test"
-description: "100 frames of EBU color bars with IEC 60857 VITS"
+description: "RGB30 EBU color bars with IEC 60857 VITS"
 
 output:
   filename: "pal-test.tbc"
@@ -412,8 +373,8 @@ sections:
   - name: "Color Bars"
     duration: 100
     source:
-      type: "testcard"
-      pattern: "ebu"
+      type: "rgb30-image"
+      file: "testcard-images/pal-ebu-colorbars-100.raw"
     laserdisc:
       disc_area: "programme-area"
       picture_start: 1
@@ -432,11 +393,11 @@ sections:
         enabled: true
 ```
 
-### Example 2: Multi-Section LaserDisc Master
+### Example 2: Multi-Section LaserDisc with RGB30
 
 ```yaml
-name: "Educational LaserDisc Master"
-description: "Multi-chapter CLV disc with test signals and content"
+name: "RGB30 Educational LaserDisc"
+description: "Multi-chapter CLV disc with RGB30 images"
 
 output:
   filename: "educational-master.tbc"
@@ -447,15 +408,15 @@ laserdisc:
   mode: "clv"
 
 sections:
-  # Leader with color bars
+  # Leader with RGB30 bars
   - name: "Leader - Color Bars"
     duration: 250  # 10 seconds at 25fps
     source:
-      type: "testcard"
-      pattern: "ebu"
+      type: "rgb30-image"
+      file: "testcard-images/pal-ebu-colorbars-75.raw"
     laserdisc:
       disc_area: "lead-in"
-      chapter: 0  # Leader chapter
+      chapter: 0
       timecode_start: "00:00:00:00"
       
       vbi:
@@ -468,14 +429,12 @@ sections:
       vits:
         enabled: true
         
-  # Chapter 1: Introduction
-  - name: "Chapter 1 - Introduction"
+  # Chapter 1: RGB30 content
+  - name: "Chapter 1 - Content"
     duration: 2500  # 100 seconds
     source:
-      type: "rgb-file"
-      path: "chapter01-intro.rgb"
-      width: 720
-      height: 576
+      type: "rgb30-image"
+      file: "testcard-images/custom-content-1.raw"
     laserdisc:
       disc_area: "programme-area"
       chapter: 1
@@ -491,13 +450,12 @@ sections:
       vits:
         enabled: true
         
-  # Chapter 2: Main content
+  # Chapter 2: Different RGB30 image
   - name: "Chapter 2 - Content"
     duration: 7500  # 300 seconds (5 minutes)
     source:
-      type: "rgb-file"
-      path: "chapter02-content.rgb"
-      # Note: RGB will loop automatically if duration exceeds available frames
+      type: "rgb30-image"
+      file: "testcard-images/custom-content-2.raw"
     laserdisc:
       disc_area: "programme-area"
       chapter: 2
@@ -514,11 +472,11 @@ sections:
         enabled: true
 ```
 
-### Example 3: NTSC CAV Test Disc
+### Example 3: NTSC CAV with RGB30
 
 ```yaml
-name: "NTSC CAV Reference Disc"
-description: "10,000 frame CAV test disc with multiple test patterns"
+name: "NTSC CAV RGB30 Reference"
+description: "CAV test disc with RGB30 color bars"
 
 output:
   filename: "ntsc-cav-reference.tbc"
@@ -529,12 +487,12 @@ laserdisc:
   mode: "cav"
 
 sections:
-  # SMPTE color bars
-  - name: "SMPTE Bars"
+  # RGB30 EIA bars - 100%
+  - name: "EIA Bars 100%"
     duration: 1800  # 60 seconds at 29.97fps
     source:
-      type: "testcard"
-      pattern: "smpte"
+      type: "rgb30-image"
+      file: "testcard-images/ntsc-eia-colorbars-100.raw"
     laserdisc:
       disc_area: "programme-area"
       picture_start: 1
@@ -549,12 +507,12 @@ sections:
       vits:
         enabled: true
         
-  # Philips test card
-  - name: "PM5544"
+  # RGB30 EIA bars - 75%
+  - name: "EIA Bars 75%"
     duration: 1800
     source:
-      type: "testcard"
-      pattern: "pm5544"
+      type: "rgb30-image"
+      file: "testcard-images/ntsc-eia-colorbars-75.raw"
     laserdisc:
       disc_area: "programme-area"
       picture_start: 1801
@@ -568,36 +526,13 @@ sections:
       
       vits:
         enabled: true
-        
-  # Custom content
-  - name: "Custom Frames"
-    duration: 6400
-    source:
-      type: "rgb-file"
-      path: "ntsc-content.rgb"
-      width: 720
-      height: 480
-    laserdisc:
-      disc_area: "programme-area"
-      picture_start: 3601
-      
-      vbi:
-        enabled: true
-        line17:
-          auto: "picture-number"
-        line18:
-          auto: "picture-number"
-      
-      vits:
-        enabled: true
-        # Note: VITS signals defined by IEC 60856-1986 standard
 ```
 
-### Example 4: Minimal Configuration
+### Example 4: Minimal RGB30 Configuration
 
 ```yaml
-name: "Simple Test"
-description: "Quick test encode"
+name: "Simple RGB30 Test"
+description: "Quick test with RGB30 image"
 
 output:
   filename: "test.tbc"
@@ -608,11 +543,11 @@ laserdisc:
   mode: "none"
 
 sections:
-  - name: "Test"
+  - name: "RGB30 Content"
     duration: 50
     source:
-      type: "testcard"
-      pattern: "ebu"
+      type: "rgb30-image"
+      file: "testcard-images/pal-ebu-colorbars-100.raw"
 ```
 
 ---
@@ -641,8 +576,8 @@ sections:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | string | Yes | Section name |
-| `duration` | integer | Conditional | Number of frames in section (required for test cards, optional for RGB files) |
-| `source` | object | Yes | Video source configuration |
+| `duration` | integer | Yes | Number of frames in section; frames = duration (RGB30 files must have exactly this many frames) |
+| `source` | object | Yes | Video source configuration (must be type: "rgb30-image") |
 | `laserdisc` | object | No | Section-level LaserDisc settings (disc_area, per-section starts, VBI/VITS) |
 
 ### LaserDisc Modes
@@ -663,13 +598,13 @@ The YAML parser should enforce:
 
 1. **Required fields**: `name`, `description`, `output.filename`, `output.format` must be present
 2. **Valid format**: Output format must be one of the four supported types
-3. **Section duration**: Must be positive integer if specified; required for test card sources, optional for RGB file sources (defaults to available frames)
-4. **Picture numbers**: CAV picture numbers must be in range 1-79999
-5. **Chapter numbers**: CLV chapters must be in range 0-79
-6. **Timecode format**: Must be HH:MM:SS:FF with valid values
-7. **VBI bytes**: Must be in range 0x00-0xFF
-8. **IEC standard**: Project-level standard must match output format (PAL → IEC 60857-1986, NTSC → IEC 60856-1986); `none` disables VBI/VITS/timecode
-9. **RGB file existence**: RGB input files must exist and be readable
+3. **Section duration**: Must be positive integer; required for all RGB30 image sections
+4. **RGB30 file validation**: File must exist, be readable, and have exactly `width × height × 6` bytes (720×576 = 2,488,320 for PAL; 720×486 = 2,099,520 for NTSC)
+5. **Picture numbers**: CAV picture numbers must be in range 1-79999
+6. **Chapter numbers**: CLV chapters must be in range 0-79
+7. **Timecode format**: Must be HH:MM:SS:FF with valid values
+8. **VBI bytes**: Must be in range 0x00-0xFF
+9. **IEC standard**: Project-level standard must match output format (PAL → IEC 60857-1986, NTSC → IEC 60856-1986); `none` disables VBI/VITS/timecode
 10. **Non-empty sections**: At least one section must be defined
 11. **Project-wide mode**: Mode is set once at the project level; sections cannot override it
 12. **Continuation logic**: If start values are omitted, the first section must specify initial values; subsequent sections continue from previous

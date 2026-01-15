@@ -58,10 +58,10 @@ if [ ! -d "$TEST_PROJECTS_DIR" ]; then
     exit 1
 fi
 
-yaml_files=("$TEST_PROJECTS_DIR"/*.yaml)
+yaml_files=("$TEST_PROJECTS_DIR"/*rgb30*.yaml)
 
 if [ ${#yaml_files[@]} -eq 0 ] || [ ! -e "${yaml_files[0]}" ]; then
-    echo -e "${RED}Error: No YAML files found in $TEST_PROJECTS_DIR${NC}"
+    echo -e "${RED}Error: No RGB30 YAML files found in $TEST_PROJECTS_DIR${NC}"
     exit 1
 fi
 

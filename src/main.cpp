@@ -10,7 +10,6 @@
 #include "yaml_config.h"
 #include "video_encoder.h"
 #include "metadata_generator.h"
-#include "test_card_generator.h"
 #include "video_parameters.h"
 #include <iostream>
 #include <fstream>
@@ -78,10 +77,8 @@ int main(int argc, char* argv[]) {
     // Display section information
     for (const auto& section : config.sections) {
         std::cout << "Section: " << section.name << "\n";
-        if (section.testcard_source) {
-            if (!section.testcard_source->pattern.empty()) {
-                std::cout << "  Pattern: " << section.testcard_source->pattern << "\n";
-            }
+        if (section.rgb30_image_source) {
+            std::cout << "  File: " << section.rgb30_image_source->file << "\n";
         }
         if (section.duration) {
             std::cout << "  Frames: " << section.duration.value() << "\n";
@@ -100,7 +97,7 @@ int main(int argc, char* argv[]) {
     for (const auto& section : config.sections) {
         std::cout << "Encoding section: " << section.name << "\n";
         
-        if (section.testcard_source) {
+        if (section.rgb30_image_source) {
             int32_t picture_start = 0;
             int32_t chapter = 0;
             std::string timecode_start = "";
@@ -116,14 +113,12 @@ int main(int argc, char* argv[]) {
             }
             
             VideoEncoder encoder;
-            std::string error;
-            std::string pattern = section.testcard_source->pattern;
-            TestCardGenerator::Type tc_type = pattern_to_testcard_type(pattern, error);
+            std::string rgb30_file = section.rgb30_image_source->file;
             
-            if (!encoder.encode_test_card(config.output.filename + ".temp",
-                                         system, tc_type,
-                                         section.duration.value(), false,
-                                         picture_start, chapter, timecode_start)) {
+            if (!encoder.encode_rgb30_image(config.output.filename + ".temp",
+                                           system, rgb30_file,
+                                           section.duration.value(), false,
+                                           picture_start, chapter, timecode_start)) {
                 std::cerr << "Error: " << encoder.get_error() << "\n";
                 return 1;
             }

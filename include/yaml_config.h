@@ -11,7 +11,6 @@
 #define ENCODE_ORC_YAML_CONFIG_H
 
 #include "video_parameters.h"
-#include "test_card_generator.h"
 #include <string>
 #include <vector>
 #include <optional>
@@ -70,21 +69,10 @@ struct LaserDiscConfig {
 };
 
 /**
- * @brief Test card source configuration
+ * @brief RGB30 raw image source configuration
  */
-struct TestCardSource {
-    std::string pattern;  // color-bars, ebu, eia, smpte, pm5544, testcard-f
-};
-
-/**
- * @brief RGB file source configuration
- */
-struct RGBFileSource {
-    std::string path;
-    int32_t width = 720;
-    int32_t height = 576;  // PAL default
-    std::optional<int32_t> frame_start;
-    std::optional<int32_t> frame_end;
+struct RGB30ImageSource {
+    std::string file;  // Path to raw RGB30 file
 };
 
 /**
@@ -92,11 +80,10 @@ struct RGBFileSource {
  */
 struct VideoSection {
     std::string name;
-    std::optional<int32_t> duration;  // Required for test cards, optional for RGB
+    std::optional<int32_t> duration;  // Required for RGB30 images
     
-    std::string source_type;  // "testcard" or "rgb-file"
-    std::optional<TestCardSource> testcard_source;
-    std::optional<RGBFileSource> rgb_source;
+    std::string source_type;  // "rgb30-image"
+    std::optional<RGB30ImageSource> rgb30_image_source;
     
     std::optional<LaserDiscConfig> laserdisc;
 };
@@ -145,11 +132,6 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
  * @return true if valid, false otherwise
  */
 bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_message);
-
-/**
- * @brief Convert test card pattern name to TestCardGenerator::Type
- */
-TestCardGenerator::Type pattern_to_testcard_type(const std::string& pattern, std::string& error);
 
 } // namespace encode_orc
 

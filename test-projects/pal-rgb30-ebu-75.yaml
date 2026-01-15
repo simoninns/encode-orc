@@ -1,0 +1,54 @@
+name: "PAL RGB30 EBU 75% Test"
+description: "PAL with RGB30 EBU color bars at 75% saturation - lead-in, chapters, lead-out"
+
+output:
+  filename: "test-output/pal-rgb30-ebu-75.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  standard: "none"
+  mode: "none"
+
+sections:
+  - name: "Lead-in"
+    duration: 10
+    source:
+      type: "rgb30-image"
+      file: "testcard-images/pal-ebu-colorbars-75.raw"
+    laserdisc:
+      leadin: true
+
+  - name: "Chapter 1"
+    duration: 10
+    source:
+      type: "rgb30-image"
+      file: "testcard-images/pal-ebu-colorbars-75.raw"
+    laserdisc:
+      picture_start: 1
+      chapter: 1
+
+  - name: "Chapter 2"
+    duration: 10
+    source:
+      type: "rgb30-image"
+      file: "testcard-images/pal-ebu-colorbars-75.raw"
+    laserdisc:
+      picture_start: 11
+      chapter: 2
+
+  - name: "Chapter 3"
+    duration: 10
+    source:
+      type: "rgb30-image"
+      file: "testcard-images/pal-ebu-colorbars-75.raw"
+    laserdisc:
+      picture_start: 21
+      chapter: 3
+
+  - name: "Lead-out"
+    duration: 10
+    source:
+      type: "rgb30-image"
+      file: "testcard-images/pal-ebu-colorbars-75.raw"
+    laserdisc:
+      leadout: true
