@@ -11,6 +11,7 @@
 #include "biphase_encoder.h"
 #include <iostream>
 #include <fstream>
+#include <cstdio>
 
 namespace encode_orc {
 
@@ -18,7 +19,10 @@ bool VideoEncoder::encode_test_card(const std::string& output_filename,
                                     VideoSystem system,
                                     TestCardGenerator::Type test_card_type,
                                     int32_t num_frames,
-                                    bool verbose) {
+                                    bool verbose,
+                                    int32_t picture_start,
+                                    int32_t chapter,
+                                    const std::string& timecode_start) {
     try {
         // Get video parameters for the system
         VideoParameters params;
@@ -103,36 +107,108 @@ bool VideoEncoder::encode_test_card(const std::string& output_filename,
         
         // Add VBI data for each field (frame numbers on lines 16, 17, 18)
         metadata.vbi_data.resize(total_fields);
+        
+        // Determine VBI mode based on which parameter is provided
+        bool use_cav = (picture_start > 0);
+        bool use_clv_chapter = (chapter > 0);
+        bool use_clv_timecode = !timecode_start.empty();
+        
+        // Determine frame rate based on video system
+        int32_t fps = (system == VideoSystem::PAL) ? 25 : 30;  // NTSC uses 30fps (simplified from 29.97)
+        
+        // Parse CLV timecode start value (HH:MM:SS:FF format)
+        int32_t timecode_start_frame = 0;
+        if (use_clv_timecode) {
+            // Parse HH:MM:SS:FF
+            int32_t start_hh = 0, start_mm = 0, start_ss = 0, start_ff = 0;
+            int parsed = std::sscanf(timecode_start.c_str(), "%d:%d:%d:%d", 
+                                      &start_hh, &start_mm, &start_ss, &start_ff);
+            if (parsed >= 3) {
+                // Convert to frame offset
+                timecode_start_frame = start_hh * 3600 * fps +  // Hours to frames
+                                       start_mm * 60 * fps +      // Minutes to frames
+                                       start_ss * fps +            // Seconds to frames
+                                       start_ff;                   // Frame offset
+            }
+        }
+        
         for (int32_t frame_num = 0; frame_num < num_frames; ++frame_num) {
             VBIData vbi;
             
             // Line 16: Programme status code (IEC 60857-1986 - 10.1.8)
-            // Format: 0x8BA000 or 0x8DC000 (CX off/on) + x3x4x5
-            // x3: disc size (12"=0/8"=1), side (1=0/2=1), teletext (no=0/yes=1), audio bit
-            // x4: audio status bits
-            // x5: parity bits
-            // Configuration: 12", side 1, no teletext, stereo, CX off
-            // x3 = 0x0, x4 = 0x0 (stereo), x5 = 0x0 (parity for all zeros)
-            vbi.vbi0 = 0x8BA000;  // CX off, 12", side 1, stereo, correct parity
+            // For CLV, this also encodes seconds and picture number on line 16
             
-            if (frame_num == 0) {
-                // Frame 0: Lead-in code (IEC 60857-1986 - 10.1.1)
-                vbi.vbi1 = 0x88FFFF;  // Line 17: Lead-in
-                vbi.vbi2 = 0x88FFFF;  // Line 18: Lead-in
-            } else {
-                // Encode frame number as LaserDisc CAV picture number (24-bit value)
+            if (use_cav) {
+                // CAV mode: Programme status code with standard format
+                vbi.vbi0 = 0x8BA000;  // CX off, 12", side 1, stereo, correct parity
+            
+                // CAV mode: Picture numbers
+                int32_t picture_number = picture_start + frame_num;
                 uint8_t vbi_byte0, vbi_byte1, vbi_byte2;
-                BiphaseEncoder::encode_cav_picture_number(frame_num, vbi_byte0, vbi_byte1, vbi_byte2);
+                BiphaseEncoder::encode_cav_picture_number(picture_number, vbi_byte0, vbi_byte1, vbi_byte2);
                 
-                // Combine bytes back into 24-bit value
                 int32_t cav_picture_number = (static_cast<int32_t>(vbi_byte0) << 16) |
                                              (static_cast<int32_t>(vbi_byte1) << 8) |
                                              static_cast<int32_t>(vbi_byte2);
                 
-                // vbi1 = line 17 (CAV picture number)
-                // vbi2 = line 18 (CAV picture number, redundant)
-                vbi.vbi1 = cav_picture_number;   // Line 17: CAV picture number
-                vbi.vbi2 = cav_picture_number;   // Line 18: CAV picture number (redundant)
+                vbi.vbi1 = cav_picture_number;
+                vbi.vbi2 = cav_picture_number;
+            } else if (use_clv_chapter) {
+                // CLV mode: Chapter numbers (IEC 60857-1986 10.1.5)
+                // Format: 0x800DDD with chapter in bits 12-18 (BCD, 0-79)
+                // First digit masked to 0-7 range (top bit marks first 400 tracks)
+                int32_t chapter_bcd = ((chapter / 10) << 4) | (chapter % 10);
+                int32_t chapter_code = 0x800DDD | ((chapter_bcd & 0x7F) << 12);
+                
+                vbi.vbi1 = chapter_code;
+                vbi.vbi2 = chapter_code;
+            } else if (use_clv_timecode) {
+                // CLV mode: Programme time code (IEC 60857-1986)
+                // Line 16 (vbi0): CLV picture number with seconds
+                // Line 17 (vbi1): Hour and minute
+                
+                // Calculate current timecode based on frame offset
+                int32_t total_frame = timecode_start_frame + frame_num;
+                int32_t total_seconds = total_frame / fps;
+                int32_t frame_in_second = total_frame % fps;
+                
+                int32_t total_minutes = total_seconds / 60;
+                int32_t total_hours = total_minutes / 60;
+                
+                // Extract time components
+                int32_t hh = total_hours % 10;  // Single digit (0-9)
+                int32_t mm = total_minutes % 60;
+                int32_t ss = total_seconds % 60;
+                
+                // Encode line 16 (vbi0): CLV picture number format
+                // X1 (bits 16-19) encodes seconds tens: 0xA=0-9s, 0xB=10-19s, etc.
+                // Bits 8-11 encode seconds units (0-9)
+                int32_t sec_tens = ss / 10;       // 0-5
+                int32_t sec_units = ss % 10;      // 0-9
+                int32_t x1 = 0x0A + sec_tens;     // 0xA-0xF
+                
+                // BCD encode picture number: high nibble is tens, low nibble is units
+                int32_t pic_tens = frame_in_second / 10;
+                int32_t pic_units = frame_in_second % 10;
+                int32_t pic_bcd = (pic_tens << 4) | pic_units;
+                
+                // Format: 0x8 in bits 20-23, X1 in 16-19, 0xE in 12-15, 
+                //         seconds_units in 8-11, picture_bcd in 0-7
+                vbi.vbi0 = (0x8 << 20) | (x1 << 16) | (0xE << 12) | (sec_units << 8) | pic_bcd;
+                
+                // Encode line 17 (vbi1): Hour and minute
+                int32_t hh_bcd = ((hh / 10) << 4) | (hh % 10);
+                int32_t mm_bcd = ((mm / 10) << 4) | (mm % 10);
+                
+                // Format: 0xF0DD00 - hour in bits 16-19, DD=fixed pattern, minute in bits 0-7
+                int32_t timecode = 0xF0DD00 | (hh_bcd << 16) | mm_bcd;
+                
+                vbi.vbi1 = timecode;
+                vbi.vbi2 = timecode;
+            } else {
+                // Default: No frame numbering, just lead-in codes
+                vbi.vbi1 = 0x88FFFF;
+                vbi.vbi2 = 0x88FFFF;
             }
             
             metadata.vbi_data[frame_num * 2] = vbi;      // Field 1

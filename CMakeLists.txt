@@ -19,6 +19,9 @@ enable_testing()
 # Find SQLite3
 find_package(SQLite3 REQUIRED)
 
+# Find yaml-cpp
+find_package(yaml-cpp REQUIRED)
+
 # Include directories
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
@@ -26,7 +29,9 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 set(SOURCES
     src/main.cpp
     src/cli_parser.cpp
+    src/yaml_config.cpp
     src/metadata_writer.cpp
+    src/metadata_generator.cpp
     src/blanking_encoder.cpp
     src/color_burst_generator.cpp
     src/pal_encoder.cpp
@@ -43,10 +48,7 @@ set(SOURCES
 add_executable(encode-orc ${SOURCES})
 
 # Link libraries
-target_link_libraries(encode-orc PRIVATE SQLite::SQLite3)
+target_link_libraries(encode-orc PRIVATE SQLite::SQLite3 yaml-cpp)
 
 # Install target
 install(TARGETS encode-orc DESTINATION bin)
-
-# Add subdirectories
-add_subdirectory(tests)

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the proposed YAML configuration file format for the `encode-orc` application. The YAML format will replace the current command-line interface, providing a more flexible and maintainable way to configure video encoding projects.
+The `encode-orc` application exclusively uses YAML configuration files to define video encoding projects. This format provides a flexible and maintainable way to configure complex video encoding tasks with LaserDisc metadata support.
 
 ## Design Goals
 
@@ -12,6 +12,14 @@ This document describes the proposed YAML configuration file format for the `enc
 - **VBI/VITS control**: Fine-grained control over vertical blanking interval data
 - **Reusability**: Projects can be version-controlled and shared
 - **Self-documenting**: Clear project name and description fields
+
+## Usage
+
+```bash
+./encode-orc project.yaml
+```
+
+The application requires exactly one argument: a valid YAML project file (`.yaml` or `.yml` extension).
 
 ## File Structure
 
@@ -714,34 +722,15 @@ Possible future additions:
 
 ---
 
-## Migration from Command-Line
+## Migration Note
 
-Current command-line:
-```bash
-encode-orc -o output.tbc -f pal-composite -t ebu --vits iec60856-pal -n 100
-```
+The command-line interface (with switches like `-o`, `-f`, `-t`, `-n`, etc.) has been removed. All encoding is now done exclusively through YAML project files. This provides:
 
-Equivalent YAML:
-```yaml
-name: "EBU Test"
-description: "100 frames EBU color bars"
-output:
-  filename: "output.tbc"
-  format: "pal-composite"
-sections:
-  - name: "EBU Bars"
-    duration: 100
-    source:
-      type: "testcard"
-      pattern: "ebu"
-    laserdisc:
-      standard: "iec60857-1986"
-      vits:
-        enabled: true
-```
+- **Better documentation**: Projects are self-describing and can include comments
+- **Version control**: Easy to track changes to encoding configurations
+- **Complex projects**: Multi-section projects with different standards and sources
+- **Reproducibility**: Same project file always produces the same output
 
-The YAML format provides much more flexibility and is self-documenting, making it easier to:
-- Create complex multi-section projects
-- Version control configurations
-- Share and reproduce encoding setups
-- Add metadata and documentation inline
+If you previously used CLI switches, create a YAML project file with equivalent settings (see examples below).
+
+---

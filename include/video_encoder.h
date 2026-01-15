@@ -35,13 +35,19 @@ public:
      * @param test_card_type Type of test card to generate
      * @param num_frames Number of frames to generate
      * @param verbose Enable verbose output
+     * @param picture_start Starting CAV picture number (0 = not used)
+     * @param chapter CLV chapter number (0 = not used)
+     * @param timecode_start CLV timecode HH:MM:SS:FF (empty = not used)
      * @return true on success, false on error
      */
     bool encode_test_card(const std::string& output_filename,
                          VideoSystem system,
                          TestCardGenerator::Type test_card_type,
                          int32_t num_frames,
-                         bool verbose = false);
+                         bool verbose = false,
+                         int32_t picture_start = 0,
+                         int32_t chapter = 0,
+                         const std::string& timecode_start = "");
     
     /**
      * @brief Get error message from last operation

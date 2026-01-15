@@ -28,14 +28,13 @@ double ColorBurstGenerator::calculate_ntsc_phase(int32_t field_number, int32_t l
     // Calculate absolute line number in NTSC
     // NTSC has 262.5 lines per field (525 total lines)
     bool is_first_field = (field_number % 2) == 0;
-    int32_t frame_line = is_first_field ? (line_number * 2) : (line_number * 2 + 1);
+    int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
     
-    int32_t absolute_line = (field_number * 262) + frame_line;
+    int32_t field_id = field_number % 2;
+    int32_t prev_lines = (field_id * 263) + (frame_line / 2);
     
-    // NTSC: Subcarrier at 3.579545 MHz, 227.5 cycles per line (approximately)
-    // Precise calculation: fSC / line_rate
-    double cycles_per_line = subcarrier_freq_ / (30000.0 / 1001.0 / 525.0);
-    double prev_cycles = absolute_line * cycles_per_line;
+    // NTSC: 227.5 subcarrier cycles per line (approximately)
+    double prev_cycles = prev_lines * 227.5;
     
     // Phase for this sample
     double time_phase = 2.0 * PI * subcarrier_freq_ * sample / sample_rate_;

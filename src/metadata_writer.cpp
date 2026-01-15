@@ -54,10 +54,22 @@ bool MetadataWriter::execute_sql(const char* sql) {
 }
 
 bool MetadataWriter::create_schema() {
+    // Drop existing tables to ensure a clean start
+    // This prevents UNIQUE constraint errors when overwriting existing metadata
+    const char* drop_sql = R"(
+        DROP TABLE IF EXISTS vbi;
+        DROP TABLE IF EXISTS field_record;
+        DROP TABLE IF EXISTS capture;
+    )";
+    
+    if (!execute_sql(drop_sql)) {
+        return false;
+    }
+    
     const char* schema_sql = R"(
         PRAGMA user_version = 1;
         
-        CREATE TABLE IF NOT EXISTS capture (
+        CREATE TABLE capture (
             capture_id INTEGER PRIMARY KEY,
             system TEXT NOT NULL CHECK (system IN ('NTSC','PAL','PAL_M')),
             decoder TEXT NOT NULL CHECK (decoder IN ('ld-decode','vhs-decode','encode-orc')),
@@ -80,7 +92,7 @@ bool MetadataWriter::create_schema() {
             capture_notes TEXT
         );
         
-        CREATE TABLE IF NOT EXISTS field_record (
+        CREATE TABLE field_record (
             capture_id INTEGER NOT NULL REFERENCES capture(capture_id) ON DELETE CASCADE,
             field_id INTEGER NOT NULL,
             audio_samples INTEGER,
@@ -102,7 +114,7 @@ bool MetadataWriter::create_schema() {
             PRIMARY KEY (capture_id, field_id)
         );
         
-        CREATE TABLE IF NOT EXISTS vbi (
+        CREATE TABLE vbi (
             capture_id INTEGER NOT NULL REFERENCES capture(capture_id) ON DELETE CASCADE,
             field_id INTEGER NOT NULL,
             vbi0 INTEGER,

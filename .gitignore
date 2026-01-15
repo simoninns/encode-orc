@@ -54,3 +54,6 @@ vcpkg_installed/
 # Temporary files
 *.tmp
 *.log
+
+# Test output TBCs
+test-output/
