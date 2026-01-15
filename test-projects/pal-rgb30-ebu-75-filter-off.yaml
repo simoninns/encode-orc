@@ -1,12 +1,12 @@
-# PAL RGB30 color bars (100%) with CHROMA FILTER DISABLED
+# PAL RGB30 color bars (75%) with CHROMA FILTER DISABLED
 # Use this to observe ringing artifacts on vertical color bar edges
-# Compare output against pal-rgb30-ebu-100-filter-on.yaml to see the difference
+# Compare output against pal-rgb30-ebu-75-filter-on.yaml to see the difference
 
-name: "PAL Color Bars 100% (Filter OFF - Artifacts)"
+name: "PAL Color Bars 75% (Filter OFF - Artifacts)"
 description: "RGB30 EBU color bars with chroma filtering DISABLED - shows ringing artifacts"
 
 output:
-  filename: "test-output/pal-rgb30-ebu-100-filter-off.tbc"
+  filename: "test-output/pal-rgb30-ebu-75-filter-off.tbc"
   format: "pal-composite"
 
 laserdisc:
@@ -14,11 +14,11 @@ laserdisc:
   mode: "cav"
 
 sections:
-  - name: "EBU Color Bars (100%) - NO CHROMA FILTER"
+  - name: "EBU Color Bars (75%) - NO CHROMA FILTER"
     duration: 10
     source:
       type: "rgb30-image"
-      file: "testcard-images/pal-ebu-colorbars-100.raw"
+      file: "testcard-images/pal-ebu-colorbars-75.raw"
     
     # Explicitly DISABLE chroma filtering to see artifacts
     filters:

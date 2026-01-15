@@ -1,12 +1,12 @@
-# NTSC RGB30 color bars (100%) with CHROMA FILTER ENABLED
+# NTSC RGB30 color bars (75%) with CHROMA FILTER ENABLED
 # Use this as reference for clean output without artifacts
-# Compare output against ntsc-rgb30-eia-100-filter-off.yaml to see filter effect
+# Compare output against ntsc-rgb30-eia-75-filter-off.yaml to see filter effect
 
-name: "NTSC Color Bars 100% (Filter ON - Clean)"
+name: "NTSC Color Bars 75% (Filter ON - Clean)"
 description: "RGB30 EIA color bars with chroma filtering ENABLED - clean output"
 
 output:
-  filename: "test-output/ntsc-rgb30-eia-100-filter-on.tbc"
+  filename: "test-output/ntsc-rgb30-eia-75-filter-on.tbc"
   format: "ntsc-composite"
 
 laserdisc:
@@ -14,11 +14,11 @@ laserdisc:
   mode: "cav"
 
 sections:
-  - name: "EIA Color Bars (100%) - WITH CHROMA FILTER"
+  - name: "EIA Color Bars (75%) - WITH CHROMA FILTER"
     duration: 10
     source:
       type: "rgb30-image"
-      file: "testcard-images/ntsc-eia-colorbars-100.raw"
+      file: "testcard-images/ntsc-eia-colorbars-75.raw"
     
     # Explicitly ENABLE chroma filtering for clean output
     filters:

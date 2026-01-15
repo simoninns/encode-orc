@@ -1,12 +1,12 @@
-# PAL RGB30 color bars (100%) with CHROMA FILTER ENABLED
+# PAL RGB30 color bars (75%) with CHROMA FILTER ENABLED
 # Use this as reference for clean output without artifacts
-# Compare output against pal-rgb30-ebu-100-filter-off.yaml to see filter effect
+# Compare output against pal-rgb30-ebu-75-filter-off.yaml to see filter effect
 
-name: "PAL Color Bars 100% (Filter ON - Clean)"
+name: "PAL Color Bars 75% (Filter ON - Clean)"
 description: "RGB30 EBU color bars with chroma filtering ENABLED - clean output"
 
 output:
-  filename: "test-output/pal-rgb30-ebu-100-filter-on.tbc"
+  filename: "test-output/pal-rgb30-ebu-75-filter-on.tbc"
   format: "pal-composite"
 
 laserdisc:
@@ -14,11 +14,11 @@ laserdisc:
   mode: "cav"
 
 sections:
-  - name: "EBU Color Bars (100%) - WITH CHROMA FILTER"
+  - name: "EBU Color Bars (75%) - WITH CHROMA FILTER"
     duration: 10
     source:
       type: "rgb30-image"
-      file: "testcard-images/pal-ebu-colorbars-100.raw"
+      file: "testcard-images/pal-ebu-colorbars-75.raw"
     
     # Explicitly ENABLE chroma filtering for clean output
     filters:
