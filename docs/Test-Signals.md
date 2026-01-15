@@ -172,7 +172,7 @@ In NTSC systems, the Vertical Interval Reference (VIR) signal is a program-relat
 * **Blanking level:** **0 IRE**
 * **Chrominance reference (superimposed on the 70 IRE pedestal):** **±20 IRE** about the pedestal (i.e., swings from **50 IRE to 90 IRE**, with **90 IRE peak**). 
 * **Black reference (“setup”):** **+7.5 IRE**
-* **Luminance reference pedestal:** **+70 IRE**
+* **Luminance reference pedestal:** **+50 IRE**
 
 ### Timing
 

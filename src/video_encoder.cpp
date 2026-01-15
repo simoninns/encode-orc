@@ -66,6 +66,7 @@ bool VideoEncoder::encode_test_card(const std::string& output_filename,
                 encoded_frame = pal_encoder.encode_frame(test_card, field_number, frame_num);
             } else {
                 NTSCEncoder ntsc_encoder(params);
+                ntsc_encoder.enable_vits();  // Enable VITS for NTSC
                 // Pass frame_num as the VBI frame number
                 encoded_frame = ntsc_encoder.encode_frame(test_card, field_number, frame_num);
             }

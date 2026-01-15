@@ -62,11 +62,12 @@
 - Integration with blanking intervals
 - **Implemented**: ITU Composite (Line 19), ITU ITS (Line 20), UK National (Line 332), Multiburst (Line 333)
 
-**3.2 NTSC VITS**
+**3.2 NTSC VITS** ✅ **COMPLETE**
 - NTSC vertical interval test signal generation
 - VITS line structure and timing
 - Reference signals and test patterns
 - Integration with blanking intervals
+- **Implemented**: VIR (Line 19, 282), NTC-7 Composite (Line 17, 283), NTC-7 Combination (Line 20, 280)
 
 ### Phase 4: Signal Generation
 

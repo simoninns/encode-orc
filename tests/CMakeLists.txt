@@ -13,6 +13,8 @@ add_executable(analyze_signal
     analyze_signal.cpp
     ../src/pal_encoder.cpp
     ../src/pal_vits_generator.cpp
+    ../src/ntsc_encoder.cpp
+    ../src/ntsc_vits_generator.cpp
     ../src/biphase_encoder.cpp
     ../src/color_conversion.cpp
 )

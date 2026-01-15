@@ -15,7 +15,7 @@
 namespace encode_orc {
 
 NTSCEncoder::NTSCEncoder(const VideoParameters& params) 
-    : params_(params) {
+    : params_(params), vits_enabled_(false) {
     
     // Set signal levels
     sync_level_ = 0x0000;  // Sync tip at 0 IRE (0V)
@@ -71,7 +71,42 @@ Field NTSCEncoder::encode_field(const FrameBuffer& frame_buffer,
             // Lines 15, 16, 17 (0-indexed) = field lines 16, 17, 18 contain biphase frame numbers
             if (frame_number_for_vbi >= 0 && (line == 15 || line == 16 || line == 17)) {
                 generate_biphase_vbi_line(line_buffer, line, field_number, frame_number_for_vbi);
-            } else {
+            }
+            // VITS lines (if enabled)
+            else if (is_vits_enabled()) {
+                // First field VITS lines (0-indexed in field)
+                if (is_first_field && line == 18) {  // Line 19 in NTSC frame (first field)
+                    generate_blanking_line(line_buffer);
+                    generate_sync_pulse(line_buffer, line);
+                    generate_color_burst(line_buffer, line, field_number);
+                    vits_generator_->generate_vir_line19(line_buffer, field_number);
+                }
+                else if (is_first_field && line == 19) {  // Line 20 in NTSC frame (first field) - NTC-7 Composite
+                    generate_blanking_line(line_buffer);
+                    generate_sync_pulse(line_buffer, line);
+                    generate_color_burst(line_buffer, line, field_number);
+                    vits_generator_->generate_ntc7_composite_line17(line_buffer, field_number);
+                }
+                // Second field VITS lines (0-indexed in field)
+                else if (!is_first_field && line == 18) {  // Line 282 in NTSC frame (second field)
+                    generate_blanking_line(line_buffer);
+                    generate_sync_pulse(line_buffer, line);
+                    generate_color_burst(line_buffer, line, field_number);
+                    vits_generator_->generate_vir_line19(line_buffer, field_number);
+                }
+                else if (!is_first_field && line == 19) {  // Line 283 in NTSC frame (second field) - NTC-7 Combination
+                    generate_blanking_line(line_buffer);
+                    generate_sync_pulse(line_buffer, line);
+                    generate_color_burst(line_buffer, line, field_number);
+                    vits_generator_->generate_ntc7_combination_line20(line_buffer, field_number);
+                }
+                else {
+                    generate_blanking_line(line_buffer);
+                    generate_sync_pulse(line_buffer, line);
+                    generate_color_burst(line_buffer, line, field_number);
+                }
+            }
+            else {
                 generate_blanking_line(line_buffer);
                 generate_sync_pulse(line_buffer, line);
                 generate_color_burst(line_buffer, line, field_number);
@@ -96,7 +131,8 @@ Field NTSCEncoder::encode_field(const FrameBuffer& frame_buffer,
                 const uint16_t* i_line = i_plane + (line_in_frame * frame_width);
                 const uint16_t* q_line = q_plane + (line_in_frame * frame_width);
                 
-                // Generate horizontal sync and color burst
+                // Initialize line with blanking level, then add sync and color burst
+                generate_blanking_line(line_buffer);
                 generate_sync_pulse(line_buffer, line);
                 generate_color_burst(line_buffer, line, field_number);
                 
@@ -139,8 +175,8 @@ void NTSCEncoder::generate_sync_pulse(uint16_t* line_buffer, int32_t /* line_num
 void NTSCEncoder::generate_color_burst(uint16_t* line_buffer, int32_t line_number, int32_t field_number) {
     // NTSC color burst
     // Position: Starts approximately 5.3 µs after sync (back porch)
-    // Duration: 9 cycles of subcarrier (approximately 2.0 µs at 4.43 MHz)
-    // Amplitude: 20 IRE (approximately ±75 mV for 140 IRE range)
+    // Duration: 9 cycles of subcarrier (approximately 2.5 µs at 3.58 MHz)
+    // Amplitude: 40 IRE peak-to-peak (±20 IRE about blanking level)
     // Phase: fixed at +180° (opposite of PAL's swinging burst)
     
     int32_t burst_start = params_.colour_burst_start;
@@ -164,11 +200,10 @@ void NTSCEncoder::generate_color_burst(uint16_t* line_buffer, int32_t line_numbe
     double burst_phase_offset = PI;
     
     // Calculate burst amplitude once (constant for all samples in burst)
-    // NTSC burst amplitude: 20 IRE peak-to-peak (approximately ±75 mV)
-    // Single-sided peak ≈ 75 mV for burst on blanking level
+    // NTSC burst amplitude: 40 IRE peak-to-peak (±20 IRE about blanking level)
     int32_t luma_range = white_level_ - blanking_level_;
-    double burst_amplitude_ire = 20.0;  // 20 IRE peak-to-peak
-    double ire_per_16bit = (static_cast<double>(luma_range) / 100.0);  // Approximate
+    double burst_amplitude_ire = 40.0;  // 40 IRE peak-to-peak
+    double ire_per_16bit = (static_cast<double>(luma_range) / 100.0);
     int32_t burst_amplitude = static_cast<int32_t>((burst_amplitude_ire / 2.0) * ire_per_16bit);
     
     // Generate color burst
@@ -294,6 +329,21 @@ uint16_t NTSCEncoder::clamp_signal(double value) const {
     if (int_value < 0) return 0;
     if (int_value > 65535) return 65535;
     return static_cast<uint16_t>(int_value);
+}
+
+void NTSCEncoder::enable_vits() {
+    if (!vits_generator_) {
+        vits_generator_ = std::make_unique<NTSCVITSGenerator>(params_);
+    }
+    vits_enabled_ = true;
+}
+
+void NTSCEncoder::disable_vits() {
+    vits_enabled_ = false;
+}
+
+bool NTSCEncoder::is_vits_enabled() const {
+    return vits_enabled_;
 }
 
 void NTSCEncoder::generate_biphase_vbi_line(uint16_t* line_buffer, int32_t line_number, 

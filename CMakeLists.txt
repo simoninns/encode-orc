@@ -31,6 +31,7 @@ set(SOURCES
     src/pal_encoder.cpp
     src/pal_vits_generator.cpp
     src/ntsc_encoder.cpp
+    src/ntsc_vits_generator.cpp
     src/biphase_encoder.cpp
     src/color_conversion.cpp
     src/test_card_generator.cpp
