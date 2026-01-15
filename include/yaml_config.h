@@ -48,6 +48,32 @@ struct VITSConfig {
 };
 
 /**
+ * @brief Chroma filter configuration
+ */
+struct ChromaFilterConfig {
+    bool enabled = true;  // Default: enabled to prevent artifacts
+    // Filter type is determined by video system (PAL/NTSC)
+    // PAL: 1.3 MHz Gaussian filter (13 taps)
+    // NTSC: 1.3 MHz filter (9 taps) or narrowband Q filter (23 taps)
+};
+
+/**
+ * @brief Luma filter configuration
+ */
+struct LumaFilterConfig {
+    bool enabled = false;  // Default: disabled (luma typically not filtered)
+    // If enabled, applies low-pass filter to Y component
+};
+
+/**
+ * @brief Filter configuration for a section
+ */
+struct FilterConfig {
+    ChromaFilterConfig chroma;
+    LumaFilterConfig luma;
+};
+
+/**
  * @brief LaserDisc configuration for a section
  */
 struct LaserDiscConfig {
@@ -85,6 +111,7 @@ struct VideoSection {
     std::string source_type;  // "rgb30-image"
     std::optional<RGB30ImageSource> rgb30_image_source;
     
+    std::optional<FilterConfig> filters;  // Optional filter settings
     std::optional<LaserDiscConfig> laserdisc;
 };
 

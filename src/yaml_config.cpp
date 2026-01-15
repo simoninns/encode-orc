@@ -79,6 +79,30 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                     }
                 }
                 
+                // Parse filter configuration
+                if (sec_node["filters"]) {
+                    FilterConfig fc;
+                    YAML::Node filters_node = sec_node["filters"];
+                    
+                    // Parse chroma filter
+                    if (filters_node["chroma"]) {
+                        YAML::Node chroma_node = filters_node["chroma"];
+                        if (chroma_node["enabled"]) {
+                            fc.chroma.enabled = chroma_node["enabled"].as<bool>();
+                        }
+                    }
+                    
+                    // Parse luma filter
+                    if (filters_node["luma"]) {
+                        YAML::Node luma_node = filters_node["luma"];
+                        if (luma_node["enabled"]) {
+                            fc.luma.enabled = luma_node["enabled"].as<bool>();
+                        }
+                    }
+                    
+                    section.filters = fc;
+                }
+                
                 // Parse section-level laserdisc configuration
                 if (sec_node["laserdisc"]) {
                     LaserDiscConfig ld;

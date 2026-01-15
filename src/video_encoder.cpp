@@ -23,7 +23,9 @@ bool VideoEncoder::encode_rgb30_image(const std::string& output_filename,
                                       bool verbose,
                                       int32_t picture_start,
                                       int32_t chapter,
-                                      const std::string& timecode_start) {
+                                      const std::string& timecode_start,
+                                      bool enable_chroma_filter,
+                                      bool enable_luma_filter) {
     try {
         // Get video parameters for the system
         VideoParameters params;
@@ -73,11 +75,11 @@ bool VideoEncoder::encode_rgb30_image(const std::string& output_filename,
             Frame encoded_frame;
             
             if (system == VideoSystem::PAL) {
-                PALEncoder pal_encoder(params);
+                PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
                 pal_encoder.enable_vits();
                 encoded_frame = pal_encoder.encode_frame(image_frame, field_number, frame_num);
             } else {
-                NTSCEncoder ntsc_encoder(params);
+                NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
                 ntsc_encoder.enable_vits();
                 encoded_frame = ntsc_encoder.encode_frame(image_frame, field_number, frame_num);
             }

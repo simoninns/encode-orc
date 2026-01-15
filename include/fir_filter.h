@@ -1,0 +1,241 @@
+/*
+ * File:        fir_filter.h
+ * Module:      encode-orc
+ * Purpose:     FIR (Finite Impulse Response) filter for bandpass filtering of Y/U/V signals
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: 2026 Simon Inns
+ *
+ * Based on ld-chroma-encoder implementation from ld-decode-tools
+ */
+
+#ifndef ENCODE_ORC_FIR_FILTER_H
+#define ENCODE_ORC_FIR_FILTER_H
+
+#include <vector>
+#include <array>
+#include <cstdint>
+#include <algorithm>
+#include <cassert>
+
+namespace encode_orc {
+
+/**
+ * @brief FIR filter with arbitrary coefficients
+ * 
+ * A Finite Impulse Response filter to prevent high-frequency artifacts
+ * when encoding composite video. Applies low-pass filtering to remove
+ * frequencies above the video bandwidth limits.
+ * 
+ * The number of filter taps must be odd to ensure zero phase distortion.
+ */
+class FIRFilter {
+public:
+    /**
+     * @brief Construct a FIR filter with given coefficients
+     * @param coefficients Filter tap coefficients (must have odd length)
+     */
+    explicit FIRFilter(const std::vector<double>& coefficients)
+        : coeffs_(coefficients)
+    {
+        assert((coefficients.size() % 2) == 1);
+    }
+
+    /**
+     * @brief Apply filter to a vector of samples (in-place)
+     * @param samples Input/output samples to filter
+     */
+    void apply(std::vector<double>& samples) const {
+        if (samples.empty()) return;
+        
+        std::vector<double> tmp(samples.size());
+        apply_internal(samples.data(), tmp.data(), samples.size());
+        samples = tmp;
+    }
+
+    /**
+     * @brief Apply filter to a vector of samples (in-place, 16-bit)
+     * @param samples Input/output samples to filter
+     */
+    void apply(std::vector<uint16_t>& samples) const {
+        if (samples.empty()) return;
+        
+        std::vector<double> tmp_double(samples.size());
+        
+        // Convert to double
+        for (size_t i = 0; i < samples.size(); ++i) {
+            tmp_double[i] = static_cast<double>(samples[i]);
+        }
+        
+        apply_internal_16bit(tmp_double.data(), samples.data(), samples.size());
+    }
+
+    /**
+     * @brief Check if filter is valid (has odd number of taps)
+     */
+    bool is_valid() const {
+        return (coeffs_.size() % 2) == 1 && !coeffs_.empty();
+    }
+
+    /**
+     * @brief Get number of filter taps
+     */
+    size_t num_taps() const {
+        return coeffs_.size();
+    }
+
+private:
+    std::vector<double> coeffs_;
+
+    /**
+     * @brief Internal filter application for double samples
+     */
+    void apply_internal(const double* input_data, double* output_data, int num_samples) const {
+        const int num_taps = static_cast<int>(coeffs_.size());
+        const int overlap = num_taps / 2;
+
+        // Left end of input (may overlap left and right)
+        const int left_pos = std::min(overlap, num_samples);
+        for (int i = 0; i < left_pos; ++i) {
+            double v = 0.0;
+            for (int j = 0, k = i - overlap; j < num_taps; ++j, ++k) {
+                if (k >= 0 && k < num_samples) {
+                    v += coeffs_[j] * input_data[k];
+                }
+            }
+            output_data[i] = v;
+        }
+
+        // Middle of input (no overlap)
+        const int right_pos = std::max(num_samples - overlap, left_pos);
+        for (int i = left_pos; i < right_pos; ++i) {
+            double v = 0.0;
+            for (int j = 0, k = i - overlap; j < num_taps; ++j, ++k) {
+                v += coeffs_[j] * input_data[k];
+            }
+            output_data[i] = v;
+        }
+
+        // Right end of input (may overlap right)
+        for (int i = right_pos; i < num_samples; ++i) {
+            double v = 0.0;
+            for (int j = 0, k = i - overlap; j < num_taps; ++j, ++k) {
+                if (k < num_samples) {
+                    v += coeffs_[j] * input_data[k];
+                }
+            }
+            output_data[i] = v;
+        }
+    }
+
+    /**
+     * @brief Internal filter application converting to/from 16-bit
+     */
+    void apply_internal_16bit(const double* input_double, uint16_t* output_data, int num_samples) const {
+        const int num_taps = static_cast<int>(coeffs_.size());
+        const int overlap = num_taps / 2;
+
+        // Left end of input
+        const int left_pos = std::min(overlap, num_samples);
+        for (int i = 0; i < left_pos; ++i) {
+            double v = 0.0;
+            for (int j = 0, k = i - overlap; j < num_taps; ++j, ++k) {
+                if (k >= 0 && k < num_samples) {
+                    v += coeffs_[j] * input_double[k];
+                }
+            }
+            output_data[i] = static_cast<uint16_t>(v);
+        }
+
+        // Middle of input
+        const int right_pos = std::max(num_samples - overlap, left_pos);
+        for (int i = left_pos; i < right_pos; ++i) {
+            double v = 0.0;
+            for (int j = 0, k = i - overlap; j < num_taps; ++j, ++k) {
+                v += coeffs_[j] * input_double[k];
+            }
+            output_data[i] = static_cast<uint16_t>(v);
+        }
+
+        // Right end of input
+        for (int i = right_pos; i < num_samples; ++i) {
+            double v = 0.0;
+            for (int j = 0, k = i - overlap; j < num_taps; ++j, ++k) {
+                if (k < num_samples) {
+                    v += coeffs_[j] * input_double[k];
+                }
+            }
+            output_data[i] = static_cast<uint16_t>(v);
+        }
+    }
+};
+
+/**
+ * @brief Predefined filter configurations
+ */
+namespace Filters {
+
+    /**
+     * @brief Create a 1.3 MHz low-pass filter for PAL
+     * 
+     * 13-tap Gaussian window filter generated by:
+     * c = scipy.signal.gaussian(13, 1.52); c / sum(c)
+     * 
+     * Specifications: 0 dB @ 0 Hz, >= -3 dB @ 1.3 MHz, <= -20 dB @ 4.0 MHz
+     * Reference: Clarke p8, Poynton p342
+     */
+    inline FIRFilter create_pal_uv_filter() {
+        const std::vector<double> coeffs{
+            0.00010852890120228184,
+            0.0011732778293138913,
+            0.008227778710181127,
+            0.03742748297181873,
+            0.11043962430879829,
+            0.21139051659718247,
+            0.2624655813630064,
+            0.21139051659718247,
+            0.11043962430879829,
+            0.03742748297181873,
+            0.008227778710181127,
+            0.0011732778293138913,
+            0.00010852890120228184
+        };
+        return FIRFilter(coeffs);
+    }
+
+    /**
+     * @brief Create a 1.3 MHz low-pass filter for NTSC
+     * 
+     * 9-tap filter for U/V (I/Q wideband) chroma components
+     * Specifications: 0 dB @ 0 Hz, >= -2 dB @ 1.3 MHz, < -20 dB @ 3.6 MHz
+     * Reference: Clarke p15, Poynton p342
+     */
+    inline FIRFilter create_ntsc_uv_filter() {
+        const std::vector<double> coeffs{
+            0.0021, 0.0191, 0.0903, 0.2308, 0.3153,
+            0.2308, 0.0903, 0.0191, 0.0021
+        };
+        return FIRFilter(coeffs);
+    }
+
+    /**
+     * @brief Create a 0.6 MHz low-pass filter for NTSC Q channel
+     * 
+     * 23-tap filter for narrowband Q (I/Q) mode only
+     * Specifications: 0 dB @ 0 Hz, >= -2 dB @ 0.4 MHz, >= -6 dB @ 0.5 MHz, <= -6 dB @ 0.6 MHz
+     * Reference: Clarke p15
+     */
+    inline FIRFilter create_ntsc_q_filter() {
+        const std::vector<double> coeffs{
+            0.0002, 0.0027, 0.0085, 0.0171, 0.0278, 0.0398, 0.0522, 0.0639, 0.0742, 0.0821, 0.0872,
+            0.0889,
+            0.0872, 0.0821, 0.0742, 0.0639, 0.0522, 0.0398, 0.0278, 0.0171, 0.0085, 0.0027, 0.0002
+        };
+        return FIRFilter(coeffs);
+    }
+
+} // namespace Filters
+
+} // namespace encode_orc
+
+#endif // ENCODE_ORC_FIR_FILTER_H

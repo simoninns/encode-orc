@@ -14,9 +14,11 @@
 #include "frame_buffer.h"
 #include "video_parameters.h"
 #include "ntsc_vits_generator.h"
+#include "fir_filter.h"
 #include <cstdint>
 #include <cmath>
 #include <memory>
+#include <optional>
 
 namespace encode_orc {
 
@@ -34,8 +36,12 @@ public:
     /**
      * @brief Construct an NTSC encoder
      * @param params Video parameters for NTSC
+     * @param enable_chroma_filter Enable 1.3 MHz low-pass filter on I/Q (default: true)
+     * @param enable_luma_filter Enable low-pass filter on Y (default: false)
      */
-    explicit NTSCEncoder(const VideoParameters& params);
+    explicit NTSCEncoder(const VideoParameters& params,
+                        bool enable_chroma_filter = true,
+                        bool enable_luma_filter = false);
     
     /**
      * @brief Encode a progressive frame to two interlaced NTSC fields
@@ -77,6 +83,10 @@ private:
     // VITS generator (optional)
     std::unique_ptr<NTSCVITSGenerator> vits_generator_;
     bool vits_enabled_;
+    
+    // Filters (optional)
+    std::optional<FIRFilter> chroma_filter_;  // 1.3 MHz low-pass for I/Q
+    std::optional<FIRFilter> luma_filter_;    // Optional low-pass for Y
     
     // NTSC-specific constants
     static constexpr double PI = 3.141592653589793238463;

@@ -121,6 +121,80 @@ laserdisc:
 
 ---
 
+## Chroma/Luma Filtering Configuration
+
+To prevent high-frequency artifacts (ringing, aliasing) when encoding RGB images to composite video, encode-orc applies optional bandpass filters to chroma and luma components. These filters are based on the ld-chroma-encoder implementation and follow ITU/IEC video standards.
+
+### Filter Types
+
+**Chroma Filter (enabled by default)**
+- PAL: 1.3 MHz Gaussian low-pass filter (13-tap)
+  - Specification: 0 dB @ 0 Hz, ≥ -3 dB @ 1.3 MHz, ≤ -20 dB @ 4.0 MHz
+  - Attenuates high-frequency chroma content that would cause aliasing on vertical color edges
+
+- NTSC: 1.3 MHz low-pass filter (9-tap)
+  - Specification: 0 dB @ 0 Hz, ≥ -2 dB @ 1.3 MHz, < -20 dB @ 3.6 MHz
+
+**Luma Filter (disabled by default)**
+- Same coefficients as chroma filter
+- Typically not needed since luma can support full bandwidth
+- Enable only if you have specific HF luma artifacts (rare)
+
+### Section-Level Filter Configuration
+
+Per-section filter settings override default behavior:
+
+```yaml
+sections:
+  - name: "Section with filters"
+    duration: 100
+    source:
+      type: "rgb30-image"
+      file: "image.raw"
+    
+    # Optional: Configure filters for this section
+    filters:
+      chroma:
+        enabled: true   # Default: true (recommended for color bars)
+      luma:
+        enabled: false  # Default: false (usually not needed)
+    
+    laserdisc:
+      # ... laserdisc configuration ...
+```
+
+### Why Filtering Matters
+
+Without chroma filtering, vertical edges in color bars exhibit:
+- **Ringing artifacts** on sharp color transitions
+- **Aliasing** due to high-frequency content exceeding Nyquist limit
+- **HF noise** spikes at color boundaries
+
+The 1.3 MHz bandpass filter:
+1. Limits chroma bandwidth to video standard limits (PAL/NTSC)
+2. Removes high-frequency components before subcarrier modulation
+3. Produces smooth, artifact-free color transitions
+4. Matches real LaserDisc encoding practices
+
+### Example: Disabling Filters (Not Recommended)
+
+```yaml
+sections:
+  - name: "No filtering (not recommended)"
+    duration: 100
+    source:
+      type: "rgb30-image"
+      file: "image.raw"
+    
+    filters:
+      chroma:
+        enabled: false  # WARNING: Artifacts likely
+      luma:
+        enabled: false
+```
+
+---
+
 ## Timecode and Numbering Modes
 
 The project selects a single timecode mode (`cav`, `clv`, `picture-numbers`, or `none`) in the top-level `laserdisc` block. Sections can only supply per-section start values; they cannot change the mode.

@@ -112,13 +112,23 @@ int main(int argc, char* argv[]) {
                 }
             }
             
+            // Get filter settings (use defaults if not specified)
+            bool enable_chroma_filter = true;  // Default: enabled
+            bool enable_luma_filter = false;   // Default: disabled
+            
+            if (section.filters) {
+                enable_chroma_filter = section.filters->chroma.enabled;
+                enable_luma_filter = section.filters->luma.enabled;
+            }
+            
             VideoEncoder encoder;
             std::string rgb30_file = section.rgb30_image_source->file;
             
             if (!encoder.encode_rgb30_image(config.output.filename + ".temp",
                                            system, rgb30_file,
                                            section.duration.value(), false,
-                                           picture_start, chapter, timecode_start)) {
+                                           picture_start, chapter, timecode_start,
+                                           enable_chroma_filter, enable_luma_filter)) {
                 std::cerr << "Error: " << encoder.get_error() << "\n";
                 return 1;
             }

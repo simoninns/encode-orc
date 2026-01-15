@@ -37,6 +37,8 @@ public:
      * @param picture_start Starting CAV picture number (0 = not used)
      * @param chapter CLV chapter number (0 = not used)
      * @param timecode_start CLV timecode HH:MM:SS:FF (empty = not used)
+     * @param enable_chroma_filter Enable 1.3 MHz chroma low-pass filter (default: true)
+     * @param enable_luma_filter Enable luma low-pass filter (default: false)
      * @return true on success, false on error
      */
     bool encode_rgb30_image(const std::string& output_filename,
@@ -46,7 +48,9 @@ public:
                            bool verbose = false,
                            int32_t picture_start = 0,
                            int32_t chapter = 0,
-                           const std::string& timecode_start = "");
+                           const std::string& timecode_start = "",
+                           bool enable_chroma_filter = true,
+                           bool enable_luma_filter = false);
     
     /**
      * @brief Get error message from last operation

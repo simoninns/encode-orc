@@ -1,0 +1,32 @@
+# NTSC RGB30 color bars (100%) with CHROMA FILTER DISABLED
+# Use this to observe ringing artifacts on vertical color bar edges
+# Compare output against ntsc-rgb30-eia-100-filter-on.yaml to see the difference
+
+name: "NTSC Color Bars 100% (Filter OFF - Artifacts)"
+description: "RGB30 EIA color bars with chroma filtering DISABLED - shows ringing artifacts"
+
+output:
+  filename: "test-output/ntsc-rgb30-eia-100-filter-off.tbc"
+  format: "ntsc-composite"
+
+laserdisc:
+  standard: "iec60856-1986"
+  mode: "cav"
+
+sections:
+  - name: "EIA Color Bars (100%) - NO CHROMA FILTER"
+    duration: 10
+    source:
+      type: "rgb30-image"
+      file: "testcard-images/ntsc-eia-colorbars-100.raw"
+    
+    # Explicitly DISABLE chroma filtering to see artifacts
+    filters:
+      chroma:
+        enabled: false  # DISABLED - artifacts will be visible!
+      luma:
+        enabled: false
+    
+    laserdisc:
+      disc_area: "programme-area"
+      picture_start: 1

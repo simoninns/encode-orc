@@ -15,7 +15,9 @@
 
 namespace encode_orc {
 
-NTSCEncoder::NTSCEncoder(const VideoParameters& params) 
+NTSCEncoder::NTSCEncoder(const VideoParameters& params,
+                        bool enable_chroma_filter,
+                        bool enable_luma_filter) 
     : params_(params), vits_enabled_(false) {
     
     // Set signal levels
@@ -28,6 +30,14 @@ NTSCEncoder::NTSCEncoder(const VideoParameters& params)
     subcarrier_freq_ = params_.fSC;
     sample_rate_ = params_.sample_rate;
     samples_per_cycle_ = sample_rate_ / subcarrier_freq_;
+    
+    // Initialize filters if requested
+    if (enable_chroma_filter) {
+        chroma_filter_ = Filters::create_ntsc_uv_filter();
+    }
+    if (enable_luma_filter) {
+        luma_filter_ = Filters::create_ntsc_uv_filter();  // Reuse same filter for luma
+    }
 }
 
 Frame NTSCEncoder::encode_frame(const FrameBuffer& frame_buffer, int32_t field_number, int32_t frame_number_for_vbi) {
@@ -219,6 +229,26 @@ void NTSCEncoder::encode_active_line(uint16_t* line_buffer,
                                     int32_t line_number,
                                     int32_t field_number,
                                     int32_t width) {
+    // Apply filters if enabled
+    // Note: We need to copy the line data first to apply filtering
+    std::vector<uint16_t> y_filtered(y_line, y_line + width);
+    std::vector<uint16_t> i_filtered(i_line, i_line + width);
+    std::vector<uint16_t> q_filtered(q_line, q_line + width);
+    
+    // Apply filters if configured
+    if (luma_filter_) {
+        luma_filter_->apply(y_filtered);
+    }
+    if (chroma_filter_) {
+        chroma_filter_->apply(i_filtered);
+        chroma_filter_->apply(q_filtered);
+    }
+    
+    // Use filtered data for encoding
+    const uint16_t* y_data = y_filtered.data();
+    const uint16_t* i_data = i_filtered.data();
+    const uint16_t* q_data = q_filtered.data();
+    
     // Encode the active video portion of the line
     int32_t active_start = params_.active_video_start;
     int32_t active_end = params_.active_video_end;
@@ -243,10 +273,10 @@ void NTSCEncoder::encode_active_line(uint16_t* line_buffer,
         // Clamp to valid range
         if (pixel_x >= width) pixel_x = width - 1;
         
-        // Get YIQ values from source
-        uint16_t y = y_line[pixel_x];
-        uint16_t i = i_line[pixel_x];
-        uint16_t q = q_line[pixel_x];
+        // Get YIQ values from filtered source
+        uint16_t y = y_data[pixel_x];
+        uint16_t i = i_data[pixel_x];
+        uint16_t q = q_data[pixel_x];
         
         // Calculate subcarrier phase for this sample position
         double t = static_cast<double>(sample) / sample_rate_;

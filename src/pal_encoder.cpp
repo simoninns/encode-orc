@@ -16,7 +16,9 @@
 
 namespace encode_orc {
 
-PALEncoder::PALEncoder(const VideoParameters& params) 
+PALEncoder::PALEncoder(const VideoParameters& params, 
+                       bool enable_chroma_filter,
+                       bool enable_luma_filter) 
     : params_(params),
       vits_enabled_(false) {
     
@@ -30,6 +32,14 @@ PALEncoder::PALEncoder(const VideoParameters& params)
     subcarrier_freq_ = params_.fSC;
     sample_rate_ = params_.sample_rate;
     samples_per_cycle_ = sample_rate_ / subcarrier_freq_;
+    
+    // Initialize filters if requested
+    if (enable_chroma_filter) {
+        chroma_filter_ = Filters::create_pal_uv_filter();
+    }
+    if (enable_luma_filter) {
+        luma_filter_ = Filters::create_pal_uv_filter();  // Reuse same filter for luma
+    }
 }
 
 void PALEncoder::enable_vits() {
@@ -227,6 +237,26 @@ void PALEncoder::encode_active_line(uint16_t* line_buffer,
                                    int32_t line_number,
                                    int32_t field_number,
                                    int32_t width) {
+    // Apply filters if enabled
+    // Note: We need to copy the line data first to apply filtering
+    std::vector<uint16_t> y_filtered(y_line, y_line + width);
+    std::vector<uint16_t> u_filtered(u_line, u_line + width);
+    std::vector<uint16_t> v_filtered(v_line, v_line + width);
+    
+    // Apply filters if configured
+    if (luma_filter_) {
+        luma_filter_->apply(y_filtered);
+    }
+    if (chroma_filter_) {
+        chroma_filter_->apply(u_filtered);
+        chroma_filter_->apply(v_filtered);
+    }
+    
+    // Use filtered data for encoding
+    const uint16_t* y_data = y_filtered.data();
+    const uint16_t* u_data = u_filtered.data();
+    const uint16_t* v_data = v_filtered.data();
+    
     // Encode the active video portion of the line
     int32_t active_start = params_.active_video_start;
     int32_t active_end = params_.active_video_end;
@@ -260,10 +290,10 @@ void PALEncoder::encode_active_line(uint16_t* line_buffer,
         // Clamp to valid range
         if (pixel_x >= width) pixel_x = width - 1;
         
-        // Get YUV values from source
-        uint16_t y = y_line[pixel_x];
-        uint16_t u = u_line[pixel_x];
-        uint16_t v = v_line[pixel_x];
+        // Get YUV values from filtered source
+        uint16_t y = y_data[pixel_x];
+        uint16_t u = u_data[pixel_x];
+        uint16_t v = v_data[pixel_x];
         
         // Calculate subcarrier phase for this sample position
         // phase = 2π * (fSC * t + prevCycles)
