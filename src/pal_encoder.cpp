@@ -8,6 +8,7 @@
  */
 
 #include "pal_encoder.h"
+#include "color_burst_generator.h"
 #include "pal_vits_generator.h"
 #include "biphase_encoder.h"
 #include <cstring>
@@ -123,6 +124,9 @@ Field PALEncoder::encode_field(const FrameBuffer& frame_buffer,
             int32_t line_in_field = line - ACTIVE_LINES_START;
             int32_t line_in_frame = is_first_field ? (line_in_field * 2) : (line_in_field * 2 + 1);
             
+            // Initialize line with blanking level
+            generate_blanking_line(line_buffer);
+            
             // Check if line is within source frame
             if (line_in_frame < frame_height) {
                 // Get pointers to YUV data
@@ -144,8 +148,7 @@ Field PALEncoder::encode_field(const FrameBuffer& frame_buffer,
                 encode_active_line(line_buffer, y_line, u_line, v_line, 
                                  line, field_number, frame_width);
             } else {
-                // Beyond source frame - use blanking
-                generate_blanking_line(line_buffer);
+                // Beyond source frame - use blanking with sync and burst
                 generate_sync_pulse(line_buffer, line);
                 generate_color_burst(line_buffer, line, field_number);
             }
@@ -177,57 +180,9 @@ void PALEncoder::generate_sync_pulse(uint16_t* line_buffer, int32_t /* line_numb
 }
 
 void PALEncoder::generate_color_burst(uint16_t* line_buffer, int32_t line_number, int32_t field_number) {
-    // PAL color burst
-    // Position: Starts approximately 5.6 µs after sync (back porch)
-    // Duration: 10 cycles of subcarrier (approximately 2.25 µs)
-    // Amplitude: ±150 mV (300mV peak-to-peak for 700mV white reference)
-    
-    int32_t burst_start = params_.colour_burst_start;
-    int32_t burst_end = params_.colour_burst_end;
-    
-    // Calculate absolute line number in PAL 8-field sequence
-    // Following ld-chroma-encoder's calculation [palencoder.cpp:186-188]
-    // First, convert field line number to frame line number (1-625)
-    // First field: line 0→1, line 1→3, line 2→5, etc.
-    // Second field: line 0→2, line 1→4, line 2→6, etc.
-    bool is_first_field = (field_number % 2) == 0;
-    int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
-    
-    // Now calculate prevLines using frame_line
-    int32_t field_id = field_number % 8;
-    int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
-    
-    // Calculate phase advance from previous lines
-    // PAL: 283.7516 subcarrier cycles per line (from ld-decode)
-    double prev_cycles = prev_lines * 283.7516;
-    
-    // Calculate V-switch for this line (same as active video)
-    // V-switch alternates every line based on absolute line number
-    int32_t v_switch = (prev_lines % 2) == 0 ? 1 : -1;
-    
-    // Burst phase alternates with V-switch: ±135° [Poynton p530]
-    // This is the "swinging burst" characteristic of PAL
-    double burst_phase_offset = v_switch * (135.0 * PI / 180.0);
-    
-    // Calculate burst amplitude once (constant for all samples in burst)
-    // Burst amplitude: peak-to-peak is 3/7 of black-white range [Poynton p532 eq 44.3]
-    // Single-sided peak = (3/7) / 2 = 3/14 of luma_range
-    // This gives ±300mV for 700mV white level
-    int32_t luma_range = white_level_ - blanking_level_;
-    int32_t burst_amplitude = static_cast<int32_t>((3.0 / 14.0) * luma_range);
-    
-    // Generate color burst with constant amplitude
-    for (int32_t sample = burst_start; sample < burst_end; ++sample) {
-        // Color burst must be phase-locked with active video chroma for proper decoding
-        double time_phase = 2.0 * PI * subcarrier_freq_ * sample / sample_rate_;
-        double phase = 2.0 * PI * prev_cycles + time_phase + burst_phase_offset;
-        
-        double burst_signal = std::sin(phase);
-        
-        int32_t sample_value = blanking_level_ + 
-                              static_cast<int32_t>(burst_amplitude * burst_signal);
-        line_buffer[sample] = clamp_to_16bit(sample_value);
-    }
+    // Delegate to shared color burst generator
+    ColorBurstGenerator burst_gen(params_);
+    burst_gen.generate_pal_burst(line_buffer, line_number, field_number);
 }
 
 void PALEncoder::generate_vsync_line(uint16_t* line_buffer, int32_t line_number) {

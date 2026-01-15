@@ -8,6 +8,7 @@
  */
 
 #include "pal_vits_generator.h"
+#include "color_burst_generator.h"
 #include <algorithm>
 #include <cstring>
 
@@ -86,28 +87,9 @@ void PALVITSGenerator::generate_sync_pulse(uint16_t* line_buffer) {
 }
 
 void PALVITSGenerator::generate_color_burst(uint16_t* line_buffer, int32_t field_number, int32_t line_number) {
-    // Color burst: starts at ~5.6 µs, duration ~2.25 µs (10 cycles)
-    int32_t burst_start = params_.colour_burst_start;
-    int32_t burst_end = params_.colour_burst_end;
-    
-    // Calculate V-switch for burst phase
-    int32_t v_switch = get_v_switch(field_number, line_number);
-    
-    // Burst phase alternates with V-switch: ±135°
-    double burst_phase_offset = v_switch * (135.0 * PI / 180.0);
-    
-    // Burst amplitude: 3/14 of luma range (gives ±300mV for 700mV white)
-    int32_t luma_range = white_level_ - blanking_level_;
-    int32_t burst_amplitude = static_cast<int32_t>((3.0 / 14.0) * luma_range);
-    
-    for (int32_t sample = burst_start; sample < burst_end; ++sample) {
-        double phase = calculate_phase(field_number, line_number, sample) + burst_phase_offset;
-        double burst_signal = std::sin(phase);
-        
-        int32_t sample_value = blanking_level_ + 
-                              static_cast<int32_t>(burst_amplitude * burst_signal);
-        line_buffer[sample] = clamp_to_16bit(sample_value);
-    }
+    // Delegate to shared color burst generator
+    ColorBurstGenerator burst_gen(params_);
+    burst_gen.generate_pal_burst(line_buffer, line_number, field_number);
 }
 
 void PALVITSGenerator::generate_flat_level(uint16_t* line_buffer, double start_time, double end_time, double ire) {
@@ -209,15 +191,17 @@ void PALVITSGenerator::generate_modulated_staircase(uint16_t* line_buffer, doubl
         int32_t chroma_amp = static_cast<int32_t>((chroma_amplitude / 100.0) * (white_level_ - blanking_level_) / 2.0);
         
         for (int32_t sample = start_sample; sample < end_sample && sample < params_.field_width; ++sample) {
-            // Apply envelope at step edges (~1µs rise/fall time)
+            // Apply envelope at step edges (~400ns rise/fall time)
             double t_from_start = (sample - start_sample) / samples_per_us_;
             double t_from_end = (end_sample - sample) / samples_per_us_;
             double envelope = 1.0;
             
-            if (t_from_start < 1.0) {
-                envelope = 0.5 * (1.0 - std::cos(PI * t_from_start));
-            } else if (t_from_end < 1.0) {
-                envelope = 0.5 * (1.0 - std::cos(PI * t_from_end));
+            if (t_from_start < 0.0004) {
+                // 400ns rise envelope
+                envelope = 0.5 * (1.0 - std::cos(PI * t_from_start / 0.0004));
+            } else if (t_from_end < 0.0004) {
+                // 400ns fall envelope
+                envelope = 0.5 * (1.0 - std::cos(PI * t_from_end / 0.0004));
             }
             
             // Calculate chroma with V-switch and phase offset
@@ -248,15 +232,17 @@ void PALVITSGenerator::generate_modulated_pedestal(uint16_t* line_buffer, double
     int32_t chroma_amp = static_cast<int32_t>((chroma_pp / 100.0) * (white_level_ - blanking_level_) / 2.0);
     
     for (int32_t sample = start_sample; sample < end_sample && sample < params_.field_width; ++sample) {
-        // Apply envelope at edges (~1µs rise/fall time)
+        // Apply envelope at edges (~400ns rise/fall time)
         double t_from_start = (sample - start_sample) / samples_per_us_;
         double t_from_end = (end_sample - sample) / samples_per_us_;
         double envelope = 1.0;
         
-        if (t_from_start < 1.0) {
-            envelope = 0.5 * (1.0 - std::cos(PI * t_from_start));
-        } else if (t_from_end < 1.0) {
-            envelope = 0.5 * (1.0 - std::cos(PI * t_from_end));
+        if (t_from_start < 0.0004) {
+            // 400ns rise envelope
+            envelope = 0.5 * (1.0 - std::cos(PI * t_from_start / 0.0004));
+        } else if (t_from_end < 0.0004) {
+            // 400ns fall envelope
+            envelope = 0.5 * (1.0 - std::cos(PI * t_from_end / 0.0004));
         }
         
         double phase = calculate_phase(field_number, line_number, sample) + phase_offset;

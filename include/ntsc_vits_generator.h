@@ -25,7 +25,7 @@ namespace encode_orc {
  * - NTC-7 Composite Test Signal (BT.471) - Line 17 (or 283)
  * - NTC-7 Combination Test Signal - Line 20 (or 280)
  * 
- * Reference: Video Demystified, 5th Edition; FCC regulations; CCIR standards
+ * Reference: Video Demystified, 5th Edition (ISBN 978-0-750-68395-1); FCC Recommendation 73-699; CCIR standards
  */
 class NTSCVITSGenerator {
 public:
@@ -121,26 +121,30 @@ private:
     void generate_flat_level(uint16_t* line_buffer, double start_time, double end_time, double ire);
     
     /**
-     * @brief Generate 2T pulse (250ns half-amplitude width for NTSC)
+     * @brief Generate 2T pulse
      * @param line_buffer Output buffer
      * @param center_time Center time in microseconds
      * @param peak_ire Peak IRE level (typically 100)
+     * 
+     * For NTSC: 250ns half-amplitude width
      */
     void generate_2t_pulse(uint16_t* line_buffer, double center_time, double peak_ire);
     
     /**
-     * @brief Generate 12.5T chrominance pulse (1562.5ns half-amplitude width)
+     * @brief Generate 12.5T chrominance pulse
      * @param line_buffer Output buffer
      * @param center_time Center time in microseconds
      * @param peak_ire Peak IRE level (typically 100)
      * @param field_number Field number for phase calculation
      * @param line_number Line number for phase calculation
+     * 
+     * For NTSC: 12.5 cycles at ~3.579545 MHz, ~1562.5ns half-amplitude width
      */
     void generate_12_5t_pulse(uint16_t* line_buffer, double center_time, double peak_ire,
                               int32_t field_number, int32_t line_number);
     
     /**
-     * @brief Generate modulated staircase (NTC-7 composite)
+     * @brief Generate modulated staircase
      * @param line_buffer Output buffer
      * @param start_time Start time in microseconds
      * @param step_times Array of step start times (in microseconds)
@@ -150,6 +154,8 @@ private:
      * @param chroma_phase Chroma phase relative to burst (degrees)
      * @param field_number Field number for phase calculation
      * @param line_number Line number for phase calculation
+     * 
+     * For NTSC: NTC-7 composite test signal with specified chroma modulation
      */
     void generate_modulated_staircase(uint16_t* line_buffer, double start_time,
                                      const double* step_times, const double* step_levels,
@@ -167,6 +173,8 @@ private:
      * @param chroma_phase Chroma phase relative to burst (degrees)
      * @param field_number Field number for phase calculation
      * @param line_number Line number for phase calculation
+     * 
+     * For NTSC: NTC-7 combination test signal pedestal with specified chroma modulation
      */
     void generate_modulated_pedestal(uint16_t* line_buffer, double start_time, double duration,
                                     double luma_low, double luma_high, double chroma_pp,

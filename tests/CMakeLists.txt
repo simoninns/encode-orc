@@ -11,6 +11,7 @@ add_test(NAME test_color_values COMMAND test_color_values)
 # Signal analyzer - for debugging signal generation
 add_executable(analyze_signal
     analyze_signal.cpp
+    ../src/color_burst_generator.cpp
     ../src/pal_encoder.cpp
     ../src/pal_vits_generator.cpp
     ../src/ntsc_encoder.cpp

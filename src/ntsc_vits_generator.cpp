@@ -8,6 +8,7 @@
  */
 
 #include "ntsc_vits_generator.h"
+#include "color_burst_generator.h"
 #include <algorithm>
 #include <cstring>
 
@@ -76,25 +77,9 @@ void NTSCVITSGenerator::generate_sync_pulse(uint16_t* line_buffer) {
 }
 
 void NTSCVITSGenerator::generate_color_burst(uint16_t* line_buffer, int32_t field_number, int32_t line_number) {
-    // Color burst: starts at ~5.3 µs, duration ~2.5 µs (9 cycles for NTSC)
-    int32_t burst_start = params_.colour_burst_start;
-    int32_t burst_end = params_.colour_burst_end;
-    
-    // NTSC burst amplitude: 40 IRE (3/7 of luma range, approximately)
-    int32_t luma_range = white_level_ - blanking_level_;
-    int32_t burst_amplitude = static_cast<int32_t>((3.0 / 7.0) * luma_range);
-    
-    // Burst phase: 180° ± some tolerance (typically 180° reference)
-    double burst_phase_offset = PI;  // 180°
-    
-    for (int32_t sample = burst_start; sample < burst_end; ++sample) {
-        double phase = calculate_phase(field_number, line_number, sample) + burst_phase_offset;
-        double burst_signal = std::sin(phase);
-        
-        int32_t sample_value = blanking_level_ + 
-                              static_cast<int32_t>(burst_amplitude * burst_signal);
-        line_buffer[sample] = clamp_to_16bit(sample_value);
-    }
+    // Delegate to shared color burst generator
+    ColorBurstGenerator burst_gen(params_);
+    burst_gen.generate_ntsc_burst(line_buffer, line_number, field_number);
 }
 
 void NTSCVITSGenerator::generate_flat_level(uint16_t* line_buffer, double start_time, double end_time, double ire) {
@@ -283,7 +268,7 @@ void NTSCVITSGenerator::generate_vir_line19(uint16_t* line_buffer, int32_t field
     // VIR (Vertical Interval Reference) Signal for NTSC (FCC 73-699, CCIR 314-4)
     // Line 19 (and 282): Structure as described in FCC documentation
     // Note: Encoder has already set blanking level and added sync + color burst
-    // This function only adds the test signal content (pedestal references, not blanking fills):
+    // This function only adds the test signal content (pedestal references):
     // - 12-36 µs: chrominance reference with 50-90 IRE pedestal (±20 IRE about 70 IRE center, 24µs total)
     // - 36-48 µs: luminance reference (50 IRE, 12µs)
     // - 48-60 µs: black reference (7.5 IRE, 12µs)
@@ -302,15 +287,21 @@ void NTSCVITSGenerator::generate_vir_line19(uint16_t* line_buffer, int32_t field
 void NTSCVITSGenerator::generate_ntc7_composite_line17(uint16_t* line_buffer, int32_t field_number) {
     // NTC-7 Composite Test Signal for NTSC (Figure 8.40)
     // Line 17 (also used as line 283)
-    // Note: Encoder has already set blanking level and added sync + color burst
-    // This function adds the test signal content:
-    // - 100 IRE white bar: 12–30 µs (18 µs width, 125±5 ns rise/fall)
-    // - 2T pulse: 100 IRE peak, centered at 34 µs, 250 ns half-amplitude width
-    // - 12.5T chrominance pulse: 100 IRE peak, centered at 37 µs, 1562.5 ns half-amplitude width
+    // Components:
+    // - 100 IRE white bar: 12–30 µs (with 125ns rise/fall times)
+    // - 2T pulse: 100 IRE peak, centered at 34 µs, 250ns half-amplitude width
+    // - 12.5T chrominance pulse: 100 IRE peak, centered at 37 µs, 1562.5ns half-amplitude width
     // - 6-step modulated staircase: 0–90 IRE with 40 IRE peak-to-peak subcarrier at 0° phase
     //   Steps at: 42, 46, 49, 52, 55, 58, 61 µs (levels: 0, 20, 40, 60, 80, 90 IRE)
     // - 61–62 µs: 90 IRE
     // - 62 µs+: returns to 0 IRE blanking
+    
+    // Initialize line buffer with blanking level
+    std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(blanking_level_));
+    
+    // Sync and color burst (handled by encoder, but we initialize blanking here)
+    generate_sync_pulse(line_buffer);
+    generate_color_burst(line_buffer, field_number, 17);
     
     // 100 IRE white bar: 12–30 µs (with 125ns rise/fall times)
     generate_flat_level(line_buffer, 12.0125, 29.9875, 100.0);
@@ -332,14 +323,13 @@ void NTSCVITSGenerator::generate_ntc7_composite_line17(uint16_t* line_buffer, in
     // 61–62 µs: 90 IRE (already set by last staircase step, extend it)
     generate_flat_level(line_buffer, 61.0, 62.0, 90.0);
     
-    // 62 µs onward returns to 0 IRE blanking (already set by encoder)
+    // 62 µs onward returns to 0 IRE blanking (already set by initialization)
 }
 
 void NTSCVITSGenerator::generate_ntc7_combination_line20(uint16_t* line_buffer, int32_t field_number) {
     // NTC-7 Combination Test Signal for NTSC (Figure 8.43)
     // Line 20 (also used as line 280)
-    // Note: Encoder has already set blanking level and added sync + color burst
-    // This function adds the test signal content:
+    // Components:
     // - White flag: 100 IRE, 12-16 µs (4 µs width)
     // - 50 IRE pedestal: 16-18 µs (before multiburst)
     // - Multiburst on 50 IRE pedestal with 50 IRE peak-to-peak:
@@ -355,6 +345,13 @@ void NTSCVITSGenerator::generate_ntc7_combination_line20(uint16_t* line_buffer, 
     //   54-60 µs: 80 IRE P-P at -90° phase
     // - 60-61 µs: 50 IRE
     // - 61 µs+: returns to 0 IRE blanking
+    
+    // Initialize line buffer with blanking level
+    std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(blanking_level_));
+    
+    // Sync and color burst
+    generate_sync_pulse(line_buffer);
+    generate_color_burst(line_buffer, field_number, 20);
     
     // White flag: 12-16 µs at 100 IRE
     generate_flat_level(line_buffer, 12.0, 16.0, 100.0);
@@ -402,7 +399,7 @@ void NTSCVITSGenerator::generate_ntc7_combination_line20(uint16_t* line_buffer, 
     // 60-61 µs: 50 IRE
     generate_flat_level(line_buffer, 60.0, 61.0, 50.0);
     
-    // 61 µs onward returns to 0 IRE blanking (already set by encoder)
+    // 61 µs onward returns to 0 IRE blanking (already set by initialization)
 }
 
 } // namespace encode_orc

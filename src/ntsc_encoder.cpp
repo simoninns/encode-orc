@@ -8,6 +8,7 @@
  */
 
 #include "ntsc_encoder.h"
+#include "color_burst_generator.h"
 #include "biphase_encoder.h"
 #include <cstring>
 #include <algorithm>
@@ -173,51 +174,9 @@ void NTSCEncoder::generate_sync_pulse(uint16_t* line_buffer, int32_t /* line_num
 }
 
 void NTSCEncoder::generate_color_burst(uint16_t* line_buffer, int32_t line_number, int32_t field_number) {
-    // NTSC color burst
-    // Position: Starts approximately 5.3 µs after sync (back porch)
-    // Duration: 9 cycles of subcarrier (approximately 2.5 µs at 3.58 MHz)
-    // Amplitude: 40 IRE peak-to-peak (±20 IRE about blanking level)
-    // Phase: fixed at +180° (opposite of PAL's swinging burst)
-    
-    int32_t burst_start = params_.colour_burst_start;
-    int32_t burst_end = params_.colour_burst_end;
-    
-    // Calculate absolute line number
-    // NTSC uses similar calculations but with 525-line frame and 263-line fields
-    bool is_first_field = (field_number % 2) == 0;
-    int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
-    
-    // For NTSC, we use a 2-field sequence (not 8-field like PAL)
-    int32_t field_id = field_number % 2;
-    int32_t prev_lines = (field_id * 263) + (frame_line / 2);
-    
-    // Calculate phase advance from previous lines
-    // NTSC: 227.5 subcarrier cycles per line (approximately)
-    double prev_cycles = prev_lines * 227.5;
-    
-    // NTSC burst phase is fixed at 180° (π radians)
-    // Unlike PAL which has a swinging burst
-    double burst_phase_offset = PI;
-    
-    // Calculate burst amplitude once (constant for all samples in burst)
-    // NTSC burst amplitude: 40 IRE peak-to-peak (±20 IRE about blanking level)
-    int32_t luma_range = white_level_ - blanking_level_;
-    double burst_amplitude_ire = 40.0;  // 40 IRE peak-to-peak
-    double ire_per_16bit = (static_cast<double>(luma_range) / 100.0);
-    int32_t burst_amplitude = static_cast<int32_t>((burst_amplitude_ire / 2.0) * ire_per_16bit);
-    
-    // Generate color burst
-    for (int32_t sample = burst_start; sample < burst_end; ++sample) {
-        // Color burst phase-locked with active video chroma
-        double time_phase = 2.0 * PI * subcarrier_freq_ * sample / sample_rate_;
-        double phase = 2.0 * PI * prev_cycles + time_phase + burst_phase_offset;
-        
-        double burst_signal = std::sin(phase);
-        
-        int32_t sample_value = blanking_level_ + 
-                              static_cast<int32_t>(burst_amplitude * burst_signal);
-        line_buffer[sample] = clamp_signal(sample_value);
-    }
+    // Delegate to shared color burst generator
+    ColorBurstGenerator burst_gen(params_);
+    burst_gen.generate_ntsc_burst(line_buffer, line_number, field_number);
 }
 
 void NTSCEncoder::generate_vsync_line(uint16_t* line_buffer, int32_t line_number) {

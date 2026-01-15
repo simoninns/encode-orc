@@ -28,6 +28,7 @@ set(SOURCES
     src/cli_parser.cpp
     src/metadata_writer.cpp
     src/blanking_encoder.cpp
+    src/color_burst_generator.cpp
     src/pal_encoder.cpp
     src/pal_vits_generator.cpp
     src/ntsc_encoder.cpp
