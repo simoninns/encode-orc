@@ -29,7 +29,7 @@ class VideoEncoder {
 public:
     /**
      * @brief Encode video with RGB30 image repeated for multiple frames
-     * @param output_filename Output .tbc filename
+     * @param output_filename Output .tbc filename (or base filename for Y/C mode)
      * @param system Video system (PAL or NTSC)
      * @param rgb30_file Path to RGB30 raw image file
      * @param num_frames Number of frames to encode (image repeated each frame)
@@ -39,6 +39,8 @@ public:
      * @param timecode_start CLV timecode HH:MM:SS:FF (empty = not used)
      * @param enable_chroma_filter Enable 1.3 MHz chroma low-pass filter (default: true)
      * @param enable_luma_filter Enable luma low-pass filter (default: false)
+     * @param separate_yc Enable separate Y/C TBC output (default: false)
+     * @param yc_legacy Use legacy naming (.tbc/.tbc_chroma) instead of modern (.tbcy/.tbcc) (default: false)
      * @return true on success, false on error
      */
     bool encode_rgb30_image(const std::string& output_filename,
@@ -50,7 +52,9 @@ public:
                            int32_t chapter = 0,
                            const std::string& timecode_start = "",
                            bool enable_chroma_filter = true,
-                           bool enable_luma_filter = false);
+                           bool enable_luma_filter = false,
+                           bool separate_yc = false,
+                           bool yc_legacy = false);
     
     /**
      * @brief Get error message from last operation

@@ -1,0 +1,20 @@
+name: "NTSC RGB30 EIA 75% Test - Separate Y/C Legacy"
+description: "NTSC with RGB30 EIA color bars at 75% saturation - separate Y/C TBC output (legacy naming)"
+
+output:
+  filename: "test-output/ntsc-rgb30-eia-75-separate-yc-legacy.tbc"
+  format: "ntsc-composite"
+  mode: "separate-yc-legacy"  # Output .tbc and _chroma.tbc files
+
+laserdisc:
+  standard: "none"
+  mode: "none"
+
+sections:
+  - name: "Test Pattern"
+    duration: 50
+    source:
+      type: "rgb30-image"
+      file: "testcard-images/ntsc-eia-colorbars-75.raw"
+    laserdisc:
+      picture_start: 1

@@ -38,6 +38,9 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
             if (output["format"]) {
                 config.output.format = output["format"].as<std::string>();
             }
+            if (output["mode"]) {
+                config.output.mode = output["mode"].as<std::string>();
+            }
         }
         
         // Parse project-level laserdisc configuration
@@ -191,6 +194,13 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
         config.output.format != "pal-yc" && 
         config.output.format != "ntsc-yc") {
         error_message = "Invalid output format: " + config.output.format;
+        return false;
+    }
+    
+    if (config.output.mode != "combined" && 
+        config.output.mode != "separate-yc" &&
+        config.output.mode != "separate-yc-legacy") {
+        error_message = "Invalid output mode: " + config.output.mode + " (must be 'combined', 'separate-yc', or 'separate-yc-legacy')";
         return false;
     }
     

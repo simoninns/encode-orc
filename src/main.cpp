@@ -87,10 +87,17 @@ int main(int argc, char* argv[]) {
     std::cout << "\nTotal frames: " << total_frames << "\n\n";
     
     // Encode video for each section
-    std::ofstream tbc_file(config.output.filename, std::ios::binary);
-    if (!tbc_file) {
-        std::cerr << "Error: Could not open output file: " << config.output.filename << "\n";
-        return 1;
+    std::ofstream tbc_file;
+    bool is_separate_yc = (config.output.mode == "separate-yc" || config.output.mode == "separate-yc-legacy");
+    bool is_yc_legacy = (config.output.mode == "separate-yc-legacy");
+    
+    // For combined mode, open the single output file
+    if (!is_separate_yc) {
+        tbc_file.open(config.output.filename, std::ios::binary);
+        if (!tbc_file) {
+            std::cerr << "Error: Could not open output file: " << config.output.filename << "\n";
+            return 1;
+        }
     }
     
     int32_t frame_offset = 0;
@@ -128,16 +135,86 @@ int main(int argc, char* argv[]) {
                                            system, rgb30_file,
                                            section.duration.value(), false,
                                            picture_start, chapter, timecode_start,
-                                           enable_chroma_filter, enable_luma_filter)) {
+                                           enable_chroma_filter, enable_luma_filter,
+                                           is_separate_yc, is_yc_legacy)) {
                 std::cerr << "Error: " << encoder.get_error() << "\n";
                 return 1;
             }
             
-            // Append temp file to main output
-            std::ifstream temp_file(config.output.filename + ".temp", std::ios::binary);
-            tbc_file << temp_file.rdbuf();
-            temp_file.close();
-            std::remove((config.output.filename + ".temp").c_str());
+            // Append temp file(s) to main output
+            if (is_separate_yc) {
+                // For separate Y/C mode, append both luma and chroma files
+                // Calculate base filename by removing .tbc extension if present
+                std::string base_out = config.output.filename;
+                if (base_out.length() > 4 && base_out.substr(base_out.length() - 4) == ".tbc") {
+                    base_out = base_out.substr(0, base_out.length() - 4);
+                }
+                
+                if (is_yc_legacy) {
+                    // Legacy mode: base.tbc (luma) and base_chroma.tbc (chroma)
+                    // Temp files are named: config.output.filename + ".temp.tbc" and ".temp_chroma.tbc"
+                    // Final files are named: base_out + ".tbc" and base_out + "_chroma.tbc"
+                    
+                    // Append Y file (luma)
+                    std::ifstream temp_y_file(config.output.filename + ".temp.tbc", std::ios::binary);
+                    if (temp_y_file) {
+                        std::ofstream out_y_file(base_out + ".tbc", std::ios::binary | std::ios::app);
+                        out_y_file << temp_y_file.rdbuf();
+                        temp_y_file.close();
+                        out_y_file.close();
+                        std::remove((config.output.filename + ".temp.tbc").c_str());
+                    } else {
+                        std::cerr << "Warning: Could not open temp Y file: " << config.output.filename << ".temp.tbc\n";
+                    }
+                    
+                    // Append C file (chroma)
+                    std::ifstream temp_c_file(config.output.filename + ".temp_chroma.tbc", std::ios::binary);
+                    if (temp_c_file) {
+                        std::ofstream out_c_file(base_out + "_chroma.tbc", std::ios::binary | std::ios::app);
+                        out_c_file << temp_c_file.rdbuf();
+                        temp_c_file.close();
+                        out_c_file.close();
+                        std::remove((config.output.filename + ".temp_chroma.tbc").c_str());
+                    } else {
+                        std::cerr << "Warning: Could not open temp C file: " << config.output.filename << ".temp_chroma.tbc\n";
+                    }
+                } else {
+                    // Modern mode: base.tbcy (luma) and base.tbcc (chroma)
+                    // Temp files are named: config.output.filename + ".temp.tbcy" and ".temp.tbcc"
+                    // Final files are named: base_out + ".tbcy" and base_out + ".tbcc"
+                    
+                    // Append Y file
+                    std::ifstream temp_y_file(config.output.filename + ".temp.tbcy", std::ios::binary);
+                    if (temp_y_file) {
+                        std::ofstream out_y_file(base_out + ".tbcy", std::ios::binary | std::ios::app);
+                        out_y_file << temp_y_file.rdbuf();
+                        temp_y_file.close();
+                        out_y_file.close();
+                        std::remove((config.output.filename + ".temp.tbcy").c_str());
+                    } else {
+                        std::cerr << "Warning: Could not open temp Y file: " << config.output.filename << ".temp.tbcy\n";
+                    }
+                    
+                    // Append C file
+                    std::ifstream temp_c_file(config.output.filename + ".temp.tbcc", std::ios::binary);
+                    if (temp_c_file) {
+                        std::ofstream out_c_file(base_out + ".tbcc", std::ios::binary | std::ios::app);
+                        out_c_file << temp_c_file.rdbuf();
+                        temp_c_file.close();
+                        out_c_file.close();
+                        std::remove((config.output.filename + ".temp.tbcc").c_str());
+                    } else {
+                        std::cerr << "Warning: Could not open temp C file: " << config.output.filename << ".temp.tbcc\n";
+                    }
+                }
+            } else {
+                // For combined mode, append single .tbc file
+                std::ifstream temp_file(config.output.filename + ".temp", std::ios::binary);
+                tbc_file << temp_file.rdbuf();
+                temp_file.close();
+                std::remove((config.output.filename + ".temp").c_str());
+            }
+            
             std::remove((config.output.filename + ".temp.db").c_str());
             std::remove((config.output.filename + ".temp.json").c_str());
             
@@ -146,7 +223,9 @@ int main(int argc, char* argv[]) {
         }
     }
     
-    tbc_file.close();
+    if (!is_separate_yc) {
+        tbc_file.close();
+    }
     
     // Generate metadata for entire file using unified generator
     std::string meta_error;
@@ -156,6 +235,21 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    std::cout << "\nSuccessfully generated " << total_frames << " frames to " << config.output.filename << "\n";
+    if (is_separate_yc) {
+        std::string base_out = config.output.filename;
+        if (base_out.length() > 4 && base_out.substr(base_out.length() - 4) == ".tbc") {
+            base_out = base_out.substr(0, base_out.length() - 4);
+        }
+        std::cout << "\nSuccessfully generated " << total_frames << " frames to:\n";
+        if (is_yc_legacy) {
+            std::cout << "  " << base_out << ".tbc (luma)\n";
+            std::cout << "  " << base_out << "_chroma.tbc (chroma)\n";
+        } else {
+            std::cout << "  " << base_out << ".tbcy (luma)\n";
+            std::cout << "  " << base_out << ".tbcc (chroma)\n";
+        }
+    } else {
+        std::cout << "\nSuccessfully generated " << total_frames << " frames to " << config.output.filename << "\n";
+    }
     return 0;
 }

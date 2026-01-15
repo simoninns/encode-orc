@@ -189,6 +189,62 @@ void NTSCEncoder::generate_color_burst(uint16_t* line_buffer, int32_t line_numbe
     burst_gen.generate_ntsc_burst(line_buffer, line_number, field_number);
 }
 
+void NTSCEncoder::generate_color_burst_chroma(uint16_t* line_buffer, int32_t line_number, int32_t field_number) {
+    // Generate color burst on chroma channel (centered at 32768)
+    // For NTSC, the burst is a reference signal at approximately -33° phase
+    
+    std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(32768));
+    
+    // Generate burst signal modulated at the NTSC color subcarrier frequency
+    const int32_t burst_start = params_.active_video_start - 50;  // Before active video
+    const int32_t burst_end = params_.active_video_start;
+    const int32_t luma_range = white_level_ - black_level_;
+    const double burst_amplitude = 0.3 * luma_range;  // Standard burst amplitude
+    
+    int32_t line_number_composite = (field_number * params_.field_height) + line_number;
+    
+    for (int32_t sample = burst_start; sample < burst_end; ++sample) {
+        if (sample >= 0 && sample < params_.field_width) {
+            double t = static_cast<double>(sample) / sample_rate_;
+            double phase = 2.0 * PI * subcarrier_freq_ * t + (line_number_composite * PI);
+            
+            // NTSC burst reference signal
+            double burst_signal = burst_amplitude * std::cos(phase - (33.0 * PI / 180.0));
+            
+            line_buffer[sample] = clamp_to_16bit(32768 + static_cast<int32_t>(burst_signal));
+        }
+    }
+}
+
+void NTSCEncoder::generate_color_burst_chroma_line(uint16_t* line_buffer, int32_t line_number, 
+                                                    int32_t field_number, int32_t burst_end) {
+    // Generate color burst on chroma for the portion before active video
+    // Then fill the rest with blanking (32768)
+    
+    const int32_t burst_start = 0;
+    const int32_t luma_range = white_level_ - black_level_;
+    const double burst_amplitude = 0.3 * luma_range;  // Standard burst amplitude
+    
+    int32_t line_number_composite = (field_number * params_.field_height) + line_number;
+    
+    for (int32_t sample = burst_start; sample < burst_end; ++sample) {
+        if (sample < params_.field_width) {
+            double t = static_cast<double>(sample) / sample_rate_;
+            double phase = 2.0 * PI * subcarrier_freq_ * t + (line_number_composite * PI);
+            
+            // NTSC burst reference signal
+            double burst_signal = burst_amplitude * std::cos(phase - (33.0 * PI / 180.0));
+            
+            line_buffer[sample] = clamp_to_16bit(32768 + static_cast<int32_t>(burst_signal));
+        }
+    }
+    
+    // Fill remainder with blanking level (32768 for chroma)
+    for (int32_t sample = burst_end; sample < params_.field_width; ++sample) {
+        line_buffer[sample] = static_cast<uint16_t>(32768);
+    }
+}
+
 void NTSCEncoder::generate_vsync_line(uint16_t* line_buffer, int32_t line_number) {
     // NTSC vertical sync pattern
     // Lines 1-3: broad pulses followed by narrow pulses
@@ -375,4 +431,195 @@ void NTSCEncoder::generate_biphase_vbi_line(uint16_t* line_buffer, int32_t line_
     }
 }
 
+void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_number,
+                                  int32_t frame_number_for_vbi,
+                                  Field& y_field1, Field& c_field1,
+                                  Field& y_field2, Field& c_field2) {
+    // Initialize fields
+    y_field1.resize(params_.field_width, params_.field_height);
+    c_field1.resize(params_.field_width, params_.field_height);
+    y_field2.resize(params_.field_width, params_.field_height);
+    c_field2.resize(params_.field_width, params_.field_height);
+    
+    // For separate Y/C output, we encode Y and C directly from source YIQ data:
+    // Y field: luma component with sync + blanking (no chroma modulation)
+    // C field: chroma-only signal (modulated subcarrier centered at blanking level)
+    //
+    // This is NOT created by decomposing composite - we build Y and C separately
+    // from the source YIQ to avoid any quality loss.
+    
+    // Get frame dimensions
+    int32_t frame_width = frame_buffer.width();
+    int32_t frame_height = frame_buffer.height();
+    
+    // Get pointers to YIQ planes (stored as YUV in FrameBuffer)
+    const uint16_t* frame_data = frame_buffer.data().data();
+    int32_t pixel_count = frame_width * frame_height;
+    const uint16_t* y_plane = frame_data;
+    const uint16_t* i_plane = frame_data + pixel_count;
+    const uint16_t* q_plane = frame_data + pixel_count * 2;
+    
+    // For separate Y/C encoding, we use the source data directly
+    // (filters are applied during composite encoding, but for Y/C we skip filtering
+    // to avoid complexity with line-by-line processing)
+    
+    // Process field 1 (even lines from source)
+    for (int32_t line = 0; line < params_.field_height; ++line) {
+        uint16_t* y_line = y_field1.line_data(line);
+        uint16_t* c_line = c_field1.line_data(line);
+        
+        // For sync, blanking, and VBI lines
+        if (line < ACTIVE_LINES_START) {
+            // Generate sync and blanking for Y field
+            generate_sync_pulse(y_line, line);
+            generate_color_burst(y_line, line, field_number);
+            
+            // C field gets blanking level
+            std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(blanking_level_));
+            
+            // Handle VBI lines if enabled
+            if (frame_number_for_vbi >= 0 && vits_enabled_ && vits_generator_) {
+                if (line == 18) {  // VITS line for NTSC
+                    vits_generator_->generate_vir_line19(y_line, field_number);
+                }
+            }
+            if (frame_number_for_vbi >= 0 && line >= 14 && line <= 17) {
+                // VBI biphase lines - only on Y field
+                generate_biphase_vbi_line(y_line, line, field_number, frame_number_for_vbi);
+            }
+        } else if (line >= ACTIVE_LINES_END) {
+            // Post-active blanking
+            generate_blanking_line(y_line);
+            std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(blanking_level_));
+        } else {
+            // Active video line - encode Y and C separately from source
+            int32_t source_line = (line - ACTIVE_LINES_START) * 2;  // Even lines for field 1
+            if (source_line >= frame_height) source_line = frame_height - 1;
+            
+            // Generate sync and burst for Y field
+            generate_sync_pulse(y_line, line);
+            generate_color_burst(y_line, line, field_number);
+            
+            // C field gets blanking during sync/burst
+            std::fill_n(c_line, params_.active_video_start, static_cast<uint16_t>(blanking_level_));
+            
+            // Encode active video portion
+            int32_t active_start = params_.active_video_start;
+            int32_t active_end = params_.active_video_end;
+            int32_t active_width = active_end - active_start;
+            
+            for (int32_t sample = active_start; sample < active_end; ++sample) {
+                // Map sample position to source pixel
+                double pixel_pos = static_cast<double>(sample - active_start) * frame_width / active_width;
+                int32_t pixel_x = static_cast<int32_t>(pixel_pos);
+                if (pixel_x >= frame_width) pixel_x = frame_width - 1;
+                
+                // Get filtered YIQ values from source
+                uint16_t y_val = y_plane[source_line * frame_width + pixel_x];
+                uint16_t i_val = i_plane[source_line * frame_width + pixel_x];
+                uint16_t q_val = q_plane[source_line * frame_width + pixel_x];
+                
+                // Convert Y to luma signal level
+                double y_norm = static_cast<double>(y_val) / 65535.0;
+                int32_t luma_range = white_level_ - black_level_;
+                int32_t y_signal = black_level_ + static_cast<int32_t>(y_norm * luma_range);
+                
+                // Convert I/Q to chroma signal
+                const double I_MAX = 0.5959;
+                const double Q_MAX = 0.5229;
+                double i_norm = ((static_cast<double>(i_val) / 65535.0) - 0.5) * 2.0 * I_MAX;
+                double q_norm = ((static_cast<double>(q_val) / 65535.0) - 0.5) * 2.0 * Q_MAX;
+                
+                // Calculate subcarrier phase
+                double t = static_cast<double>(sample) / sample_rate_;
+                double phase = 2.0 * PI * subcarrier_freq_ * t;
+                
+                // Modulate chroma onto subcarrier (NTSC encoding: C = I*cos(ωt) + Q*sin(ωt))
+                double chroma = (i_norm * std::cos(phase)) + (q_norm * std::sin(phase));
+                int32_t chroma_signal = static_cast<int32_t>(chroma * luma_range);
+                
+                // Y field: luma only (no chroma)
+                y_line[sample] = clamp_to_16bit(y_signal);
+                
+                // C field: chroma only (centered at 16-bit midpoint, no luma)
+                c_line[sample] = clamp_to_16bit(32768 + chroma_signal);
+            }
+            
+            // Fill remaining samples with blanking
+            for (int32_t sample = active_end; sample < params_.field_width; ++sample) {
+                c_line[sample] = static_cast<uint16_t>(32768);
+            }
+        }
+    }
+    
+    // Process field 2 (odd lines from source)
+    for (int32_t line = 0; line < params_.field_height; ++line) {
+        uint16_t* y_line = y_field2.line_data(line);
+        uint16_t* c_line = c_field2.line_data(line);
+        
+        if (line < ACTIVE_LINES_START) {
+            generate_sync_pulse(y_line, line);
+            generate_color_burst(y_line, line, field_number + 1);
+            std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(blanking_level_));
+            
+            if (frame_number_for_vbi >= 0 && vits_enabled_ && vits_generator_) {
+                if (line == 18) {
+                    vits_generator_->generate_vir_line19(y_line, field_number + 1);
+                }
+            }
+            if (frame_number_for_vbi >= 0 && line >= 14 && line <= 17) {
+                generate_biphase_vbi_line(y_line, line, field_number + 1, frame_number_for_vbi);
+            }
+        } else if (line >= ACTIVE_LINES_END) {
+            generate_blanking_line(y_line);
+            std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(blanking_level_));
+        } else {
+            int32_t source_line = (line - ACTIVE_LINES_START) * 2 + 1;  // Odd lines for field 2
+            if (source_line >= frame_height) source_line = frame_height - 1;
+            
+            generate_sync_pulse(y_line, line);
+            generate_color_burst(y_line, line, field_number + 1);
+            std::fill_n(c_line, params_.active_video_start, static_cast<uint16_t>(blanking_level_));
+            
+            int32_t active_start = params_.active_video_start;
+            int32_t active_end = params_.active_video_end;
+            int32_t active_width = active_end - active_start;
+            
+            for (int32_t sample = active_start; sample < active_end; ++sample) {
+                double pixel_pos = static_cast<double>(sample - active_start) * frame_width / active_width;
+                int32_t pixel_x = static_cast<int32_t>(pixel_pos);
+                if (pixel_x >= frame_width) pixel_x = frame_width - 1;
+                
+uint16_t y_val = y_plane[source_line * frame_width + pixel_x];
+                    uint16_t i_val = i_plane[source_line * frame_width + pixel_x];
+                    uint16_t q_val = q_plane[source_line * frame_width + pixel_x];
+                
+                double y_norm = static_cast<double>(y_val) / 65535.0;
+                int32_t luma_range = white_level_ - black_level_;
+                int32_t y_signal = black_level_ + static_cast<int32_t>(y_norm * luma_range);
+                
+                const double I_MAX = 0.5959;
+                const double Q_MAX = 0.5229;
+                double i_norm = ((static_cast<double>(i_val) / 65535.0) - 0.5) * 2.0 * I_MAX;
+                double q_norm = ((static_cast<double>(q_val) / 65535.0) - 0.5) * 2.0 * Q_MAX;
+                
+                double t = static_cast<double>(sample) / sample_rate_;
+                double phase = 2.0 * PI * subcarrier_freq_ * t;
+                
+                double chroma = (i_norm * std::cos(phase)) + (q_norm * std::sin(phase));
+                int32_t chroma_signal = static_cast<int32_t>(chroma * luma_range);
+                
+                y_line[sample] = clamp_to_16bit(y_signal);
+                c_line[sample] = clamp_to_16bit(32768 + chroma_signal);
+            }
+            
+            for (int32_t sample = active_end; sample < params_.field_width; ++sample) {
+                c_line[sample] = static_cast<uint16_t>(32768);
+            }
+        }
+    }
+}
+
 } // namespace encode_orc
+
+

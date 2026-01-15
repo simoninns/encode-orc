@@ -22,6 +22,8 @@ namespace encode_orc {
  * 
  * TBC files contain raw field-based composite video data as 16-bit
  * unsigned samples in little-endian format.
+ * 
+ * Can be used for combined Y+C composite output, or separate Y and C files.
  */
 class TBCWriter {
 public:

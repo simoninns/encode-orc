@@ -121,6 +121,7 @@ struct VideoSection {
 struct OutputConfig {
     std::string filename;
     std::string format;  // pal-composite, ntsc-composite, pal-yc, ntsc-yc
+    std::string mode = "combined";  // combined (default), separate-yc
 };
 
 /**

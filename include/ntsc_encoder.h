@@ -76,6 +76,21 @@ public:
      * @brief Check if VITS is enabled
      */
     bool is_vits_enabled() const;
+    
+    /**
+     * @brief Encode frame to separate Y and C fields (for separate Y/C TBC output)
+     * @param frame_buffer Input frame in YUV444P16 format (actually YIQ for NTSC)
+     * @param field_number Starting field number
+     * @param frame_number_for_vbi Frame number to encode in VBI (optional, -1 to disable)
+     * @param y_field1 Output Y field 1
+     * @param c_field1 Output C field 1
+     * @param y_field2 Output Y field 2
+     * @param c_field2 Output C field 2
+     */
+    void encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_number, 
+                         int32_t frame_number_for_vbi,
+                         Field& y_field1, Field& c_field1,
+                         Field& y_field2, Field& c_field2);
 
 private:
     VideoParameters params_;
@@ -120,6 +135,24 @@ private:
      * @param field_number Field number in sequence (for absolute line calculation)
      */
     void generate_color_burst(uint16_t* line_buffer, int32_t line_number, int32_t field_number);
+    
+    /**
+     * @brief Generate color burst on chroma channel (centered at 32768)
+     * @param line_buffer Pointer to line data
+     * @param line_number Line number in field
+     * @param field_number Field number in sequence
+     */
+    void generate_color_burst_chroma(uint16_t* line_buffer, int32_t line_number, int32_t field_number);
+    
+    /**
+     * @brief Generate color burst on chroma channel for part of a line
+     * @param line_buffer Pointer to line data
+     * @param line_number Line number in field
+     * @param field_number Field number in sequence
+     * @param burst_end End position for burst (active video starts here)
+     */
+    void generate_color_burst_chroma_line(uint16_t* line_buffer, int32_t line_number, 
+                                          int32_t field_number, int32_t burst_end);
     
     /**
      * @brief Encode active video line with NTSC color subcarrier
@@ -168,6 +201,15 @@ private:
      * @return Clamped value
      */
     uint16_t clamp_signal(double value) const;
+    
+    /**
+     * @brief Clamp value to 16-bit unsigned range
+     */
+    static uint16_t clamp_to_16bit(int32_t value) {
+        if (value < 0) return 0;
+        if (value > 65535) return 65535;
+        return static_cast<uint16_t>(value);
+    }
 };
 
 } // namespace encode_orc

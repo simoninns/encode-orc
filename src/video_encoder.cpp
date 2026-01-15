@@ -10,6 +10,7 @@
 #include "video_encoder.h"
 #include "biphase_encoder.h"
 #include "rgb30_loader.h"
+#include "yc_tbc_writer.h"
 #include <iostream>
 #include <fstream>
 #include <cstdio>
@@ -25,7 +26,9 @@ bool VideoEncoder::encode_rgb30_image(const std::string& output_filename,
                                       int32_t chapter,
                                       const std::string& timecode_start,
                                       bool enable_chroma_filter,
-                                      bool enable_luma_filter) {
+                                      bool enable_luma_filter,
+                                      bool separate_yc,
+                                      bool yc_legacy) {
     try {
         // Get video parameters for the system
         VideoParameters params;
@@ -59,40 +62,82 @@ bool VideoEncoder::encode_rgb30_image(const std::string& output_filename,
         
         // Open TBC file for writing
         if (verbose) {
-            std::cout << "Writing TBC file: " << output_filename << "\n";
+            if (separate_yc) {
+                std::cout << "Writing separate Y/C TBC files: " << output_filename << ".tbcy and .tbcc\n";
+            } else {
+                std::cout << "Writing TBC file: " << output_filename << "\n";
+            }
         }
         
-        std::ofstream tbc_file(output_filename, std::ios::binary);
-        if (!tbc_file) {
-            error_message_ = "Failed to open output file: " + output_filename;
-            return false;
+        std::ofstream tbc_file;
+        YCTBCWriter yc_writer(yc_legacy ? YCTBCWriter::NamingMode::LEGACY : YCTBCWriter::NamingMode::MODERN);
+        
+        if (separate_yc) {
+            // For separate Y/C mode, use output_filename as base (don't strip .tbc)
+            // The YCTBCWriter will add .tbcy and .tbcc extensions (or .tbc and _chroma.tbc for legacy)
+            if (!yc_writer.open(output_filename)) {
+                error_message_ = "Failed to open Y/C output files: " + output_filename;
+                return false;
+            }
+        } else {
+            tbc_file.open(output_filename, std::ios::binary);
+            if (!tbc_file) {
+                error_message_ = "Failed to open output file: " + output_filename;
+                return false;
+            }
         }
         
         // Encode and write fields (same image for all frames)
         int32_t total_fields = num_frames * 2;
         for (int32_t frame_num = 0; frame_num < num_frames; ++frame_num) {
             int32_t field_number = frame_num * 2;
-            Frame encoded_frame;
             
-            if (system == VideoSystem::PAL) {
-                PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
-                pal_encoder.enable_vits();
-                encoded_frame = pal_encoder.encode_frame(image_frame, field_number, frame_num);
+            if (separate_yc) {
+                // Encode with separate Y/C output
+                Field y_field1, c_field1, y_field2, c_field2;
+                
+                if (system == VideoSystem::PAL) {
+                    PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
+                    pal_encoder.enable_vits();
+                    pal_encoder.encode_frame_yc(image_frame, field_number, frame_num,
+                                                y_field1, c_field1, y_field2, c_field2);
+                } else {
+                    NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
+                    ntsc_encoder.enable_vits();
+                    ntsc_encoder.encode_frame_yc(image_frame, field_number, frame_num,
+                                                 y_field1, c_field1, y_field2, c_field2);
+                }
+                
+                // Write Y and C fields
+                yc_writer.write_y_field(y_field1);
+                yc_writer.write_c_field(c_field1);
+                yc_writer.write_y_field(y_field2);
+                yc_writer.write_c_field(c_field2);
+                
             } else {
-                NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
-                ntsc_encoder.enable_vits();
-                encoded_frame = ntsc_encoder.encode_frame(image_frame, field_number, frame_num);
+                // Standard composite output
+                Frame encoded_frame;
+                
+                if (system == VideoSystem::PAL) {
+                    PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
+                    pal_encoder.enable_vits();
+                    encoded_frame = pal_encoder.encode_frame(image_frame, field_number, frame_num);
+                } else {
+                    NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
+                    ntsc_encoder.enable_vits();
+                    encoded_frame = ntsc_encoder.encode_frame(image_frame, field_number, frame_num);
+                }
+                
+                // Write field 1
+                const Field& field1 = encoded_frame.field1();
+                tbc_file.write(reinterpret_cast<const char*>(field1.data().data()),
+                              field1.data().size() * sizeof(uint16_t));
+                
+                // Write field 2
+                const Field& field2 = encoded_frame.field2();
+                tbc_file.write(reinterpret_cast<const char*>(field2.data().data()),
+                              field2.data().size() * sizeof(uint16_t));
             }
-            
-            // Write field 1
-            const Field& field1 = encoded_frame.field1();
-            tbc_file.write(reinterpret_cast<const char*>(field1.data().data()),
-                          field1.data().size() * sizeof(uint16_t));
-            
-            // Write field 2
-            const Field& field2 = encoded_frame.field2();
-            tbc_file.write(reinterpret_cast<const char*>(field2.data().data()),
-                          field2.data().size() * sizeof(uint16_t));
             
             if (verbose && ((frame_num + 1) % 10 == 0 || frame_num == num_frames - 1)) {
                 std::cout << "\rWriting field " << ((frame_num + 1) * 2) 
@@ -104,7 +149,11 @@ bool VideoEncoder::encode_rgb30_image(const std::string& output_filename,
             std::cout << "\n";
         }
         
-        tbc_file.close();
+        if (separate_yc) {
+            yc_writer.close();
+        } else {
+            tbc_file.close();
+        }
         
         // Create and initialize metadata
         CaptureMetadata metadata;

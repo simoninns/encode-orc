@@ -1,0 +1,20 @@
+name: "PAL RGB30 EBU 75% Test - Separate Y/C"
+description: "PAL with RGB30 EBU color bars at 75% saturation - separate Y/C TBC output"
+
+output:
+  filename: "test-output/pal-rgb30-ebu-75-separate-yc.tbc"
+  format: "pal-composite"
+  mode: "separate-yc"  # Output separate .tbcy and .tbcc files
+
+laserdisc:
+  standard: "none"
+  mode: "none"
+
+sections:
+  - name: "Test Pattern"
+    duration: 50
+    source:
+      type: "rgb30-image"
+      file: "testcard-images/pal-ebu-colorbars-75.raw"
+    laserdisc:
+      picture_start: 1
