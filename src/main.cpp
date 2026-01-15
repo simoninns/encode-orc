@@ -98,6 +98,20 @@ int main(int argc, char* argv[]) {
             std::cerr << "Error: Could not open output file: " << config.output.filename << "\n";
             return 1;
         }
+    } else {
+        // For Y/C mode, delete any pre-existing output files to ensure clean start
+        std::string base_out = config.output.filename;
+        if (base_out.length() > 4 && base_out.substr(base_out.length() - 4) == ".tbc") {
+            base_out = base_out.substr(0, base_out.length() - 4);
+        }
+        
+        if (is_yc_legacy) {
+            std::remove((base_out + ".tbc").c_str());
+            std::remove((base_out + "_chroma.tbc").c_str());
+        } else {
+            std::remove((base_out + ".tbcy").c_str());
+            std::remove((base_out + ".tbcc").c_str());
+        }
     }
     
     int32_t frame_offset = 0;
@@ -158,7 +172,8 @@ int main(int argc, char* argv[]) {
                     // Append Y file (luma)
                     std::ifstream temp_y_file(config.output.filename + ".temp.tbc", std::ios::binary);
                     if (temp_y_file) {
-                        std::ofstream out_y_file(base_out + ".tbc", std::ios::binary | std::ios::app);
+                        std::ios::openmode mode = (frame_offset == 0) ? std::ios::binary : (std::ios::binary | std::ios::app);
+                        std::ofstream out_y_file(base_out + ".tbc", mode);
                         out_y_file << temp_y_file.rdbuf();
                         temp_y_file.close();
                         out_y_file.close();
@@ -170,7 +185,8 @@ int main(int argc, char* argv[]) {
                     // Append C file (chroma)
                     std::ifstream temp_c_file(config.output.filename + ".temp_chroma.tbc", std::ios::binary);
                     if (temp_c_file) {
-                        std::ofstream out_c_file(base_out + "_chroma.tbc", std::ios::binary | std::ios::app);
+                        std::ios::openmode mode = (frame_offset == 0) ? std::ios::binary : (std::ios::binary | std::ios::app);
+                        std::ofstream out_c_file(base_out + "_chroma.tbc", mode);
                         out_c_file << temp_c_file.rdbuf();
                         temp_c_file.close();
                         out_c_file.close();
@@ -186,7 +202,8 @@ int main(int argc, char* argv[]) {
                     // Append Y file
                     std::ifstream temp_y_file(config.output.filename + ".temp.tbcy", std::ios::binary);
                     if (temp_y_file) {
-                        std::ofstream out_y_file(base_out + ".tbcy", std::ios::binary | std::ios::app);
+                        std::ios::openmode mode = (frame_offset == 0) ? std::ios::binary : (std::ios::binary | std::ios::app);
+                        std::ofstream out_y_file(base_out + ".tbcy", mode);
                         out_y_file << temp_y_file.rdbuf();
                         temp_y_file.close();
                         out_y_file.close();
@@ -198,7 +215,8 @@ int main(int argc, char* argv[]) {
                     // Append C file
                     std::ifstream temp_c_file(config.output.filename + ".temp.tbcc", std::ios::binary);
                     if (temp_c_file) {
-                        std::ofstream out_c_file(base_out + ".tbcc", std::ios::binary | std::ios::app);
+                        std::ios::openmode mode = (frame_offset == 0) ? std::ios::binary : (std::ios::binary | std::ios::app);
+                        std::ofstream out_c_file(base_out + ".tbcc", mode);
                         out_c_file << temp_c_file.rdbuf();
                         temp_c_file.close();
                         out_c_file.close();
@@ -227,10 +245,11 @@ int main(int argc, char* argv[]) {
         tbc_file.close();
     }
     
-    // Generate metadata for entire file using unified generator
+    // Generate metadata for entire file
     std::string meta_error;
-    if (!generate_metadata(config, system, total_frames, 
-                          config.output.filename + ".db", meta_error)) {
+    std::string metadata_filename = config.output.filename + ".db";
+    
+    if (!generate_metadata(config, system, total_frames, metadata_filename, meta_error)) {
         std::cerr << "Error: " << meta_error << "\n";
         return 1;
     }

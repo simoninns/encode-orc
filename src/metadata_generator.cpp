@@ -35,6 +35,7 @@ bool generate_metadata(const YAMLProjectConfig& config,
         combined.capture_notes = config.description;
         combined.initialize(system, total_fields);
         combined.video_params = params;
+        combined.video_params.number_of_sequential_fields = total_fields;
         
         // Resize VBI data vector to match total fields
         combined.vbi_data.resize(total_fields);
