@@ -89,40 +89,35 @@ private:
 
     /**
      * @brief Internal filter application for double samples
+     * Uses edge reflection padding to avoid amplitude distortion at boundaries
      */
     void apply_internal(const double* input_data, double* output_data, int num_samples) const {
         const int num_taps = static_cast<int>(coeffs_.size());
         const int overlap = num_taps / 2;
 
-        // Left end of input (may overlap left and right)
-        const int left_pos = std::min(overlap, num_samples);
-        for (int i = 0; i < left_pos; ++i) {
-            double v = 0.0;
-            for (int j = 0, k = i - overlap; j < num_taps; ++j, ++k) {
-                if (k >= 0 && k < num_samples) {
-                    v += coeffs_[j] * input_data[k];
-                }
-            }
-            output_data[i] = v;
+        // Create padded version with reflection at edges to avoid artifacts
+        std::vector<double> padded(num_samples + 2 * overlap);
+        
+        // Reflect at left edge
+        for (int i = 0; i < overlap; ++i) {
+            padded[overlap - 1 - i] = input_data[i];
         }
-
-        // Middle of input (no overlap)
-        const int right_pos = std::max(num_samples - overlap, left_pos);
-        for (int i = left_pos; i < right_pos; ++i) {
-            double v = 0.0;
-            for (int j = 0, k = i - overlap; j < num_taps; ++j, ++k) {
-                v += coeffs_[j] * input_data[k];
-            }
-            output_data[i] = v;
+        
+        // Copy center
+        for (int i = 0; i < num_samples; ++i) {
+            padded[overlap + i] = input_data[i];
         }
-
-        // Right end of input (may overlap right)
-        for (int i = right_pos; i < num_samples; ++i) {
+        
+        // Reflect at right edge
+        for (int i = 0; i < overlap; ++i) {
+            padded[overlap + num_samples + i] = input_data[num_samples - 2 - i];
+        }
+        
+        // Apply filter to entire padded signal
+        for (int i = 0; i < num_samples; ++i) {
             double v = 0.0;
-            for (int j = 0, k = i - overlap; j < num_taps; ++j, ++k) {
-                if (k < num_samples) {
-                    v += coeffs_[j] * input_data[k];
-                }
+            for (int j = 0; j < num_taps; ++j) {
+                v += coeffs_[j] * padded[i + j];
             }
             output_data[i] = v;
         }
@@ -130,40 +125,35 @@ private:
 
     /**
      * @brief Internal filter application converting to/from 16-bit
+     * Uses edge reflection padding to avoid amplitude distortion at boundaries
      */
     void apply_internal_16bit(const double* input_double, uint16_t* output_data, int num_samples) const {
         const int num_taps = static_cast<int>(coeffs_.size());
         const int overlap = num_taps / 2;
 
-        // Left end of input
-        const int left_pos = std::min(overlap, num_samples);
-        for (int i = 0; i < left_pos; ++i) {
-            double v = 0.0;
-            for (int j = 0, k = i - overlap; j < num_taps; ++j, ++k) {
-                if (k >= 0 && k < num_samples) {
-                    v += coeffs_[j] * input_double[k];
-                }
-            }
-            output_data[i] = static_cast<uint16_t>(v);
+        // Create padded version with reflection at edges to avoid artifacts
+        std::vector<double> padded(num_samples + 2 * overlap);
+        
+        // Reflect at left edge
+        for (int i = 0; i < overlap; ++i) {
+            padded[overlap - 1 - i] = input_double[i];
         }
-
-        // Middle of input
-        const int right_pos = std::max(num_samples - overlap, left_pos);
-        for (int i = left_pos; i < right_pos; ++i) {
-            double v = 0.0;
-            for (int j = 0, k = i - overlap; j < num_taps; ++j, ++k) {
-                v += coeffs_[j] * input_double[k];
-            }
-            output_data[i] = static_cast<uint16_t>(v);
+        
+        // Copy center
+        for (int i = 0; i < num_samples; ++i) {
+            padded[overlap + i] = input_double[i];
         }
-
-        // Right end of input
-        for (int i = right_pos; i < num_samples; ++i) {
+        
+        // Reflect at right edge
+        for (int i = 0; i < overlap; ++i) {
+            padded[overlap + num_samples + i] = input_double[num_samples - 2 - i];
+        }
+        
+        // Apply filter to entire padded signal
+        for (int i = 0; i < num_samples; ++i) {
             double v = 0.0;
-            for (int j = 0, k = i - overlap; j < num_taps; ++j, ++k) {
-                if (k < num_samples) {
-                    v += coeffs_[j] * input_double[k];
-                }
+            for (int j = 0; j < num_taps; ++j) {
+                v += coeffs_[j] * padded[i + j];
             }
             output_data[i] = static_cast<uint16_t>(v);
         }

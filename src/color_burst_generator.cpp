@@ -25,19 +25,20 @@ ColorBurstGenerator::ColorBurstGenerator(const VideoParameters& params)
 }
 
 double ColorBurstGenerator::calculate_ntsc_phase(int32_t field_number, int32_t line_number, int32_t sample) const {
-    // Calculate absolute line number in NTSC
-    // NTSC has 262.5 lines per field (525 total lines)
-    bool is_first_field = (field_number % 2) == 0;
-    int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
-    
-    int32_t field_id = field_number % 2;
-    int32_t prev_lines = (field_id * 263) + (frame_line / 2);
-    
-    // NTSC: 227.5 subcarrier cycles per line (approximately)
-    double prev_cycles = prev_lines * 227.5;
-    
-    // Phase for this sample
-    double time_phase = 2.0 * PI * subcarrier_freq_ * sample / sample_rate_;
+    // NTSC has 262.5 lines per field. Model absolute line count as a double
+    // to preserve the half-line offset between fields, which produces the
+    // 4-field color framing sequence (±90° per field).
+    const double lines_per_field = 262.5;
+    const double cycles_per_line = 227.5;  // NTSC subcarrier cycles per line
+
+    // Absolute lines elapsed before this line within the full sequence
+    double prev_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line_number);
+
+    // Total subcarrier cycles elapsed before this sample
+    double prev_cycles = prev_lines * cycles_per_line;
+
+    // Time term for this sample position within the line
+    double time_phase = 2.0 * PI * subcarrier_freq_ * static_cast<double>(sample) / sample_rate_;
     return 2.0 * PI * prev_cycles + time_phase;
 }
 

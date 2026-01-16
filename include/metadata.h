@@ -153,7 +153,15 @@ struct CaptureMetadata {
             FieldMetadata field;
             field.field_id = i;
             field.is_first_field = (i % 2) == 0;
-            field.field_phase_id = (system == VideoSystem::NTSC) ? (i % 4) : (i % 8);
+            // NTSC uses 4-field color framing. Align phase IDs to match ld-decode captures:
+            // 1..4 indexing with a +2 modulo offset yields sequence 3,4,1,2,...
+            if (system == VideoSystem::NTSC) {
+                field.field_phase_id = ((i + 2) % 4) + 1; // NTSC: 1..4 with +2 offset
+            } else {
+                // Align PAL 8-field sequence to match ld-decode captures: 3..8,1..2
+                // Convert to 1..8 indexing with a +3 modulo offset
+                field.field_phase_id = ((i + 3) % 8) + 1;
+            }
             field.file_loc = i * video_params.field_width * video_params.field_height;
             field.disk_loc = static_cast<double>(i);
             field.sync_conf = 100;  // Perfect sync for generated content

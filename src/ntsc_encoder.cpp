@@ -311,15 +311,20 @@ void NTSCEncoder::encode_active_line(uint16_t* line_buffer,
     int32_t active_width = active_end - active_start;
     
     // Calculate absolute line number in NTSC sequence
-    bool is_first_field = (field_number % 2) == 0;
-    int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
+    // Keep local variables minimal; phase calculation now uses absolute lines
+    // with half-line offset modeled via 262.5 lines per field.
     
-    int32_t field_id = field_number % 2;
-    int32_t prev_lines = (field_id * 263) + (frame_line / 2);
+    // Note: previous integer-based calculation used 263 and integer division,
+    // which discarded the half-line offset and prevented proper 4-field color framing.
     
     // NTSC subcarrier phase calculation
-    // prevCycles accumulates by 227.5 per line (approximately)
-    double prev_cycles = prev_lines * 227.5;
+    // Use 262.5 lines per field to preserve half-line offset between fields,
+    // which yields the correct 4-field color framing sequence.
+    const double lines_per_field = 262.5;
+    const double cycles_per_line = 227.5;
+
+    double absolute_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line_number);
+    double prev_cycles = absolute_lines * cycles_per_line;
     
     for (int32_t sample = active_start; sample < active_end; ++sample) {
         // Map sample position to source pixel
