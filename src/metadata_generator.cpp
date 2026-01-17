@@ -29,6 +29,15 @@ bool generate_metadata(const YAMLProjectConfig& config,
             ? VideoParameters::create_pal_composite()
             : VideoParameters::create_ntsc_composite();
         
+        // Apply video level overrides if specified in config
+        if (config.output.video_levels.has_value()) {
+            const auto& vl = config.output.video_levels.value();
+            VideoParameters::apply_video_level_overrides(params,
+                                                        vl.blanking_16b_ire,
+                                                        vl.black_16b_ire,
+                                                        vl.white_16b_ire);
+        }
+        
         // Set decoder string from config
         params.decoder = config.output.metadata_decoder;
         

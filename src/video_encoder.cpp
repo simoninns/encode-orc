@@ -202,6 +202,14 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
         CaptureMetadata metadata;
         metadata.initialize(system, total_fields);
         metadata.video_params = params;
+        
+        if (verbose) {
+            std::cout << "Metadata video_params after assignment:\n";
+            std::cout << "  blanking: " << metadata.video_params.blanking_16b_ire << "\n";
+            std::cout << "  black: " << metadata.video_params.black_16b_ire << "\n";
+            std::cout << "  white: " << metadata.video_params.white_16b_ire << "\n";
+        }
+        
         metadata.git_branch = "main";
         metadata.git_commit = "v0.1.0-dev";
         metadata.capture_notes = "YUV422 raw image from " + yuv422_file;
