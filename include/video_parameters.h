@@ -114,10 +114,10 @@ struct VideoParameters {
         params.sample_rate = 14318181.818181818;  // Exact 4×fSC for ld-decode compatibility
         params.field_width = 910;
         params.field_height = 263;
-        params.colour_burst_start = 89;  // Approximate (19 cycles after 0H)
-        params.colour_burst_end = 125;   // 9 cycles duration
-        params.active_video_start = 172;  // 12 µs (active line area start)
-        params.active_video_end = 910;
+        params.colour_burst_start = 74;   // Measured from real NTSC TBCs
+        params.colour_burst_end = 110;    // Measured from real NTSC TBCs
+        params.active_video_start = 134;  // Measured from real NTSC TBCs
+        params.active_video_end = 894;    // Measured from real NTSC TBCs (leaves front porch)
         params.white_16b_ire = 0xC800;
         params.black_16b_ire = 0x4680;   // With 7.5 IRE setup
         params.blanking_16b_ire = 0x4000;   // 0 IRE blanking level

@@ -100,7 +100,7 @@ void RGB30Loader::get_expected_dimensions(const VideoParameters& params,
         height = 576;
     } else if (params.system == VideoSystem::NTSC) {
         width = 720;
-        height = 486;
+        height = 480;  // 240 lines per field × 2 fields = 480 total active lines
     }
 }
 

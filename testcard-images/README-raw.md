@@ -5,8 +5,8 @@ The pal-raw and ntsc-raw folders contains raw **RGB30** (10-bit per channel) col
 ## Files
 - `pal-ebu-colorbars-100.raw` — 720x576, PAL EBU bars, 100% saturation
 - `pal-ebu-colorbars-75.raw` — 720x576, PAL EBU bars, 75% saturation
-- `ntsc-eia-colorbars-100.raw` — 720x486, NTSC EIA/SMPTE bars, 100% saturation
-- `ntsc-eia-colorbars-75.raw` — 720x486, NTSC EIA/SMPTE bars, 75% saturation
+- `ntsc-eia-colorbars-100.raw` — 720x480, NTSC EIA/SMPTE bars, 100% saturation
+- `ntsc-eia-colorbars-75.raw` — 720x480, NTSC EIA/SMPTE bars, 75% saturation
 
 ## Pixel format
 - **RGB30**: Interleaved RGB, each channel 10-bit, values 0–1023.
@@ -25,7 +25,7 @@ White, Yellow, Cyan, Green, Magenta, Red, Blue, Black.
 
 ## Sizes (bytes)
 - PAL: 720 × 576 × 6 = 2,488,320 bytes
-- NTSC: 720 × 486 × 6 = 2,099,520 bytes
+- NTSC: 720 × 480 × 6 = 2,073,600 bytes
 
 ## Notes
 - Images contain only the active picture region; add your own blanking/VBI if needed.

@@ -107,7 +107,7 @@ private:
     static constexpr double PI = 3.141592653589793238463;
     static constexpr int32_t LINES_PER_FIELD = 263;      // NTSC has 525 lines total (263 per field)
     static constexpr int32_t ACTIVE_LINES_START = 21;    // First active video line
-    static constexpr int32_t ACTIVE_LINES_END = 263;     // Last active video line (approximately)
+    static constexpr int32_t ACTIVE_LINES_END = 261;     // Last active video line + 1 (240 active lines: 21-260)
     static constexpr int32_t VSYNC_LINES = 3;            // Number of vertical sync lines
     
     // Sync levels (in 16-bit samples)

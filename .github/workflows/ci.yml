@@ -30,9 +30,7 @@ jobs:
       run: cmake --build build --config ${{ matrix.build_type }}
     
     - name: Run Tests
-      run: |
-        cd tests
-        bash run-tests.sh
+      run: bash run-tests.sh
     
     - name: Verify executable
       run: ./build/encode-orc --version
