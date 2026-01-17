@@ -41,8 +41,10 @@ bool generate_metadata(const YAMLProjectConfig& config,
         combined.video_params = params;
         combined.video_params.number_of_sequential_fields = total_fields;
         
-        // Resize VBI data vector to match total fields
-        combined.vbi_data.resize(total_fields);
+        const bool include_vbi = standard_supports_vbi(config.laserdisc.standard, system);
+        if (include_vbi) {
+            combined.vbi_data.resize(total_fields);
+        }
         
         // Generate VBI data for entire file, preserving timecode/chapter continuity
         int32_t frame_num = 0;
@@ -73,7 +75,12 @@ bool generate_metadata(const YAMLProjectConfig& config,
                 timecode_offset = hh * 3600 * fps + mm * 60 * fps + ss * fps + ff;
             }
             
-            // Encode VBI for all frames in this section
+            // Encode VBI for all frames in this section (only when the standard supports it)
+            if (!include_vbi) {
+                frame_num += section.duration.value();
+                continue;
+            }
+
             for (int32_t section_frame = 0; section_frame < section.duration.value(); ++section_frame) {
                 VBIData vbi_field1;  // First field (odd)
                 VBIData vbi_field2;  // Second field (even)

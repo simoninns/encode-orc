@@ -19,6 +19,7 @@ namespace encode_orc {
 
 bool VideoEncoder::encode_rgb30_image(const std::string& output_filename,
                                       VideoSystem system,
+                                      LaserDiscStandard ld_standard,
                                       const std::string& rgb30_file,
                                       int32_t num_frames,
                                       bool verbose,
@@ -30,6 +31,9 @@ bool VideoEncoder::encode_rgb30_image(const std::string& output_filename,
                                       bool separate_yc,
                                       bool yc_legacy) {
     try {
+        // Determine whether this standard should carry VBI/VITS for the chosen system
+        const bool include_vbi = standard_supports_vbi(ld_standard, system);
+        const bool include_vits = standard_supports_vits(ld_standard, system);
         // Get video parameters for the system
         VideoParameters params;
         if (system == VideoSystem::PAL) {
@@ -93,18 +97,20 @@ bool VideoEncoder::encode_rgb30_image(const std::string& output_filename,
             int32_t field_number = frame_num * 2;
             
             if (separate_yc) {
-                // Encode with separate Y/C output
+                // Encode with separate Y/C output; VITS/VBI are included only when the standard supports them
                 Field y_field1, c_field1, y_field2, c_field2;
                 
                 if (system == VideoSystem::PAL) {
                     PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    pal_encoder.enable_vits();
-                    pal_encoder.encode_frame_yc(image_frame, field_number, frame_num,
+                    if (include_vits) pal_encoder.enable_vits();
+                    pal_encoder.encode_frame_yc(image_frame, field_number,
+                                                include_vbi ? frame_num : -1,
                                                 y_field1, c_field1, y_field2, c_field2);
                 } else {
                     NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    ntsc_encoder.enable_vits();
-                    ntsc_encoder.encode_frame_yc(image_frame, field_number, frame_num,
+                    if (include_vits) ntsc_encoder.enable_vits();
+                    ntsc_encoder.encode_frame_yc(image_frame, field_number,
+                                                 include_vbi ? frame_num : -1,
                                                  y_field1, c_field1, y_field2, c_field2);
                 }
                 
@@ -115,17 +121,19 @@ bool VideoEncoder::encode_rgb30_image(const std::string& output_filename,
                 yc_writer.write_c_field(c_field2);
                 
             } else {
-                // Standard composite output
+                // Standard composite output; VITS/VBI follow the selected standard
                 Frame encoded_frame;
                 
                 if (system == VideoSystem::PAL) {
                     PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    pal_encoder.enable_vits();
-                    encoded_frame = pal_encoder.encode_frame(image_frame, field_number, frame_num);
+                    if (include_vits) pal_encoder.enable_vits();
+                    encoded_frame = pal_encoder.encode_frame(image_frame, field_number,
+                                                             include_vbi ? frame_num : -1);
                 } else {
                     NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    ntsc_encoder.enable_vits();
-                    encoded_frame = ntsc_encoder.encode_frame(image_frame, field_number, frame_num);
+                    if (include_vits) ntsc_encoder.enable_vits();
+                    encoded_frame = ntsc_encoder.encode_frame(image_frame, field_number,
+                                                             include_vbi ? frame_num : -1);
                 }
                 
                 // Write field 1
@@ -163,8 +171,10 @@ bool VideoEncoder::encode_rgb30_image(const std::string& output_filename,
         metadata.git_commit = "v0.1.0-dev";
         metadata.capture_notes = "RGB30 image from " + rgb30_file;
         
-        // Add VBI data for each field (frame numbers on lines 16, 17, 18)
-        metadata.vbi_data.resize(total_fields);
+        // Add VBI data for each field (frame numbers on lines 16, 17, 18) when the standard allows it
+        if (include_vbi) {
+            metadata.vbi_data.resize(total_fields);
+        }
         
         // Determine VBI mode based on which parameter is provided
         bool use_cav = (picture_start > 0);
@@ -188,64 +198,66 @@ bool VideoEncoder::encode_rgb30_image(const std::string& output_filename,
             }
         }
         
-        for (int32_t frame_num = 0; frame_num < num_frames; ++frame_num) {
-            VBIData vbi;
-            
-            if (use_cav) {
-                vbi.vbi0 = 0x8BA000;
+        if (include_vbi) {
+            for (int32_t frame_num = 0; frame_num < num_frames; ++frame_num) {
+                VBIData vbi;
                 
-                int32_t picture_number = picture_start + frame_num;
-                uint8_t vbi_byte0, vbi_byte1, vbi_byte2;
-                BiphaseEncoder::encode_cav_picture_number(picture_number, vbi_byte0, vbi_byte1, vbi_byte2);
+                if (use_cav) {
+                    vbi.vbi0 = 0x8BA000;
+                    
+                    int32_t picture_number = picture_start + frame_num;
+                    uint8_t vbi_byte0, vbi_byte1, vbi_byte2;
+                    BiphaseEncoder::encode_cav_picture_number(picture_number, vbi_byte0, vbi_byte1, vbi_byte2);
+                    
+                    int32_t cav_picture_number = (static_cast<int32_t>(vbi_byte0) << 16) |
+                                                 (static_cast<int32_t>(vbi_byte1) << 8) |
+                                                 static_cast<int32_t>(vbi_byte2);
+                    
+                    vbi.vbi1 = cav_picture_number;
+                    vbi.vbi2 = cav_picture_number;
+                } else if (use_clv_chapter) {
+                    int32_t chapter_bcd = ((chapter / 10) << 4) | (chapter % 10);
+                    int32_t chapter_code = 0x800DDD | ((chapter_bcd & 0x7F) << 12);
+                    
+                    vbi.vbi1 = chapter_code;
+                    vbi.vbi2 = chapter_code;
+                } else if (use_clv_timecode) {
+                    int32_t total_frame = timecode_start_frame + frame_num;
+                    int32_t total_seconds = total_frame / fps;
+                    int32_t frame_in_second = total_frame % fps;
+                    
+                    int32_t total_minutes = total_seconds / 60;
+                    int32_t total_hours = total_minutes / 60;
+                    
+                    int32_t hh = total_hours % 10;
+                    int32_t mm = total_minutes % 60;
+                    int32_t ss = total_seconds % 60;
+                    
+                    int32_t sec_tens = ss / 10;
+                    int32_t sec_units = ss % 10;
+                    int32_t x1 = 0x0A + sec_tens;
+                    
+                    int32_t pic_tens = frame_in_second / 10;
+                    int32_t pic_units = frame_in_second % 10;
+                    int32_t pic_bcd = (pic_tens << 4) | pic_units;
+                    
+                    vbi.vbi0 = (0x8 << 20) | (x1 << 16) | (0xE << 12) | (sec_units << 8) | pic_bcd;
+                    
+                    int32_t hh_bcd = ((hh / 10) << 4) | (hh % 10);
+                    int32_t mm_bcd = ((mm / 10) << 4) | (mm % 10);
+                    
+                    int32_t timecode = 0xF0DD00 | (hh_bcd << 16) | mm_bcd;
+                    
+                    vbi.vbi1 = timecode;
+                    vbi.vbi2 = timecode;
+                } else {
+                    vbi.vbi1 = 0x88FFFF;
+                    vbi.vbi2 = 0x88FFFF;
+                }
                 
-                int32_t cav_picture_number = (static_cast<int32_t>(vbi_byte0) << 16) |
-                                             (static_cast<int32_t>(vbi_byte1) << 8) |
-                                             static_cast<int32_t>(vbi_byte2);
-                
-                vbi.vbi1 = cav_picture_number;
-                vbi.vbi2 = cav_picture_number;
-            } else if (use_clv_chapter) {
-                int32_t chapter_bcd = ((chapter / 10) << 4) | (chapter % 10);
-                int32_t chapter_code = 0x800DDD | ((chapter_bcd & 0x7F) << 12);
-                
-                vbi.vbi1 = chapter_code;
-                vbi.vbi2 = chapter_code;
-            } else if (use_clv_timecode) {
-                int32_t total_frame = timecode_start_frame + frame_num;
-                int32_t total_seconds = total_frame / fps;
-                int32_t frame_in_second = total_frame % fps;
-                
-                int32_t total_minutes = total_seconds / 60;
-                int32_t total_hours = total_minutes / 60;
-                
-                int32_t hh = total_hours % 10;
-                int32_t mm = total_minutes % 60;
-                int32_t ss = total_seconds % 60;
-                
-                int32_t sec_tens = ss / 10;
-                int32_t sec_units = ss % 10;
-                int32_t x1 = 0x0A + sec_tens;
-                
-                int32_t pic_tens = frame_in_second / 10;
-                int32_t pic_units = frame_in_second % 10;
-                int32_t pic_bcd = (pic_tens << 4) | pic_units;
-                
-                vbi.vbi0 = (0x8 << 20) | (x1 << 16) | (0xE << 12) | (sec_units << 8) | pic_bcd;
-                
-                int32_t hh_bcd = ((hh / 10) << 4) | (hh % 10);
-                int32_t mm_bcd = ((mm / 10) << 4) | (mm % 10);
-                
-                int32_t timecode = 0xF0DD00 | (hh_bcd << 16) | mm_bcd;
-                
-                vbi.vbi1 = timecode;
-                vbi.vbi2 = timecode;
-            } else {
-                vbi.vbi1 = 0x88FFFF;
-                vbi.vbi2 = 0x88FFFF;
+                metadata.vbi_data[frame_num * 2] = vbi;
+                metadata.vbi_data[frame_num * 2 + 1] = vbi;
             }
-            
-            metadata.vbi_data[frame_num * 2] = vbi;
-            metadata.vbi_data[frame_num * 2 + 1] = vbi;
         }
         
         // Write metadata

@@ -146,7 +146,7 @@ int main(int argc, char* argv[]) {
             std::string rgb30_file = section.rgb30_image_source->file;
             
             if (!encoder.encode_rgb30_image(config.output.filename + ".temp",
-                                           system, rgb30_file,
+                                           system, config.laserdisc.standard, rgb30_file,
                                            section.duration.value(), false,
                                            picture_start, chapter, timecode_start,
                                            enable_chroma_filter, enable_luma_filter,

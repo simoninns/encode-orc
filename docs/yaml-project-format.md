@@ -46,6 +46,14 @@ laserdisc:
   standard: "iec60857-1986"  # iec60857-1986 (PAL), iec60856-1986 (NTSC), or "none"
   mode: "cav"                # cav, clv, picture-numbers, or none (must be consistent for all sections)
 
+  # Implementation note:
+  # - The project-level standard alone decides whether VBI and VITS are generated.
+  #   * iec60857-1986 (PAL) → VBI+VITS for PAL
+  #   * iec60856-1986 (NTSC) → VBI+VITS for NTSC
+  #   * none → VBI and VITS are disabled
+  # - This applies to both composite and separate Y/C outputs.
+  # - Section-level vbi.enabled / vits.enabled flags are currently ignored (reserved for future use).
+
 # List of sections to encode
 sections:
   - name: "Leader"
@@ -285,146 +293,24 @@ laserdisc:
 
 ---
 
-## VBI (Vertical Blanking Interval) Configuration
+### VBI (Vertical Blanking Interval) – current implementation
 
-The `vbi` section (inside each section's `laserdisc`) controls data encoded in VBI lines 16, 17, and 18 (using 24-bit biphase encoding) according to the project-level IEC standard.
-
-### Basic VBI Configuration
-
-```yaml
-laserdisc:
-  disc_area: "programme-area"  # lead-in, programme-area, or lead-out
-  
-  vbi:
-    enabled: true
-    
-    # VBI line data (24-bit biphase encoded)
-    line16:
-      byte0: 0xF0  # First byte (MSB)
-      byte1: 0x00  # Second byte
-      byte2: 0x00  # Third byte (LSB)
-      # Or use auto: "timecode" to automatically encode timecode data
-      
-    line17:
-      auto: "picture-number"  # Automatically encode picture number from project mode
-      
-    line18:
-      auto: "picture-number"  # Redundant copy of line 17 (LaserDisc standard)
-```
-
-**Disc Area Types:**
-- `programme-area` - Main program content area (default)
-- `lead-in` - Lead-in area at the start of the disc
-- `lead-out` - Lead-out area at the end of the disc
-
-The disc area setting affects the VBI encoding and sets control codes according to the IEC standard.
-
-### VBI Auto Modes
-
-Instead of manually specifying bytes, use automatic encoding:
-
-- `timecode` - Encode CLV timecode (hours, minutes, seconds, frames)
-- `picture-number` - Encode CAV picture number in BCD format
-- `chapter` - Encode CLV chapter number
-- `status` - Encode status code (for specific LaserDisc control codes)
-
-**Example:**
-```yaml
-laserdisc:
-  disc_area: "programme-area"
-  
-  vbi:
-    enabled: true
-    line16:
-      auto: "status"
-      status_code: 0x82  # Custom status code
-    line17:
-      auto: "picture-number"
-    line18:
-      auto: "picture-number"
-```
-
-### Programme Status
-
-For LaserDisc applications, the programme status is automatically set based on the `disc_area` field and contains control information according to IEC LaserDisc standards (IEC 60857 for PAL, IEC 60856 for NTSC):
-
-```yaml
-laserdisc:
-  disc_area: "programme-area"  # lead-in, programme-area, or lead-out
-  
-  vbi:
-    enabled: true
-    # Programme status bits on line 16 follow the IEC standard and the disc_area setting
-```
-
-The programme status encoding includes control flags and disc area information that are part of the LaserDisc specification. The exact encoding is determined by the `disc_area` setting and the LaserDisc mode (CAV/CLV).
-
-### Advanced VBI Options
-
-```yaml
-laserdisc:
-  disc_area: "lead-in"
-  
-  vbi:
-    enabled: true
-    
-    # Custom encoding for all three lines
-    custom_data:
-      line16: [0xF0, 0x12, 0x34]  # Array of 3 bytes
-      line17: [0xF1, 0x56, 0x78]
-      line18: [0xF1, 0x56, 0x78]
-    
-    # Signal parameters (usually leave as defaults)
-    signal:
-      high_level: 0xEAAC  # 16-bit high voltage level
-      low_level: 0x0000   # 16-bit low voltage level
-      bit_duration_us: 2.0  # Bit duration in microseconds
-```
+- VBI is generated only when the project standard is IEC 60856-1986 (NTSC) or IEC 60857-1986 (PAL). Standard `none` disables VBI.
+- Section-level `vbi.enabled` flags and line overrides are not currently applied (reserved for future use).
+- Encoding is automatic and standard-driven:
+  - CAV: lines 16–18 carry picture numbers in biphase per IEC LaserDisc rules.
+  - CLV chapter/timecode: lines carry chapter or timecode in biphase per IEC rules.
+  - Programme/lead-in/lead-out status follows the IEC defaults; there is no custom byte injection.
+- Manual byte arrays, custom status codes, and signal parameter overrides described previously are **not implemented** yet.
 
 ---
 
-## VITS (Vertical Interval Test Signals) Configuration
+### VITS (Vertical Interval Test Signals) – current implementation
 
-The project-level IEC standard determines the default VITS waveforms and lines. Sections can enable/disable VITS and optionally override line assignments.
-
-```yaml
-laserdisc:
-  vits:
-    enabled: true  # Use standard-defined VITS signals
-```
-
-### VITS Line Overrides (section-level)
-
-```yaml
-laserdisc:
-  vits:
-    enabled: true
-    
-    # Override default line assignments (example for PAL IEC 60857-1986)
-    lines:
-      - number: 19
-        signal: "itu-composite"
-      - number: 20
-        signal: "itu-its"
-      - number: 332
-        signal: "uk-national"
-      - number: 333
-        signal: "multiburst"
-```
-
-### Disable VITS for Specific Sections
-
-```yaml
-sections:
-  - name: "No VITS Section"
-    duration: 100
-    source:
-      type: "testcard"
-      pattern: "color-bars"
-    laserdisc:
-      vits:
-        enabled: false  # Disable VITS for this section
-```
+- VITS is generated only when the project standard is IEC 60856-1986 (NTSC) or IEC 60857-1986 (PAL). Standard `none` disables VITS entirely.
+- VITS is included for both composite and separate Y/C outputs when the standard allows it.
+- Section-level `vits.enabled` flags and custom line overrides are not currently applied (reserved for future use).
+- Only the built-in IEC waveforms/line assignments are emitted (PAL: lines 19/20/332/333 per parity; NTSC: lines 19/20/282/283). No per-section overrides yet.
 
 ---
 
@@ -661,7 +547,7 @@ sections:
 | `name` | string | Yes | Project name |
 | `description` | string | Yes | Project description |
 | `output` | object | Yes | Output configuration |
-| `laserdisc` | object | Yes | Project-level IEC standard and mode (cav/clv/picture-numbers/none) |
+| `laserdisc` | object | Yes | Project-level IEC standard and mode (cav/clv/picture-numbers/none). The standard decides if VBI/VITS are generated. |
 | `sections` | array | Yes | List of encoding sections |
 
 ### Output Fields
@@ -679,7 +565,7 @@ sections:
 | `name` | string | Yes | Section name |
 | `duration` | integer | Yes | Number of frames in section; frames = duration (RGB30 files must have exactly this many frames) |
 | `source` | object | Yes | Video source configuration (must be type: "rgb30-image") |
-| `laserdisc` | object | No | Section-level LaserDisc settings (disc_area, per-section starts, VBI/VITS) |
+| `laserdisc` | object | No | Section-level LaserDisc settings (disc_area, per-section starts). VBI/VITS flags are parsed but currently not applied. |
 
 ### LaserDisc Modes
 
@@ -705,7 +591,7 @@ The YAML parser should enforce:
 6. **Chapter numbers**: CLV chapters must be in range 0-79
 7. **Timecode format**: Must be HH:MM:SS:FF with valid values
 8. **VBI bytes**: Must be in range 0x00-0xFF
-9. **IEC standard**: Project-level standard must match output format (PAL → IEC 60857-1986, NTSC → IEC 60856-1986); `none` disables VBI/VITS/timecode
+9. **IEC standard**: Choosing `none` disables VBI/VITS. A PAL/NTSC match is recommended but not currently enforced by the parser.
 10. **Non-empty sections**: At least one section must be defined
 11. **Project-wide mode**: Mode is set once at the project level; sections cannot override it
 12. **Continuation logic**: If start values are omitted, the first section must specify initial values; subsequent sections continue from previous

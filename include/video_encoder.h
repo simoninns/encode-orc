@@ -11,6 +11,7 @@
 #define ENCODE_ORC_VIDEO_ENCODER_H
 
 #include "video_parameters.h"
+#include "laserdisc_standard.h"
 #include "pal_encoder.h"
 #include "ntsc_encoder.h"
 #include "tbc_writer.h"
@@ -45,6 +46,7 @@ public:
      */
     bool encode_rgb30_image(const std::string& output_filename,
                            VideoSystem system,
+                           LaserDiscStandard ld_standard,
                            const std::string& rgb30_file,
                            int32_t num_frames,
                            bool verbose = false,
