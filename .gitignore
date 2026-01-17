@@ -57,3 +57,4 @@ vcpkg_installed/
 
 # Test output TBCs
 test-output/
+tmp/
