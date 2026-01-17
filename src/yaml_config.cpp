@@ -41,6 +41,9 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
             if (output["mode"]) {
                 config.output.mode = output["mode"].as<std::string>();
             }
+            if (output["metadata_decoder"]) {
+                config.output.metadata_decoder = output["metadata_decoder"].as<std::string>();
+            }
         }
         
         // Parse project-level laserdisc configuration

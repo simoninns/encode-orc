@@ -191,27 +191,34 @@ void NTSCEncoder::generate_color_burst(uint16_t* line_buffer, int32_t line_numbe
 
 void NTSCEncoder::generate_color_burst_chroma(uint16_t* line_buffer, int32_t line_number, int32_t field_number) {
     // Generate color burst on chroma channel (centered at 32768)
-    // For NTSC, the burst is a reference signal at approximately -33° phase
+    // For NTSC, the burst is a reference signal at 180° phase
     
     std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(32768));
     
     // Generate burst signal modulated at the NTSC color subcarrier frequency
-    const int32_t burst_start = params_.active_video_start - 50;  // Before active video
-    const int32_t burst_end = params_.active_video_start;
-    const int32_t luma_range = white_level_ - black_level_;
-    const double burst_amplitude = 0.3 * luma_range;  // Standard burst amplitude
+    // Use the proper burst window from video parameters
+    const int32_t burst_start = params_.colour_burst_start;
+    const int32_t burst_end = params_.colour_burst_end;
+    
+    // Calculate burst amplitude: ±20 IRE (same as composite mode)
+    int32_t luma_range = white_level_ - blanking_level_;
+    int32_t burst_amplitude = static_cast<int32_t>((20.0 / 100.0) * luma_range);
+    
+    // Burst phase: 180° (fixed for NTSC)
+    double burst_phase_offset = PI;
     
     int32_t line_number_composite = (field_number * params_.field_height) + line_number;
     
     for (int32_t sample = burst_start; sample < burst_end; ++sample) {
         if (sample >= 0 && sample < params_.field_width) {
             double t = static_cast<double>(sample) / sample_rate_;
-            double phase = 2.0 * PI * subcarrier_freq_ * t + (line_number_composite * PI);
+            double phase = 2.0 * PI * subcarrier_freq_ * t + (line_number_composite * PI) + burst_phase_offset;
             
             // NTSC burst reference signal
-            double burst_signal = burst_amplitude * std::cos(phase - (33.0 * PI / 180.0));
+            double burst_signal = std::sin(phase);
             
-            line_buffer[sample] = clamp_to_16bit(32768 + static_cast<int32_t>(burst_signal));
+            int32_t sample_value = 32768 + static_cast<int32_t>(burst_amplitude * burst_signal);
+            line_buffer[sample] = clamp_to_16bit(sample_value);
         }
     }
 }
@@ -219,29 +226,38 @@ void NTSCEncoder::generate_color_burst_chroma(uint16_t* line_buffer, int32_t lin
 void NTSCEncoder::generate_color_burst_chroma_line(uint16_t* line_buffer, int32_t line_number, 
                                                     int32_t field_number, int32_t burst_end) {
     // Generate color burst on chroma for the portion before active video
-    // Then fill the rest with blanking (32768)
+    // Chroma should be centered at 32768 with NO sync pulse
+    // Use the proper burst window from video parameters
     
-    const int32_t burst_start = 0;
-    const int32_t luma_range = white_level_ - black_level_;
-    const double burst_amplitude = 0.3 * luma_range;  // Standard burst amplitude
+    // First, fill entire line with blanking level (32768 - centered, no sync)
+    std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(32768));
+    
+    // Color burst position from video parameters
+    const int32_t burst_start = params_.colour_burst_start;
+    
+    // Calculate burst amplitude: ±20 IRE (same as composite mode)
+    int32_t luma_range = white_level_ - blanking_level_;
+    int32_t burst_amplitude = static_cast<int32_t>((20.0 / 100.0) * luma_range);
+    
+    // Burst phase: 180° (fixed for NTSC)
+    double burst_phase_offset = PI;
     
     int32_t line_number_composite = (field_number * params_.field_height) + line_number;
     
-    for (int32_t sample = burst_start; sample < burst_end; ++sample) {
+    // Generate color burst using the proper window
+    const int32_t actual_burst_end = std::min(burst_end, params_.colour_burst_end);
+    
+    for (int32_t sample = burst_start; sample < actual_burst_end; ++sample) {
         if (sample < params_.field_width) {
             double t = static_cast<double>(sample) / sample_rate_;
-            double phase = 2.0 * PI * subcarrier_freq_ * t + (line_number_composite * PI);
+            double phase = 2.0 * PI * subcarrier_freq_ * t + (line_number_composite * PI) + burst_phase_offset;
             
             // NTSC burst reference signal
-            double burst_signal = burst_amplitude * std::cos(phase - (33.0 * PI / 180.0));
+            double burst_signal = std::sin(phase);
             
-            line_buffer[sample] = clamp_to_16bit(32768 + static_cast<int32_t>(burst_signal));
+            int32_t sample_value = 32768 + static_cast<int32_t>(burst_amplitude * burst_signal);
+            line_buffer[sample] = clamp_to_16bit(sample_value);
         }
-    }
-    
-    // Fill remainder with blanking level (32768 for chroma)
-    for (int32_t sample = burst_end; sample < params_.field_width; ++sample) {
-        line_buffer[sample] = static_cast<uint16_t>(32768);
     }
 }
 
@@ -475,12 +491,14 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
         
         // For sync, blanking, and VBI lines
         if (line < ACTIVE_LINES_START) {
-            // Generate sync and blanking for Y field
-            generate_sync_pulse(y_line, line);
-            generate_color_burst(y_line, line, field_number);
+            // Initialize Y field with blanking level
+            generate_blanking_line(y_line);
             
-            // C field gets blanking level
-            std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(blanking_level_));
+            // Generate sync and blanking for Y field (no color burst)
+            generate_sync_pulse(y_line, line);
+            
+            // C field gets color burst (modulated at blanking level, centered at 32768)
+            generate_color_burst_chroma(c_line, line, field_number);
             
             // Handle VBI lines if enabled
             if (frame_number_for_vbi >= 0 && vits_enabled_ && vits_generator_) {
@@ -492,21 +510,30 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
                 // VBI biphase lines - only on Y field
                 generate_biphase_vbi_line(y_line, line, field_number, frame_number_for_vbi);
             }
+
+            // Ensure no color burst appears in luma during VITS/VBI lines
+            const int32_t burst_start = params_.colour_burst_start;
+            const int32_t burst_end = params_.colour_burst_end;
+            for (int32_t s = burst_start; s < burst_end && s < params_.field_width; ++s) {
+                y_line[s] = static_cast<uint16_t>(blanking_level_);
+            }
         } else if (line >= ACTIVE_LINES_END) {
             // Post-active blanking
             generate_blanking_line(y_line);
-            std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(blanking_level_));
+            generate_color_burst_chroma(c_line, line, field_number);
         } else {
             // Active video line - encode Y and C separately from source
             int32_t source_line = (line - ACTIVE_LINES_START) * 2;  // Even lines for field 1
             if (source_line >= frame_height) source_line = frame_height - 1;
             
-            // Generate sync and burst for Y field
-            generate_sync_pulse(y_line, line);
-            generate_color_burst(y_line, line, field_number);
+            // Initialize Y field with blanking (same as composite)
+            generate_blanking_line(y_line);
             
-            // C field gets blanking during sync/burst
-            std::fill_n(c_line, params_.active_video_start, static_cast<uint16_t>(blanking_level_));
+            // Generate sync for Y field (no color burst in Y)
+            generate_sync_pulse(y_line, line);
+
+            // C field gets color burst during sync/burst period
+            generate_color_burst_chroma_line(c_line, line, field_number, params_.active_video_start);
             
             // Encode active video portion
             int32_t active_start = params_.active_video_start;
@@ -563,9 +590,12 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
         uint16_t* c_line = c_field2.line_data(line);
         
         if (line < ACTIVE_LINES_START) {
+            // Initialize Y field with blanking level
+            generate_blanking_line(y_line);
+            
+            // Generate sync and blanking for Y field (no color burst)
             generate_sync_pulse(y_line, line);
-            generate_color_burst(y_line, line, field_number + 1);
-            std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(blanking_level_));
+            generate_color_burst_chroma(c_line, line, field_number + 1);
             
             if (frame_number_for_vbi >= 0 && vits_enabled_ && vits_generator_) {
                 if (line == 18) {
@@ -575,16 +605,28 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
             if (frame_number_for_vbi >= 0 && line >= 14 && line <= 17) {
                 generate_biphase_vbi_line(y_line, line, field_number + 1, frame_number_for_vbi);
             }
+
+            // Ensure no color burst appears in luma during VITS/VBI lines
+            const int32_t burst_start = params_.colour_burst_start;
+            const int32_t burst_end = params_.colour_burst_end;
+            for (int32_t s = burst_start; s < burst_end && s < params_.field_width; ++s) {
+                y_line[s] = static_cast<uint16_t>(blanking_level_);
+            }
         } else if (line >= ACTIVE_LINES_END) {
             generate_blanking_line(y_line);
-            std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(blanking_level_));
+            generate_color_burst_chroma(c_line, line, field_number + 1);
         } else {
             int32_t source_line = (line - ACTIVE_LINES_START) * 2 + 1;  // Odd lines for field 2
             if (source_line >= frame_height) source_line = frame_height - 1;
             
+            // Initialize Y field with blanking (same as composite)
+            generate_blanking_line(y_line);
+            
+            // Generate sync for Y field (no color burst in Y)
             generate_sync_pulse(y_line, line);
-            generate_color_burst(y_line, line, field_number + 1);
-            std::fill_n(c_line, params_.active_video_start, static_cast<uint16_t>(blanking_level_));
+            
+            // C field gets color burst during sync/burst period
+            generate_color_burst_chroma_line(c_line, line, field_number + 1, params_.active_video_start);
             
             int32_t active_start = params_.active_video_start;
             int32_t active_end = params_.active_video_end;

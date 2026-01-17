@@ -1,0 +1,18 @@
+name: "Custom Decoder Test"
+description: "Test custom metadata_decoder field"
+
+output:
+  filename: "test-output/test-custom-decoder.tbc"
+  format: "pal-composite"
+  metadata_decoder: "test-custom-encoder"
+
+laserdisc:
+  standard: "none"
+  mode: "none"
+
+sections:
+  - name: "Test Frame"
+    duration: 5
+    source:
+      type: "rgb30-image"
+      file: "testcard-images/pal-ebu-colorbars-75.raw"

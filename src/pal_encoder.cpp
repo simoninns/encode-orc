@@ -203,30 +203,34 @@ void PALEncoder::generate_color_burst_chroma(uint16_t* line_buffer, int32_t line
     std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(32768));
     
     // Generate burst signal modulated at the PAL color subcarrier frequency
-    // Standard burst: 10 cycles of subcarrier at burst amplitude
-    const int32_t burst_start = params_.active_video_start - 50;  // Before active video
-    const int32_t burst_end = params_.active_video_start;
-    const int32_t luma_range = white_level_ - black_level_;
-    const double burst_amplitude = 0.3 * luma_range;  // Standard burst amplitude (30% of luma range)
+    // Use the proper burst window from video parameters
+    const int32_t burst_start = params_.colour_burst_start;
+    const int32_t burst_end = params_.colour_burst_end;
+    
+    // Calculate burst amplitude: 3/14 of luma range (same as composite mode)
+    int32_t luma_range = white_level_ - blanking_level_;
+    int32_t burst_amplitude = static_cast<int32_t>((3.0 / 14.0) * luma_range);
     
     // Calculate field-specific phase for PAL
     bool is_first_field = (field_number % 2) == 0;
     int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
     int32_t field_id = field_number % 8;
     int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
+    int32_t v_switch = (prev_lines % 2 == 0) ? 1 : -1;
+    double burst_phase_offset = v_switch * (135.0 * PI / 180.0);
     double prev_cycles = prev_lines * 283.7516;
     
     for (int32_t sample = burst_start; sample < burst_end; ++sample) {
         if (sample >= 0 && sample < params_.field_width) {
-            // Standard PAL burst phase
+            // Standard PAL burst phase with V-switch
             double t = static_cast<double>(sample) / sample_rate_;
-            double phase = 2.0 * PI * (subcarrier_freq_ * t + prev_cycles);
+            double phase = 2.0 * PI * (subcarrier_freq_ * t + prev_cycles) + burst_phase_offset;
             
-            // PAL burst uses (U*sin + V*cos*Vsw) with fixed amplitude
-            // For reference burst: U=1, V=0
-            double burst_signal = burst_amplitude * std::sin(phase);
+            // PAL burst uses sine with V-switch modulation
+            double burst_signal = std::sin(phase);
             
-            line_buffer[sample] = clamp_to_16bit(32768 + static_cast<int32_t>(burst_signal));
+            int32_t sample_value = 32768 + static_cast<int32_t>(burst_amplitude * burst_signal);
+            line_buffer[sample] = clamp_to_16bit(sample_value);
         }
     }
 }
@@ -234,35 +238,43 @@ void PALEncoder::generate_color_burst_chroma(uint16_t* line_buffer, int32_t line
 void PALEncoder::generate_color_burst_chroma_line(uint16_t* line_buffer, int32_t line_number, 
                                                    int32_t field_number, int32_t burst_end) {
     // Generate color burst on chroma for the portion before active video
-    // Then fill the rest with blanking (32768)
+    // Chroma should be centered at 32768 with NO sync pulse
+    // Use the proper burst window from video parameters
     
-    const int32_t burst_start = 0;
-    const int32_t luma_range = white_level_ - black_level_;
-    const double burst_amplitude = 0.3 * luma_range;  // Standard burst amplitude
+    // First, fill entire line with blanking level (32768 - centered, no sync)
+    std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(32768));
+    
+    // Color burst position from video parameters
+    const int32_t burst_start = params_.colour_burst_start;
+    
+    // Calculate burst amplitude: 3/14 of luma range (same as composite mode)
+    int32_t luma_range = white_level_ - blanking_level_;
+    int32_t burst_amplitude = static_cast<int32_t>((3.0 / 14.0) * luma_range);
     
     // Calculate field-specific phase for PAL
     bool is_first_field = (field_number % 2) == 0;
     int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
     int32_t field_id = field_number % 8;
     int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
+    int32_t v_switch = (prev_lines % 2 == 0) ? 1 : -1;
+    double burst_phase_offset = v_switch * (135.0 * PI / 180.0);
     double prev_cycles = prev_lines * 283.7516;
     
-    for (int32_t sample = burst_start; sample < burst_end; ++sample) {
-        if (sample < params_.field_width) {
-            // Generate burst during sync/blanking period
-            double t = static_cast<double>(sample) / sample_rate_;
-            double phase = 2.0 * PI * (subcarrier_freq_ * t + prev_cycles);
-            
-            // PAL burst reference signal
-            double burst_signal = burst_amplitude * std::sin(phase);
-            
-            line_buffer[sample] = clamp_to_16bit(32768 + static_cast<int32_t>(burst_signal));
-        }
-    }
+    // Generate color burst using the proper window
+    const int32_t actual_burst_end = std::min(burst_end, params_.colour_burst_end);
     
-    // Fill remainder with blanking level (32768 for chroma)
-    for (int32_t sample = burst_end; sample < params_.field_width; ++sample) {
-        line_buffer[sample] = static_cast<uint16_t>(32768);
+    for (int32_t sample = burst_start; sample < actual_burst_end; ++sample) {
+        if (sample < params_.field_width) {
+            // Generate burst during back porch period
+            double t = static_cast<double>(sample) / sample_rate_;
+            double phase = 2.0 * PI * (subcarrier_freq_ * t + prev_cycles) + burst_phase_offset;
+            
+            // PAL burst reference signal with V-switch modulation
+            double burst_signal = std::sin(phase);
+            
+            int32_t sample_value = 32768 + static_cast<int32_t>(burst_amplitude * burst_signal);
+            line_buffer[sample] = clamp_to_16bit(sample_value);
+        }
     }
 }
 
@@ -496,9 +508,11 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
         
         // For sync, blanking, and VBI lines
         if (line < ACTIVE_LINES_START) {
-            // Generate sync and blanking for Y field
+            // Initialize Y field with blanking level
+            generate_blanking_line(y_line);
+            
+            // Generate sync for Y field (no color burst)
             generate_sync_pulse(y_line, line);
-            generate_color_burst(y_line, line, field_number);
             
             // C field gets color burst (modulated at blanking level, centered at 32768)
             generate_color_burst_chroma(c_line, line, field_number);
@@ -513,6 +527,13 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
                 // VBI biphase lines - only on Y field
                 generate_biphase_vbi_line(y_line, line, field_number, frame_number_for_vbi);
             }
+
+            // Ensure no color burst appears in luma during VITS/VBI lines
+            const int32_t burst_start = params_.colour_burst_start;
+            const int32_t burst_end = params_.colour_burst_end;
+            for (int32_t s = burst_start; s < burst_end && s < params_.field_width; ++s) {
+                y_line[s] = static_cast<uint16_t>(blanking_level_);
+            }
         } else if (line >= ACTIVE_LINES_END) {
             // Post-active blanking
             generate_blanking_line(y_line);
@@ -522,9 +543,11 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
             int32_t source_line = (line - ACTIVE_LINES_START) * 2;  // Even lines for field 1
             if (source_line >= frame_height) source_line = frame_height - 1;
             
-            // Generate sync and burst for Y field
+            // Initialize Y field with blanking (same as composite)
+            generate_blanking_line(y_line);
+            
+            // Generate sync for Y field (no color burst in Y)
             generate_sync_pulse(y_line, line);
-            generate_color_burst(y_line, line, field_number);
             
             // C field gets color burst during sync/burst period
             generate_color_burst_chroma_line(c_line, line, field_number, params_.active_video_start);
@@ -593,9 +616,14 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
         uint16_t* c_line = c_field2.line_data(line);
         
         if (line < ACTIVE_LINES_START) {
+            // Initialize Y field with blanking level
+            generate_blanking_line(y_line);
+            
+            // Generate sync for Y field (no color burst)
             generate_sync_pulse(y_line, line);
-            generate_color_burst(y_line, line, field_number + 1);
-            std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(blanking_level_));
+            
+            // C field gets color burst (centered at 32768)
+            generate_color_burst_chroma(c_line, line, field_number + 1);
             
             if (frame_number_for_vbi >= 0 && vits_enabled_ && vits_generator_) {
                 if (line == 19) {
@@ -605,16 +633,28 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
             if (frame_number_for_vbi >= 0 && line >= 16 && line <= 18) {
                 generate_biphase_vbi_line(y_line, line, field_number + 1, frame_number_for_vbi);
             }
+
+            // Ensure no color burst appears in luma during VITS/VBI lines
+            const int32_t burst_start = params_.colour_burst_start;
+            const int32_t burst_end = params_.colour_burst_end;
+            for (int32_t s = burst_start; s < burst_end && s < params_.field_width; ++s) {
+                y_line[s] = static_cast<uint16_t>(blanking_level_);
+            }
         } else if (line >= ACTIVE_LINES_END) {
             generate_blanking_line(y_line);
-            std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(blanking_level_));
+            generate_color_burst_chroma(c_line, line, field_number + 1);
         } else {
             int32_t source_line = (line - ACTIVE_LINES_START) * 2 + 1;  // Odd lines for field 2
             if (source_line >= frame_height) source_line = frame_height - 1;
             
+            // Initialize Y field with blanking (same as composite)
+            generate_blanking_line(y_line);
+            
+            // Generate sync for Y field (no color burst in Y)
             generate_sync_pulse(y_line, line);
-            generate_color_burst(y_line, line, field_number + 1);
-            std::fill_n(c_line, params_.active_video_start, static_cast<uint16_t>(blanking_level_));
+            
+            // C field gets color burst during sync/burst period
+            generate_color_burst_chroma_line(c_line, line, field_number + 1, params_.active_video_start);
             
             int32_t active_start = params_.active_video_start;
             int32_t active_end = params_.active_video_end;

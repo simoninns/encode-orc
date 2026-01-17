@@ -8,6 +8,7 @@ description: "RGB30 EIA color bars with chroma filtering ENABLED - clean output"
 output:
   filename: "test-output/ntsc-rgb30-eia-75-filter-on.tbc"
   format: "ntsc-composite"
+  metadata_decoder: "ld-decode" 
 
 laserdisc:
   standard: "iec60856-1986"

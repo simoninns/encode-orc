@@ -10,6 +10,7 @@
 #include "metadata_writer.h"
 #include <sstream>
 #include <cstring>
+#include <iostream>
 
 namespace encode_orc {
 
@@ -72,7 +73,7 @@ bool MetadataWriter::create_schema() {
         CREATE TABLE capture (
             capture_id INTEGER PRIMARY KEY,
             system TEXT NOT NULL CHECK (system IN ('NTSC','PAL','PAL_M')),
-            decoder TEXT NOT NULL CHECK (decoder IN ('ld-decode','vhs-decode','encode-orc')),
+            decoder TEXT NOT NULL,
             git_branch TEXT,
             git_commit TEXT,
             video_sample_rate REAL,

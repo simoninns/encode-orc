@@ -11,6 +11,7 @@
 #include "metadata_writer.h"
 #include "metadata.h"
 #include "biphase_encoder.h"
+#include <iostream>
 #include <cstdio>
 
 namespace encode_orc {
@@ -27,6 +28,9 @@ bool generate_metadata(const YAMLProjectConfig& config,
         VideoParameters params = (system == VideoSystem::PAL)
             ? VideoParameters::create_pal_composite()
             : VideoParameters::create_ntsc_composite();
+        
+        // Set decoder string from config
+        params.decoder = config.output.metadata_decoder;
         
         CaptureMetadata combined;
         combined.capture_id = 1;
