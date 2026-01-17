@@ -35,6 +35,14 @@ output:
   filename: "output.tbc"
   format: "pal-composite"  # pal-composite, ntsc-composite, pal-yc, ntsc-yc
   metadata_decoder: "encode-orc"  # Optional: decoder string in metadata (default: "encode-orc")
+  
+  # Optional: Override video signal levels (16-bit IRE scale)
+  # Use this to customize blanking, black, and white levels for specific projects
+  # Values should be in the 16-bit range (0-65535)
+  video_levels:
+    blanking_16b_ire: 17125   # Optional: blanking level (default: system-dependent)
+    black_16b_ire: 17125      # Optional: black level (default: system-dependent)
+    white_16b_ire: 54016      # Optional: white/peak level (default: system-dependent)
 
 # For YC formats (pal-yc, ntsc-yc), two files are produced:
 # - <basename>.tbcy : luma
@@ -311,6 +319,64 @@ laserdisc:
 - VITS is included for both composite and separate Y/C outputs when the standard allows it.
 - Section-level `vits.enabled` flags and custom line overrides are not currently applied (reserved for future use).
 - Only the built-in IEC waveforms/line assignments are emitted (PAL: lines 19/20/332/333 per parity; NTSC: lines 19/20/282/283). No per-section overrides yet.
+
+---
+
+## Video Signal Levels Configuration
+
+Video signal levels define the electrical amplitudes for blanking, black, and white components of the composite video signal. These values are expressed in a 16-bit IRE scale where the full range is 0-65535.
+
+### Default Video Levels
+
+encode-orc uses standard video levels by default:
+
+**PAL Composite (default)**
+- `blanking_16b_ire`: 17125 (0 IRE blanking level)
+- `black_16b_ire`: 17125 (0 IRE black level, same as blanking in PAL)
+- `white_16b_ire`: 54016 (700mV peak white)
+
+**NTSC Composite (default)**
+- `blanking_16b_ire`: 15058 (−300mV blanking level)
+- `black_16b_ire`: 17768 (7.5 IRE setup for NTSC)
+- `white_16b_ire`: 51200 (700mV peak white)
+
+### Customizing Video Levels
+
+To override the default levels for a specific project, add a `video_levels` section to the `output` configuration:
+
+```yaml
+output:
+  filename: "output.tbc"
+  format: "ntsc-composite"
+  
+  # Override video levels for NTSC-J (Japan) with different black setup
+  video_levels:
+    blanking_16b_ire: 15058
+    black_16b_ire: 18196    # Alternative black setup
+    white_16b_ire: 51200
+```
+
+### When to Use Custom Video Levels
+
+Custom video levels are useful for:
+- **Regional variants**: NTSC-J (Japan) uses different black setup than standard NTSC
+- **Specialized equipment**: Legacy equipment may require non-standard levels
+- **Calibration**: Matching specific reference materials or test patterns
+- **Legacy archive**: Reproducing historical recording formats
+
+### Partial Overrides
+
+You can override just the levels you need; omitted levels use defaults:
+
+```yaml
+output:
+  filename: "output.tbc"
+  format: "pal-composite"
+  
+  # Only override black level, keep blanking and white as defaults
+  video_levels:
+    black_16b_ire: 18000
+```
 
 ---
 

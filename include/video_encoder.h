@@ -18,6 +18,7 @@
 #include "metadata_writer.h"
 #include <string>
 #include <cstdint>
+#include <optional>
 
 namespace encode_orc {
 
@@ -28,6 +29,21 @@ namespace encode_orc {
  */
 class VideoEncoder {
 public:
+    /**
+     * @brief Set video level overrides for subsequent encoding operations
+     * @param blanking_16b_ire Optional blanking level override
+     * @param black_16b_ire Optional black level override
+     * @param white_16b_ire Optional white level override
+     */
+    static void set_video_level_overrides(std::optional<int32_t> blanking_16b_ire = std::nullopt,
+                                          std::optional<int32_t> black_16b_ire = std::nullopt,
+                                          std::optional<int32_t> white_16b_ire = std::nullopt);
+    
+    /**
+     * @brief Clear all video level overrides
+     */
+    static void clear_video_level_overrides();
+    
     /**
      * @brief Encode video with Y'CbCr 4:2:2 raw image repeated for multiple frames
      * @param output_filename Output .tbc filename (or base filename for Y/C mode)
@@ -95,6 +111,11 @@ public:
     
 private:
     std::string error_message_;
+    
+    // Static video level overrides for all encoding operations
+    static std::optional<int32_t> s_blanking_16b_ire_override;
+    static std::optional<int32_t> s_black_16b_ire_override;
+    static std::optional<int32_t> s_white_16b_ire_override;
 };
 
 } // namespace encode_orc

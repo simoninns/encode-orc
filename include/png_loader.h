@@ -61,6 +61,11 @@ private:
      */
     static void rgb_to_yuv444p16(const uint8_t* rgb_data, int32_t width, int32_t height,
                                   FrameBuffer& frame);
+
+    /**
+     * @brief Clamp luma to video-range IRE limits
+     */
+    static void clamp_luma(FrameBuffer& frame, const VideoParameters& params);
 };
 
 } // namespace encode_orc

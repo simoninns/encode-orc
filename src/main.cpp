@@ -66,6 +66,24 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
+    // Store video level overrides for later use in encoding
+    const auto& video_levels = config.output.video_levels;
+    bool has_video_level_overrides = video_levels.has_value();
+    
+    if (has_video_level_overrides && video_levels.value().blanking_16b_ire.has_value()) {
+        std::cout << "Video level overrides detected:\n";
+        if (video_levels.value().blanking_16b_ire.has_value()) {
+            std::cout << "  blanking_16b_ire: " << video_levels.value().blanking_16b_ire.value() << "\n";
+        }
+        if (video_levels.value().black_16b_ire.has_value()) {
+            std::cout << "  black_16b_ire: " << video_levels.value().black_16b_ire.value() << "\n";
+        }
+        if (video_levels.value().white_16b_ire.has_value()) {
+            std::cout << "  white_16b_ire: " << video_levels.value().white_16b_ire.value() << "\n";
+        }
+        std::cout << "\n";
+    }
+    
     // Calculate total frames and fps
     int32_t total_frames = 0;
     for (const auto& section : config.sections) {
@@ -115,6 +133,15 @@ int main(int argc, char* argv[]) {
             std::remove((base_out + ".tbcy").c_str());
             std::remove((base_out + ".tbcc").c_str());
         }
+    }
+    
+    // Set video level overrides if specified in YAML
+    if (has_video_level_overrides) {
+        VideoEncoder::set_video_level_overrides(
+            video_levels.value().blanking_16b_ire,
+            video_levels.value().black_16b_ire,
+            video_levels.value().white_16b_ire
+        );
     }
     
     int32_t frame_offset = 0;

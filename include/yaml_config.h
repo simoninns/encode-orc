@@ -125,6 +125,15 @@ struct VideoSection {
 };
 
 /**
+ * @brief Video signal level configuration (16-bit IRE values)
+ */
+struct VideoLevelsConfig {
+    std::optional<int32_t> blanking_16b_ire;  // Optional: blanking level
+    std::optional<int32_t> black_16b_ire;     // Optional: black level
+    std::optional<int32_t> white_16b_ire;     // Optional: white/peak level
+};
+
+/**
  * @brief Output configuration
  */
 struct OutputConfig {
@@ -132,6 +141,7 @@ struct OutputConfig {
     std::string format;  // pal-composite, ntsc-composite, pal-yc, ntsc-yc
     std::string mode = "combined";  // combined (default), separate-yc
     std::string metadata_decoder = "encode-orc";  // decoder string in metadata (default: encode-orc)
+    std::optional<VideoLevelsConfig> video_levels;  // Optional: override video signal levels
 };
 
 /**

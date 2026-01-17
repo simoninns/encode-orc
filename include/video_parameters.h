@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <string>
+#include <optional>
 
 namespace encode_orc {
 
@@ -91,13 +92,13 @@ struct VideoParameters {
         
         // PAL signal levels (16-bit scale):
         // Sync tip: -300mV → 0x0000 (0)
-        // Blanking: 0mV → 0x4000 (16384) - 25% of 16-bit range
-        // Black: 0mV → 0x4000 (same as blanking, PAL has no setup)
-        // White: 700mV → 0xE000 (57344) - leaves headroom for chroma
+        // Blanking: 0mV → 0x42E5 (17125)
+        // Black: 0mV → 0x42E5 (17125)
+        // White: 700mV → 0xD300 (54016)
         // Absolute max with chroma: 903.3mV → ~0xFFFF
-        params.white_16b_ire = 0xE000;      // 700mV (peak white)
-        params.black_16b_ire = 0x4000;      // 0mV (same as blanking in PAL)
-        params.blanking_16b_ire = 0x4000;   // 0mV
+        params.white_16b_ire = 0xD300;      // 54016 (peak white)
+        params.black_16b_ire = 0x42E5;      // 17125
+        params.blanking_16b_ire = 0x42E5;   // 17125
         params.is_subcarrier_locked = true;
         params.is_mapped = false;
         params.is_widescreen = false;
@@ -118,13 +119,35 @@ struct VideoParameters {
         params.colour_burst_end = 110;    // Measured from real NTSC TBCs
         params.active_video_start = 134;  // Measured from real NTSC TBCs
         params.active_video_end = 894;    // Measured from real NTSC TBCs (leaves front porch)
-        params.white_16b_ire = 0xC800;
-        params.black_16b_ire = 0x4680;   // With 7.5 IRE setup
-        params.blanking_16b_ire = 0x4000;   // 0 IRE blanking level
+        params.white_16b_ire = 0xC800;      // 51200
+        params.black_16b_ire = 0x4568;      // 17768
+        params.blanking_16b_ire = 0x3AD2;   // 15058
         params.is_subcarrier_locked = true;
         params.is_mapped = false;
         params.is_widescreen = false;
         return params;
+    }
+    
+    /**
+     * @brief Apply video level overrides to parameters
+     * @param params VideoParameters to modify
+     * @param blanking_override Optional blanking level override
+     * @param black_override Optional black level override
+     * @param white_override Optional white level override
+     */
+    static void apply_video_level_overrides(VideoParameters& params,
+                                           std::optional<int32_t> blanking_override,
+                                           std::optional<int32_t> black_override,
+                                           std::optional<int32_t> white_override) {
+        if (blanking_override.has_value()) {
+            params.blanking_16b_ire = blanking_override.value();
+        }
+        if (black_override.has_value()) {
+            params.black_16b_ire = black_override.value();
+        }
+        if (white_override.has_value()) {
+            params.white_16b_ire = white_override.value();
+        }
     }
 };
 

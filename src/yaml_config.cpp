@@ -44,6 +44,24 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
             if (output["metadata_decoder"]) {
                 config.output.metadata_decoder = output["metadata_decoder"].as<std::string>();
             }
+            
+            // Parse optional video levels override
+            if (output["video_levels"]) {
+                YAML::Node video_levels = output["video_levels"];
+                VideoLevelsConfig vlc;
+                
+                if (video_levels["blanking_16b_ire"]) {
+                    vlc.blanking_16b_ire = video_levels["blanking_16b_ire"].as<int32_t>();
+                }
+                if (video_levels["black_16b_ire"]) {
+                    vlc.black_16b_ire = video_levels["black_16b_ire"].as<int32_t>();
+                }
+                if (video_levels["white_16b_ire"]) {
+                    vlc.white_16b_ire = video_levels["white_16b_ire"].as<int32_t>();
+                }
+                
+                config.output.video_levels = vlc;
+            }
         }
         
         // Parse project-level laserdisc configuration

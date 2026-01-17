@@ -18,6 +18,25 @@
 
 namespace encode_orc {
 
+// Initialize static member variables
+std::optional<int32_t> VideoEncoder::s_blanking_16b_ire_override = std::nullopt;
+std::optional<int32_t> VideoEncoder::s_black_16b_ire_override = std::nullopt;
+std::optional<int32_t> VideoEncoder::s_white_16b_ire_override = std::nullopt;
+
+void VideoEncoder::set_video_level_overrides(std::optional<int32_t> blanking_16b_ire,
+                                             std::optional<int32_t> black_16b_ire,
+                                             std::optional<int32_t> white_16b_ire) {
+    s_blanking_16b_ire_override = blanking_16b_ire;
+    s_black_16b_ire_override = black_16b_ire;
+    s_white_16b_ire_override = white_16b_ire;
+}
+
+void VideoEncoder::clear_video_level_overrides() {
+    s_blanking_16b_ire_override = std::nullopt;
+    s_black_16b_ire_override = std::nullopt;
+    s_white_16b_ire_override = std::nullopt;
+}
+
 bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
                                        VideoSystem system,
                                        LaserDiscStandard ld_standard,
@@ -41,6 +60,21 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
             params = VideoParameters::create_pal_composite();
         } else {
             params = VideoParameters::create_ntsc_composite();
+        }
+        
+        // Apply any video level overrides
+        VideoParameters::apply_video_level_overrides(params, 
+                                                     s_blanking_16b_ire_override,
+                                                     s_black_16b_ire_override,
+                                                     s_white_16b_ire_override);
+        
+        if (verbose && (s_blanking_16b_ire_override.has_value() || 
+                       s_black_16b_ire_override.has_value() || 
+                       s_white_16b_ire_override.has_value())) {
+            std::cout << "Applied video level overrides to params:\n";
+            std::cout << "  blanking: " << params.blanking_16b_ire << "\n";
+            std::cout << "  black: " << params.black_16b_ire << "\n";
+            std::cout << "  white: " << params.white_16b_ire << "\n";
         }
         
         // Get expected dimensions for this system
@@ -310,6 +344,21 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
         VideoParameters params = (system == VideoSystem::PAL)
                                  ? VideoParameters::create_pal_composite()
                                  : VideoParameters::create_ntsc_composite();
+        
+        // Apply any video level overrides
+        VideoParameters::apply_video_level_overrides(params, 
+                                                     s_blanking_16b_ire_override,
+                                                     s_black_16b_ire_override,
+                                                     s_white_16b_ire_override);
+        
+        if (verbose && (s_blanking_16b_ire_override.has_value() || 
+                       s_black_16b_ire_override.has_value() || 
+                       s_white_16b_ire_override.has_value())) {
+            std::cout << "Applied video level overrides to params:\n";
+            std::cout << "  blanking: " << params.blanking_16b_ire << "\n";
+            std::cout << "  black: " << params.black_16b_ire << "\n";
+            std::cout << "  white: " << params.white_16b_ire << "\n";
+        }
 
         int32_t img_width, img_height;
         PNGLoader::get_expected_dimensions(params, img_width, img_height);

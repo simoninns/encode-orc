@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <vector>
 #include <stdexcept>
+#include <algorithm>
 
 namespace encode_orc {
 
@@ -106,9 +107,10 @@ bool PNGLoader::load_png(const std::string& filename, const VideoParameters& par
         png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
         std::fclose(fp);
 
-        // Convert to YUV444P16
+        // Convert to YUV444P16 then clamp luma to video IRE limits
         frame.resize((int32_t)width, (int32_t)height, FrameBuffer::Format::YUV444P16);
         rgb_to_yuv444p16(image_data.data(), (int32_t)width, (int32_t)height, frame);
+        clamp_luma(frame, params);
 
         return true;
     } catch (const std::exception& e) {
@@ -181,6 +183,25 @@ void PNGLoader::rgb_to_yuv444p16(const uint8_t* rgb_data, int32_t width, int32_t
         y_plane[i] = y;
         u_plane[i] = u;
         v_plane[i] = v;
+    }
+}
+
+void PNGLoader::clamp_luma(FrameBuffer& frame, const VideoParameters& params) {
+    uint16_t* y_plane = frame.data().data();
+    const int32_t pixel_count = frame.width() * frame.height();
+    const int32_t luma_min = std::max(0, params.black_16b_ire);
+    const int32_t luma_max = std::max(params.black_16b_ire, params.white_16b_ire);
+    const int32_t luma_range = std::max(1, luma_max - luma_min); // avoid div-by-zero
+
+    // Clamp to video IRE limits, then re-normalize back to full 0-65535 range so the
+    // encoder's subsequent black/white scaling still reaches the endpoints.
+    for (int32_t i = 0; i < pixel_count; ++i) {
+        int32_t y_val = std::clamp<int32_t>(y_plane[i], luma_min, luma_max);
+        uint32_t y_span = static_cast<uint32_t>(y_val - luma_min);
+        uint32_t range = static_cast<uint32_t>(luma_range);
+        uint32_t normalized = static_cast<uint32_t>((static_cast<uint64_t>(y_span) * 65535u + range / 2u) / range); // round
+        if (normalized > 65535u) normalized = 65535u;
+        y_plane[i] = static_cast<uint16_t>(normalized);
     }
 }
 
