@@ -2,7 +2,7 @@
 # Demonstrates optional filter settings to prevent HF artifacts on color bar edges
 
 name: "PAL Color Bars with Chroma Filtering"
-description: "RGB30 EBU color bars encoded with 1.3 MHz chroma low-pass filter to prevent ringing artifacts"
+description: "YUV422 EBU color bars encoded with 1.3 MHz chroma low-pass filter to prevent ringing artifacts"
 
 output:
   filename: "pal-colorbars-filtered.tbc"

@@ -1,12 +1,12 @@
-# NTSC RGB30 color bars (75%) with CHROMA FILTER DISABLED
+# NTSC YUV422 color bars (75%) with CHROMA FILTER DISABLED
 # Use this to observe ringing artifacts on vertical color bar edges
-# Compare output against ntsc-rgb30-eia-75-filter-on.yaml to see the difference
+# Compare output against ntsc-yuv422-eia-75-filter-on.yaml to see the difference
 
 name: "NTSC Color Bars 75% (Filter OFF - Artifacts)"
-description: "RGB30 EIA color bars with chroma filtering DISABLED - shows ringing artifacts"
+description: "YUV422 EIA color bars with chroma filtering DISABLED - shows ringing artifacts"
 
 output:
-  filename: "test-output/ntsc-rgb30-eia-75-filter-off.tbc"
+  filename: "test-output/ntsc-yuv422-eia-75-filter-off.tbc"
   format: "ntsc-composite"
 
 laserdisc:
@@ -17,7 +17,7 @@ sections:
   - name: "EIA Color Bars (75%) - NO CHROMA FILTER"
     duration: 10
     source:
-      type: "rgb30-image"
+      type: "yuv422-image"
       file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-75.raw"
     
     # Explicitly DISABLE chroma filtering to see artifacts

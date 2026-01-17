@@ -82,10 +82,10 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                         section.source_type = source["type"].as<std::string>();
                     }
                     
-                    if (section.source_type == "rgb30-image" && source["file"]) {
-                        RGB30ImageSource rgb30;
-                        rgb30.file = source["file"].as<std::string>();
-                        section.rgb30_image_source = rgb30;
+                    if ((section.source_type == "rgb30-image" || section.source_type == "yuv422-image") && source["file"]) {
+                        YUV422ImageSource yuv422;
+                        yuv422.file = source["file"].as<std::string>();
+                        section.yuv422_image_source = yuv422;
                     }
                     if (section.source_type == "png-image" && source["file"]) {
                         PNGImageSource png;
@@ -232,13 +232,13 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
             return false;
         }
         
-        if (section.source_type == "rgb30-image") {
-            if (!section.rgb30_image_source) {
-                error_message = "RGB30 image source missing for section: " + section.name;
+        if (section.source_type == "rgb30-image" || section.source_type == "yuv422-image") {
+            if (!section.yuv422_image_source) {
+                error_message = "Raw image source missing for section: " + section.name;
                 return false;
             }
             if (!section.duration) {
-                error_message = "Duration is required for RGB30 image section: " + section.name;
+                error_message = "Duration is required for raw image section: " + section.name;
                 return false;
             }
             if (section.duration.value() <= 0) {

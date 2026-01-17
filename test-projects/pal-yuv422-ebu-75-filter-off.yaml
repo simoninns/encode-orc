@@ -1,12 +1,12 @@
-# PAL RGB30 color bars (75%) with CHROMA FILTER DISABLED
+# PAL YUV422 color bars (75%) with CHROMA FILTER DISABLED
 # Use this to observe ringing artifacts on vertical color bar edges
-# Compare output against pal-rgb30-ebu-75-filter-on.yaml to see the difference
+# Compare output against pal-yuv422-ebu-75-filter-on.yaml to see the difference
 
 name: "PAL Color Bars 75% (Filter OFF - Artifacts)"
-description: "RGB30 EBU color bars with chroma filtering DISABLED - shows ringing artifacts"
+description: "YUV422 EBU color bars with chroma filtering DISABLED - shows ringing artifacts"
 
 output:
-  filename: "test-output/pal-rgb30-ebu-75-filter-off.tbc"
+  filename: "test-output/pal-yuv422-ebu-75-filter-off.tbc"
   format: "pal-composite"
 
 laserdisc:
@@ -17,7 +17,7 @@ sections:
   - name: "EBU Color Bars (75%) - NO CHROMA FILTER"
     duration: 10
     source:
-      type: "rgb30-image"
+      type: "yuv422-image"
       file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
     
     # Explicitly DISABLE chroma filtering to see artifacts

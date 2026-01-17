@@ -1,7 +1,7 @@
 /*
  * File:        video_encoder.h
  * Module:      encode-orc
- * Purpose:     Main video encoder coordinating RGB30 image loading and PAL/NTSC encoding
+ * Purpose:     Main video encoder coordinating raw image loading and PAL/NTSC encoding
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  * SPDX-FileCopyrightText: 2026 Simon Inns
@@ -24,15 +24,15 @@ namespace encode_orc {
 /**
  * @brief Main video encoder class
  * 
- * Coordinates RGB30 image loading, PAL/NTSC encoding, and file output
+ * Coordinates raw image loading (Y'CbCr 4:2:2 or PNG), PAL/NTSC encoding, and file output
  */
 class VideoEncoder {
 public:
     /**
-     * @brief Encode video with RGB30 image repeated for multiple frames
+     * @brief Encode video with Y'CbCr 4:2:2 raw image repeated for multiple frames
      * @param output_filename Output .tbc filename (or base filename for Y/C mode)
      * @param system Video system (PAL or NTSC)
-     * @param rgb30_file Path to RGB30 raw image file
+     * @param yuv422_file Path to Y'CbCr 4:2:2 raw image file (YUYV packed, 10-bit studio range)
      * @param num_frames Number of frames to encode (image repeated each frame)
      * @param verbose Enable verbose output
      * @param picture_start Starting CAV picture number (0 = not used)
@@ -44,19 +44,19 @@ public:
      * @param yc_legacy Use legacy naming (.tbc/.tbc_chroma) instead of modern (.tbcy/.tbcc) (default: false)
      * @return true on success, false on error
      */
-    bool encode_rgb30_image(const std::string& output_filename,
-                           VideoSystem system,
-                           LaserDiscStandard ld_standard,
-                           const std::string& rgb30_file,
-                           int32_t num_frames,
-                           bool verbose = false,
-                           int32_t picture_start = 0,
-                           int32_t chapter = 0,
-                           const std::string& timecode_start = "",
-                           bool enable_chroma_filter = true,
-                           bool enable_luma_filter = false,
-                           bool separate_yc = false,
-                           bool yc_legacy = false);
+    bool encode_yuv422_image(const std::string& output_filename,
+                            VideoSystem system,
+                            LaserDiscStandard ld_standard,
+                            const std::string& yuv422_file,
+                            int32_t num_frames,
+                            bool verbose = false,
+                            int32_t picture_start = 0,
+                            int32_t chapter = 0,
+                            const std::string& timecode_start = "",
+                            bool enable_chroma_filter = true,
+                            bool enable_luma_filter = false,
+                            bool separate_yc = false,
+                            bool yc_legacy = false);
     
     /**
      * @brief Encode video with PNG image repeated for multiple frames

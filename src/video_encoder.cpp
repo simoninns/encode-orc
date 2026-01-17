@@ -9,7 +9,7 @@
 
 #include "video_encoder.h"
 #include "biphase_encoder.h"
-#include "rgb30_loader.h"
+#include "yuv422_loader.h"
 #include "png_loader.h"
 #include "yc_tbc_writer.h"
 #include <iostream>
@@ -18,19 +18,19 @@
 
 namespace encode_orc {
 
-bool VideoEncoder::encode_rgb30_image(const std::string& output_filename,
-                                      VideoSystem system,
-                                      LaserDiscStandard ld_standard,
-                                      const std::string& rgb30_file,
-                                      int32_t num_frames,
-                                      bool verbose,
-                                      int32_t picture_start,
-                                      int32_t chapter,
-                                      const std::string& timecode_start,
-                                      bool enable_chroma_filter,
-                                      bool enable_luma_filter,
-                                      bool separate_yc,
-                                      bool yc_legacy) {
+bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
+                                       VideoSystem system,
+                                       LaserDiscStandard ld_standard,
+                                       const std::string& yuv422_file,
+                                       int32_t num_frames,
+                                       bool verbose,
+                                       int32_t picture_start,
+                                       int32_t chapter,
+                                       const std::string& timecode_start,
+                                       bool enable_chroma_filter,
+                                       bool enable_luma_filter,
+                                       bool separate_yc,
+                                       bool yc_legacy) {
     try {
         // Determine whether this standard should carry VBI/VITS for the chosen system
         const bool include_vbi = standard_supports_vbi(ld_standard, system);
@@ -45,22 +45,22 @@ bool VideoEncoder::encode_rgb30_image(const std::string& output_filename,
         
         // Get expected dimensions for this system
         int32_t img_width, img_height;
-        RGB30Loader::get_expected_dimensions(params, img_width, img_height);
+        YUV422Loader::get_expected_dimensions(params, img_width, img_height);
         
         if (verbose) {
             std::cout << "Encoding " << num_frames << " frames (" 
                       << (num_frames * 2) << " fields)\n";
             std::cout << "System: " << (system == VideoSystem::PAL ? "PAL" : "NTSC") << "\n";
-            std::cout << "Image: " << rgb30_file << " (" << img_width << "x" << img_height << ")\n";
+            std::cout << "Image: " << yuv422_file << " (" << img_width << "x" << img_height << ")\n";
             std::cout << "Field dimensions: " << params.field_width << "x" 
                       << params.field_height << "\n";
         }
         
-        // Load RGB30 image
+        // Load Y'CbCr 4:2:2 raw image
         FrameBuffer image_frame;
         std::string load_error;
-        if (!RGB30Loader::load_rgb30(rgb30_file, img_width, img_height, params, 
-                                     image_frame, load_error)) {
+        if (!YUV422Loader::load_yuv422(yuv422_file, img_width, img_height, params, 
+                                       image_frame, load_error)) {
             error_message_ = load_error;
             return false;
         }
@@ -170,7 +170,7 @@ bool VideoEncoder::encode_rgb30_image(const std::string& output_filename,
         metadata.video_params = params;
         metadata.git_branch = "main";
         metadata.git_commit = "v0.1.0-dev";
-        metadata.capture_notes = "RGB30 image from " + rgb30_file;
+        metadata.capture_notes = "YUV422 raw image from " + yuv422_file;
         
         // Add VBI data for each field (frame numbers on lines 16, 17, 18) when the standard allows it
         if (include_vbi) {

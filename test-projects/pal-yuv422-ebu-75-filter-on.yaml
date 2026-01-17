@@ -1,12 +1,12 @@
-# PAL RGB30 color bars (75%) with CHROMA FILTER ENABLED
+# PAL YUV422 color bars (75%) with CHROMA FILTER ENABLED
 # Use this as reference for clean output without artifacts
-# Compare output against pal-rgb30-ebu-75-filter-off.yaml to see filter effect
+# Compare output against pal-yuv422-ebu-75-filter-off.yaml to see filter effect
 
 name: "PAL Color Bars 75% (Filter ON - Clean)"
-description: "RGB30 EBU color bars with chroma filtering ENABLED - clean output"
+description: "YUV422 EBU color bars with chroma filtering ENABLED - clean output"
 
 output:
-  filename: "test-output/pal-rgb30-ebu-75-filter-on.tbc"
+  filename: "test-output/pal-yuv422-ebu-75-filter-on.tbc"
   format: "pal-composite"
 
 laserdisc:
@@ -17,7 +17,7 @@ sections:
   - name: "EBU Color Bars (75%) - WITH CHROMA FILTER"
     duration: 10
     source:
-      type: "rgb30-image"
+      type: "yuv422-image"
       file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
     
     # Explicitly ENABLE chroma filtering for clean output

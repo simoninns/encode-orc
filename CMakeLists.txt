@@ -43,7 +43,7 @@ set(SOURCES
     src/ntsc_vits_generator.cpp
     src/biphase_encoder.cpp
     src/color_conversion.cpp
-    src/rgb30_loader.cpp
+    src/yuv422_loader.cpp
     src/png_loader.cpp
     src/video_encoder.cpp
 )

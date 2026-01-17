@@ -98,7 +98,7 @@ struct LaserDiscConfig {
 /**
  * @brief RGB30 raw image source configuration
  */
-struct RGB30ImageSource {
+struct YUV422ImageSource {
     std::string file;  // Path to raw RGB30 file
 };
 
@@ -117,7 +117,7 @@ struct VideoSection {
     std::optional<int32_t> duration;  // Required for RGB30 images
     
     std::string source_type;  // "rgb30-image" or "png-image"
-    std::optional<RGB30ImageSource> rgb30_image_source;
+    std::optional<YUV422ImageSource> yuv422_image_source;
     std::optional<PNGImageSource> png_image_source;
     
     std::optional<FilterConfig> filters;  // Optional filter settings
