@@ -518,14 +518,24 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
             generate_color_burst_chroma(c_line, line, field_number);
             
             // Handle VBI lines if enabled
-            if (frame_number_for_vbi >= 0 && vits_enabled_ && vits_generator_) {
-                if (line == 19) {  // VITS line
-                    vits_generator_->generate_itu_composite_line19(y_line, field_number);
-                }
-            }
-            if (frame_number_for_vbi >= 0 && line >= 16 && line <= 18) {
-                // VBI biphase lines - only on Y field
+            if (frame_number_for_vbi >= 0 && (line == 15 || line == 16 || line == 17)) {
                 generate_biphase_vbi_line(y_line, line, field_number, frame_number_for_vbi);
+            }
+            // VITS lines for field 1 (if enabled)
+            else if (vits_enabled_ && vits_generator_) {
+                // First field VITS lines (0-indexed in field)
+                if (line == 18) {  // Line 332 in PAL frame (odd-first field parity)
+                    vits_generator_->generate_uk_national_line332(y_line, field_number);
+                }
+                else if (line == 19) {  // Line 333 in PAL frame
+                    vits_generator_->generate_multiburst_line333(y_line, field_number);
+                }
+                else {
+                    // Other VBI lines - regular blanking
+                }
+                
+                // For C field during VITS lines, set to neutral (no chroma modulation)
+                std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(32768));
             }
 
             // Ensure no color burst appears in luma during VITS/VBI lines
@@ -625,13 +635,24 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
             // C field gets color burst (centered at 32768)
             generate_color_burst_chroma(c_line, line, field_number + 1);
             
-            if (frame_number_for_vbi >= 0 && vits_enabled_ && vits_generator_) {
-                if (line == 19) {
+            if (frame_number_for_vbi >= 0 && (line == 15 || line == 16 || line == 17)) {
+                generate_biphase_vbi_line(y_line, line, field_number + 1, frame_number_for_vbi);
+            }
+            // VITS lines for field 2 (if enabled)
+            else if (vits_enabled_ && vits_generator_) {
+                // Second field VITS lines (0-indexed in field)
+                if (line == 18) {  // Line 19 in PAL frame
                     vits_generator_->generate_itu_composite_line19(y_line, field_number + 1);
                 }
-            }
-            if (frame_number_for_vbi >= 0 && line >= 16 && line <= 18) {
-                generate_biphase_vbi_line(y_line, line, field_number + 1, frame_number_for_vbi);
+                else if (line == 19) {  // Line 20 in PAL frame
+                    vits_generator_->generate_itu_its_line20(y_line, field_number + 1);
+                }
+                else {
+                    // Other VBI lines - regular blanking
+                }
+                
+                // For C field during VITS lines, set to neutral (no chroma modulation)
+                std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(32768));
             }
 
             // Ensure no color burst appears in luma during VITS/VBI lines

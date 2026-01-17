@@ -501,14 +501,24 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
             generate_color_burst_chroma(c_line, line, field_number);
             
             // Handle VBI lines if enabled
-            if (frame_number_for_vbi >= 0 && vits_enabled_ && vits_generator_) {
-                if (line == 18) {  // VITS line for NTSC
+            if (frame_number_for_vbi >= 0 && (line == 14 || line == 15 || line == 16)) {
+                generate_biphase_vbi_line(y_line, line, field_number, frame_number_for_vbi);
+            }
+            // VITS lines for field 1 (if enabled)
+            else if (vits_enabled_ && vits_generator_) {
+                // First field VITS lines (0-indexed in field)
+                if (line == 18) {  // Line 19 in NTSC frame (first field)
                     vits_generator_->generate_vir_line19(y_line, field_number);
                 }
-            }
-            if (frame_number_for_vbi >= 0 && line >= 14 && line <= 17) {
-                // VBI biphase lines - only on Y field
-                generate_biphase_vbi_line(y_line, line, field_number, frame_number_for_vbi);
+                else if (line == 19) {  // Line 20 in NTSC frame (first field) - NTC-7 Composite
+                    vits_generator_->generate_ntc7_composite_line17(y_line, field_number);
+                }
+                else {
+                    // Other VBI lines - regular blanking
+                }
+                
+                // For C field during VITS lines, set to neutral (no chroma modulation)
+                std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(32768));
             }
 
             // Ensure no color burst appears in luma during VITS/VBI lines
@@ -597,13 +607,24 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
             generate_sync_pulse(y_line, line);
             generate_color_burst_chroma(c_line, line, field_number + 1);
             
-            if (frame_number_for_vbi >= 0 && vits_enabled_ && vits_generator_) {
-                if (line == 18) {
+            if (frame_number_for_vbi >= 0 && (line == 14 || line == 15 || line == 16)) {
+                generate_biphase_vbi_line(y_line, line, field_number + 1, frame_number_for_vbi);
+            }
+            // VITS lines for field 2 (if enabled)
+            else if (vits_enabled_ && vits_generator_) {
+                // Second field VITS lines (0-indexed in field)
+                if (line == 18) {  // Line 282 in NTSC frame (second field)
                     vits_generator_->generate_vir_line19(y_line, field_number + 1);
                 }
-            }
-            if (frame_number_for_vbi >= 0 && line >= 14 && line <= 17) {
-                generate_biphase_vbi_line(y_line, line, field_number + 1, frame_number_for_vbi);
+                else if (line == 19) {  // Line 283 in NTSC frame (second field) - NTC-7 Combination
+                    vits_generator_->generate_ntc7_combination_line20(y_line, field_number + 1);
+                }
+                else {
+                    // Other VBI lines - regular blanking
+                }
+                
+                // For C field during VITS lines, set to neutral (no chroma modulation)
+                std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(32768));
             }
 
             // Ensure no color burst appears in luma during VITS/VBI lines
