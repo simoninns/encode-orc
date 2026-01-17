@@ -87,6 +87,11 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                         rgb30.file = source["file"].as<std::string>();
                         section.rgb30_image_source = rgb30;
                     }
+                    if (section.source_type == "png-image" && source["file"]) {
+                        PNGImageSource png;
+                        png.file = source["file"].as<std::string>();
+                        section.png_image_source = png;
+                    }
                 }
                 
                 // Parse filter configuration
@@ -234,6 +239,20 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
             }
             if (!section.duration) {
                 error_message = "Duration is required for RGB30 image section: " + section.name;
+                return false;
+            }
+            if (section.duration.value() <= 0) {
+                error_message = "Duration must be positive for section: " + section.name;
+                return false;
+            }
+        }
+        if (section.source_type == "png-image") {
+            if (!section.png_image_source) {
+                error_message = "PNG image source missing for section: " + section.name;
+                return false;
+            }
+            if (!section.duration) {
+                error_message = "Duration is required for PNG image section: " + section.name;
                 return false;
             }
             if (section.duration.value() <= 0) {

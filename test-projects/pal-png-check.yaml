@@ -1,0 +1,27 @@
+name: "PAL PNG Check Composite"
+description: "PAL encoding using PNG testcard image"
+
+output:
+  filename: "test-output/pal-png-check.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  standard: "none"
+  mode: "none"
+
+sections:
+  - name: "Check Composite"
+    duration: 10
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Composite.png"
+  - name: "Color Step Lin Magenta"
+    duration: 10
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Lin-Magenta.png"
+  - name: "Geometry Checkers 32"
+    duration: 10
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-32.png"

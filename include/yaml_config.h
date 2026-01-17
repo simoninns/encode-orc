@@ -103,14 +103,22 @@ struct RGB30ImageSource {
 };
 
 /**
+ * @brief PNG image source configuration
+ */
+struct PNGImageSource {
+    std::string file;  // Path to PNG image file
+};
+
+/**
  * @brief Video section configuration
  */
 struct VideoSection {
     std::string name;
     std::optional<int32_t> duration;  // Required for RGB30 images
     
-    std::string source_type;  // "rgb30-image"
+    std::string source_type;  // "rgb30-image" or "png-image"
     std::optional<RGB30ImageSource> rgb30_image_source;
+    std::optional<PNGImageSource> png_image_source;
     
     std::optional<FilterConfig> filters;  // Optional filter settings
     std::optional<LaserDiscConfig> laserdisc;

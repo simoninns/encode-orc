@@ -59,6 +59,36 @@ public:
                            bool yc_legacy = false);
     
     /**
+     * @brief Encode video with PNG image repeated for multiple frames
+     * @param output_filename Output .tbc filename (or base filename for Y/C mode)
+     * @param system Video system (PAL or NTSC)
+     * @param png_file Path to PNG image file
+     * @param num_frames Number of frames to encode (image repeated each frame)
+     * @param verbose Enable verbose output
+     * @param picture_start Starting CAV picture number (0 = not used)
+     * @param chapter CLV chapter number (0 = not used)
+     * @param timecode_start CLV timecode HH:MM:SS:FF (empty = not used)
+     * @param enable_chroma_filter Enable 1.3 MHz chroma low-pass filter (default: true)
+     * @param enable_luma_filter Enable luma low-pass filter (default: false)
+     * @param separate_yc Enable separate Y/C TBC output (default: false)
+     * @param yc_legacy Use legacy naming (.tbc/.tbc_chroma) instead of modern (.tbcy/.tbcc) (default: false)
+     * @return true on success, false on error
+     */
+    bool encode_png_image(const std::string& output_filename,
+                          VideoSystem system,
+                          LaserDiscStandard ld_standard,
+                          const std::string& png_file,
+                          int32_t num_frames,
+                          bool verbose = false,
+                          int32_t picture_start = 0,
+                          int32_t chapter = 0,
+                          const std::string& timecode_start = "",
+                          bool enable_chroma_filter = true,
+                          bool enable_luma_filter = false,
+                          bool separate_yc = false,
+                          bool yc_legacy = false);
+    
+    /**
      * @brief Get error message from last operation
      */
     const std::string& get_error() const { return error_message_; }

@@ -80,6 +80,9 @@ int main(int argc, char* argv[]) {
         if (section.rgb30_image_source) {
             std::cout << "  File: " << section.rgb30_image_source->file << "\n";
         }
+        if (section.png_image_source) {
+            std::cout << "  File: " << section.png_image_source->file << "\n";
+        }
         if (section.duration) {
             std::cout << "  Frames: " << section.duration.value() << "\n";
         }
@@ -118,7 +121,7 @@ int main(int argc, char* argv[]) {
     for (const auto& section : config.sections) {
         std::cout << "Encoding section: " << section.name << "\n";
         
-        if (section.rgb30_image_source) {
+        if (section.rgb30_image_source || section.png_image_source) {
             int32_t picture_start = 0;
             int32_t chapter = 0;
             std::string timecode_start = "";
@@ -143,14 +146,25 @@ int main(int argc, char* argv[]) {
             }
             
             VideoEncoder encoder;
-            std::string rgb30_file = section.rgb30_image_source->file;
-            
-            if (!encoder.encode_rgb30_image(config.output.filename + ".temp",
-                                           system, config.laserdisc.standard, rgb30_file,
-                                           section.duration.value(), false,
-                                           picture_start, chapter, timecode_start,
-                                           enable_chroma_filter, enable_luma_filter,
-                                           is_separate_yc, is_yc_legacy)) {
+            bool ok = false;
+            if (section.rgb30_image_source) {
+                std::string rgb30_file = section.rgb30_image_source->file;
+                ok = encoder.encode_rgb30_image(config.output.filename + ".temp",
+                                               system, config.laserdisc.standard, rgb30_file,
+                                               section.duration.value(), false,
+                                               picture_start, chapter, timecode_start,
+                                               enable_chroma_filter, enable_luma_filter,
+                                               is_separate_yc, is_yc_legacy);
+            } else if (section.png_image_source) {
+                std::string png_file = section.png_image_source->file;
+                ok = encoder.encode_png_image(config.output.filename + ".temp",
+                                              system, config.laserdisc.standard, png_file,
+                                              section.duration.value(), false,
+                                              picture_start, chapter, timecode_start,
+                                              enable_chroma_filter, enable_luma_filter,
+                                              is_separate_yc, is_yc_legacy);
+            }
+            if (!ok) {
                 std::cerr << "Error: " << encoder.get_error() << "\n";
                 return 1;
             }

@@ -22,6 +22,9 @@ find_package(SQLite3 REQUIRED)
 # Find yaml-cpp
 find_package(yaml-cpp REQUIRED)
 
+# Find libpng
+find_package(PNG REQUIRED)
+
 # Include directories
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
@@ -41,6 +44,7 @@ set(SOURCES
     src/biphase_encoder.cpp
     src/color_conversion.cpp
     src/rgb30_loader.cpp
+    src/png_loader.cpp
     src/video_encoder.cpp
 )
 
@@ -48,7 +52,7 @@ set(SOURCES
 add_executable(encode-orc ${SOURCES})
 
 # Link libraries
-target_link_libraries(encode-orc PRIVATE SQLite::SQLite3 yaml-cpp)
+target_link_libraries(encode-orc PRIVATE SQLite::SQLite3 yaml-cpp PNG::PNG)
 
 # Install target
 install(TARGETS encode-orc DESTINATION bin)
