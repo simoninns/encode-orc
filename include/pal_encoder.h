@@ -145,6 +145,7 @@ private:
      * @param line_number Line number in field (for absolute line calculation)
      * @param field_number Field number (for absolute line calculation)
      * @param width Width of active video in pixels
+     * @param studio_range_input true if input is studio range (0-1023), false if full-range (0-65535)
      */
     void encode_active_line(uint16_t* line_buffer, 
                            const uint16_t* y_line,
@@ -152,7 +153,8 @@ private:
                            const uint16_t* v_line,
                            int32_t line_number,
                            int32_t field_number,
-                           int32_t width);
+                           int32_t width,
+                           bool studio_range_input = false);
     
     /**
      * @brief Generate vertical sync line
@@ -223,10 +225,11 @@ private:
      * @param v V chroma value (16-bit)
      * @param phase Subcarrier phase (radians)
      * @param v_switch PAL V-switch (+1 or -1)
+     * @param studio_range_input true if input is studio range (0-1023), false if full-range (0-65535)
      * @return Composite video sample (16-bit)
      */
     uint16_t yuv_to_composite(uint16_t y, uint16_t u, uint16_t v, 
-                             double phase, int32_t v_switch);
+                             double phase, int32_t v_switch, bool studio_range_input = false);
 };
 
 } // namespace encode_orc

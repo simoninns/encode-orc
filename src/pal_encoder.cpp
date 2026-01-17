@@ -74,13 +74,22 @@ Field PALEncoder::encode_field(const FrameBuffer& frame_buffer,
                                bool is_first_field,
                                int32_t frame_number_for_vbi) {
     Field field(params_.field_width, params_.field_height);
-    
+
     // Verify input format
     if (frame_buffer.format() != FrameBuffer::Format::YUV444P16) {
         // For now, just create a blanking field if wrong format
         field.fill(static_cast<uint16_t>(blanking_level_));
         return field;
     }
+    
+    // Detect if source is in studio code space (≤1023) to preserve sub-black
+    const uint16_t* y_plane_all = frame_buffer.data().data();
+    const int32_t total_pixels = frame_buffer.width() * frame_buffer.height();
+    uint16_t y_max = 0;
+    for (int32_t i = 0; i < total_pixels; ++i) {
+        if (y_plane_all[i] > y_max) y_max = y_plane_all[i];
+    }
+    const bool studio_range_input = (y_max <= 1023);
     
     // Get frame dimensions
     int32_t frame_width = frame_buffer.width();
@@ -156,7 +165,7 @@ Field PALEncoder::encode_field(const FrameBuffer& frame_buffer,
                 
                 // Encode active video portion
                 encode_active_line(line_buffer, y_line, u_line, v_line, 
-                                 line, field_number, frame_width);
+                                 line, field_number, frame_width, studio_range_input);
             } else {
                 // Beyond source frame - use blanking with sync and burst
                 generate_sync_pulse(line_buffer, line);
@@ -319,7 +328,8 @@ void PALEncoder::encode_active_line(uint16_t* line_buffer,
                                    const uint16_t* v_line,
                                    int32_t line_number,
                                    int32_t field_number,
-                                   int32_t width) {
+                                   int32_t width,
+                                   bool studio_range_input) {
     // Apply filters if enabled
     // Note: We need to copy the line data first to apply filtering
     std::vector<uint16_t> y_filtered(y_line, y_line + width);
@@ -384,30 +394,48 @@ void PALEncoder::encode_active_line(uint16_t* line_buffer,
         double phase = 2.0 * PI * (subcarrier_freq_ * t + prev_cycles);
         
         // Convert YUV to composite signal
-        uint16_t composite = yuv_to_composite(y, u, v, phase, v_switch);
+        uint16_t composite = yuv_to_composite(y, u, v, phase, v_switch, studio_range_input);
         line_buffer[sample] = composite;
     }
 }
 
 uint16_t PALEncoder::yuv_to_composite(uint16_t y, uint16_t u, uint16_t v,
-                                      double phase, int32_t v_switch) {
+                                      double phase, int32_t v_switch, bool studio_range_input) {
     // Convert 16-bit YUV to normalized values
-    // Y: 0-65535 → 0.0-1.0
-    // U, V: 0-65535 → ±0.436/±0.615 (scaled by actual max values)
-    double y_norm = static_cast<double>(y) / 65535.0;
+    // For studio input (y,u,v in 0-1023 range):
+    //   Y: 0-1023 → map 64→black, 940→white, preserve sub-black (0-63)
+    //   U,V: 0-896 → map to ±0.436/±0.614
+    // For full-range input (y,u,v in 0-65535 range):
+    //   Y: 0-65535 → 0.0-1.0
+    //   U,V: 0-65535 → ±0.436/±0.615
+    
+    int32_t luma_range = white_level_ - black_level_;
+    int32_t luma_scaled;
+    
+    if (studio_range_input) {
+        // Studio codes: 64→black_level, 940→white_level, preserve sub-black
+        int32_t y_signal = black_level_ + ((static_cast<int32_t>(y) - 64) * luma_range) / 876;
+        luma_scaled = clamp_to_16bit(y_signal);
+    } else {
+        // Full-range: 0-65535 → normalized to black-white range
+        double y_norm = static_cast<double>(y) / 65535.0;
+        luma_scaled = black_level_ + static_cast<int32_t>(y_norm * luma_range);
+    }
     
     // Scale U/V back to their actual ranges
     // Max values for PAL: U_MAX=0.436010, V_MAX=0.614975
     const double U_MAX = 0.436010;
     const double V_MAX = 0.614975;
-    double u_norm = ((static_cast<double>(u) / 65535.0) - 0.5) * 2.0 * U_MAX;  // ±U_MAX range
-    double v_norm = ((static_cast<double>(v) / 65535.0) - 0.5) * 2.0 * V_MAX;  // ±V_MAX range
-    
-    // Scale luma to video range
-    // Map 0.0-1.0 to black_level-white_level
-    int32_t luma_range = white_level_ - black_level_;
-    int32_t luma_scaled = black_level_ + 
-                         static_cast<int32_t>(y_norm * luma_range);
+    double u_norm, v_norm;
+    if (studio_range_input) {
+        // Studio chroma: 0-896 range (64-960 studio codes)
+        u_norm = ((static_cast<double>(u) / 896.0) - 0.5) * 2.0 * U_MAX;
+        v_norm = ((static_cast<double>(v) / 896.0) - 0.5) * 2.0 * V_MAX;
+    } else {
+        // Full-range: 0-65535
+        u_norm = ((static_cast<double>(u) / 65535.0) - 0.5) * 2.0 * U_MAX;  // ±U_MAX range
+        v_norm = ((static_cast<double>(v) / 65535.0) - 0.5) * 2.0 * V_MAX;  // ±V_MAX range
+    }
     
     // PAL chroma encoding - following ld-chroma-encoder exactly
     // Composite = Y + U*sin(ωt) + V*cos(ωt)*Vsw  (from Poynton p338)
@@ -496,6 +524,13 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
     const uint16_t* y_plane = frame_data;
     const uint16_t* u_plane = frame_data + pixel_count;
     const uint16_t* v_plane = frame_data + pixel_count * 2;
+
+    // Detect studio-range input (≤1023) to preserve sub-black
+    uint16_t y_max = 0;
+    for (int32_t i = 0; i < pixel_count; ++i) {
+        if (y_plane[i] > y_max) y_max = y_plane[i];
+    }
+    const bool studio_range_input = (y_max <= 1023);
     
     // For separate Y/C encoding, we use the source data directly
     // (filters are applied during composite encoding, but for Y/C we skip filtering
@@ -587,15 +622,28 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
                 uint16_t v_val = v_plane[source_line * frame_width + pixel_x];
                 
                 // Convert Y to luma signal level
-                double y_norm = static_cast<double>(y_val) / 65535.0;
                 int32_t luma_range = white_level_ - black_level_;
-                int32_t y_signal = black_level_ + static_cast<int32_t>(y_norm * luma_range);
-                
+                int32_t y_signal;
+                if (studio_range_input) {
+                    // Studio codes: 64 -> black_level_, 940 -> white_level_, sub-black allowed
+                    int32_t y_delta = static_cast<int32_t>(y_val) - 64;   // can be negative
+                    y_signal = black_level_ + (y_delta * luma_range) / 876; // 940-64=876
+                } else {
+                    // Full-range input
+                    double y_norm = static_cast<double>(y_val) / 65535.0;
+                    y_signal = black_level_ + static_cast<int32_t>(y_norm * luma_range);
+                }
+                y_signal = clamp_to_16bit(y_signal);
+
                 // Convert U/V to chroma signal
                 const double U_MAX = 0.436010;
                 const double V_MAX = 0.614975;
-                double u_norm = ((static_cast<double>(u_val) / 65535.0) - 0.5) * 2.0 * U_MAX;
-                double v_norm = ((static_cast<double>(v_val) / 65535.0) - 0.5) * 2.0 * V_MAX;
+                double u_norm = studio_range_input
+                               ? (static_cast<double>(static_cast<int32_t>(u_val) - 512) / 448.0) * U_MAX
+                               : ((static_cast<double>(u_val) / 65535.0 - 0.5) * 2.0 * U_MAX);
+                double v_norm = studio_range_input
+                               ? (static_cast<double>(static_cast<int32_t>(v_val) - 512) / 448.0) * V_MAX
+                               : ((static_cast<double>(v_val) / 65535.0 - 0.5) * 2.0 * V_MAX);
                 
                 // Calculate subcarrier phase
                 double t = static_cast<double>(sample) / sample_rate_;
@@ -606,7 +654,7 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
                 int32_t chroma_signal = static_cast<int32_t>(chroma * luma_range);
                 
                 // Y field: luma only (no chroma)
-                y_line[sample] = clamp_to_16bit(y_signal);
+                y_line[sample] = static_cast<uint16_t>(y_signal);
                 
                 // C field: chroma only (centered at 16-bit midpoint, no luma)
                 c_line[sample] = clamp_to_16bit(32768 + chroma_signal);
@@ -693,18 +741,29 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
                 int32_t pixel_x = static_cast<int32_t>(pixel_pos);
                 if (pixel_x >= frame_width) pixel_x = frame_width - 1;
                 
-uint16_t y_val = y_plane[source_line * frame_width + pixel_x];
-                    uint16_t u_val = u_plane[source_line * frame_width + pixel_x];
-                    uint16_t v_val = v_plane[source_line * frame_width + pixel_x];
-                
-                double y_norm = static_cast<double>(y_val) / 65535.0;
+                uint16_t y_val = y_plane[source_line * frame_width + pixel_x];
+                uint16_t u_val = u_plane[source_line * frame_width + pixel_x];
+                uint16_t v_val = v_plane[source_line * frame_width + pixel_x];
+
                 int32_t luma_range = white_level_ - black_level_;
-                int32_t y_signal = black_level_ + static_cast<int32_t>(y_norm * luma_range);
-                
+                int32_t y_signal;
+                if (studio_range_input) {
+                    int32_t y_delta = static_cast<int32_t>(y_val) - 64;
+                    y_signal = black_level_ + (y_delta * luma_range) / 876; // 940-64
+                } else {
+                    double y_norm = static_cast<double>(y_val) / 65535.0;
+                    y_signal = black_level_ + static_cast<int32_t>(y_norm * luma_range);
+                }
+                y_signal = clamp_to_16bit(y_signal);
+
                 const double U_MAX = 0.436010;
                 const double V_MAX = 0.614975;
-                double u_norm = ((static_cast<double>(u_val) / 65535.0) - 0.5) * 2.0 * U_MAX;
-                double v_norm = ((static_cast<double>(v_val) / 65535.0) - 0.5) * 2.0 * V_MAX;
+                double u_norm = studio_range_input
+                               ? (static_cast<double>(static_cast<int32_t>(u_val) - 512) / 448.0) * U_MAX
+                               : ((static_cast<double>(u_val) / 65535.0 - 0.5) * 2.0 * U_MAX);
+                double v_norm = studio_range_input
+                               ? (static_cast<double>(static_cast<int32_t>(v_val) - 512) / 448.0) * V_MAX
+                               : ((static_cast<double>(v_val) / 65535.0 - 0.5) * 2.0 * V_MAX);
                 
                 double t = static_cast<double>(sample) / sample_rate_;
                 double phase = 2.0 * PI * (subcarrier_freq_ * t + prev_cycles);
@@ -712,7 +771,7 @@ uint16_t y_val = y_plane[source_line * frame_width + pixel_x];
                 double chroma = (u_norm * std::sin(phase)) + (v_norm * v_switch * std::cos(phase));
                 int32_t chroma_signal = static_cast<int32_t>(chroma * luma_range);
                 
-                y_line[sample] = clamp_to_16bit(y_signal);
+                y_line[sample] = static_cast<uint16_t>(y_signal);
                 c_line[sample] = clamp_to_16bit(32768 + chroma_signal);
             }
             

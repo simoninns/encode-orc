@@ -163,6 +163,7 @@ private:
      * @param line_number Line number in field (for absolute line calculation)
      * @param field_number Field number (for absolute line calculation)
      * @param width Width of active video in pixels
+     * @param studio_range_input true if input is studio range (0-1023), false if full-range (0-65535)
      */
     void encode_active_line(uint16_t* line_buffer, 
                            const uint16_t* y_line,
@@ -170,7 +171,8 @@ private:
                            const uint16_t* q_line,
                            int32_t line_number,
                            int32_t field_number,
-                           int32_t width);
+                           int32_t width,
+                           bool studio_range_input = false);
     
     /**
      * @brief Generate vertical sync line

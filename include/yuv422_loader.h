@@ -70,19 +70,9 @@ public:
                                        int32_t& width,
                                        int32_t& height);
 
+    // Map 10-bit studio codes to full-range 16-bit (64->0, 940->65535; sub-black allowed)
+
 private:
-    /**
-     * @brief Convert 10-bit studio range to 16-bit full range
-     * 
-     * Converts from ITU-R BT.601 studio range to full 16-bit range:
-     * - Y': 64-940 → 0-65535
-     * - Cb/Cr: 64-960 (centered at 512) → 0-65535 (centered at 32768)
-     * 
-     * @param value 10-bit studio range value
-     * @param is_luma true for Y' (luma), false for Cb/Cr (chroma)
-     * @return 16-bit full range value
-     */
-    static uint16_t studio10_to_full16(uint16_t value, bool is_luma);
 };
 
 } // namespace encode_orc

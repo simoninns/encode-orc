@@ -65,6 +65,15 @@ Field NTSCEncoder::encode_field(const FrameBuffer& frame_buffer,
         return field;
     }
     
+    // Detect if source is in studio code space (≤1023) to preserve sub-black
+    const uint16_t* y_plane_all = frame_buffer.data().data();
+    const int32_t total_pixels = frame_buffer.width() * frame_buffer.height();
+    uint16_t y_max = 0;
+    for (int32_t i = 0; i < total_pixels; ++i) {
+        if (y_plane_all[i] > y_max) y_max = y_plane_all[i];
+    }
+    const bool studio_range_input = (y_max <= 1023);
+    
     // Get frame dimensions
     int32_t frame_width = frame_buffer.width();
     int32_t frame_height = frame_buffer.height();
@@ -149,7 +158,7 @@ Field NTSCEncoder::encode_field(const FrameBuffer& frame_buffer,
                 
                 // Encode active video portion
                 encode_active_line(line_buffer, y_line, i_line, q_line, 
-                                 line, field_number, frame_width);
+                                 line, field_number, frame_width, studio_range_input);
             } else {
                 // Beyond source frame - use blanking
                 generate_blanking_line(line_buffer);
@@ -310,7 +319,8 @@ void NTSCEncoder::encode_active_line(uint16_t* line_buffer,
                                     const uint16_t* q_line,
                                     int32_t line_number,
                                     int32_t field_number,
-                                    int32_t width) {
+                                    int32_t width,
+                                    bool studio_range_input) {
     // Apply filters if enabled
     // Note: We need to copy the line data first to apply filtering
     std::vector<uint16_t> y_filtered(y_line, y_line + width);
@@ -373,20 +383,34 @@ void NTSCEncoder::encode_active_line(uint16_t* line_buffer,
         // NTSC: Composite = Y + I*sin(ωt) + Q*cos(ωt)
         // (No V-switch like PAL, so simpler calculation)
         
-        // Normalize YIQ values to 0.0-1.0 range
-        double y_norm = static_cast<double>(y) / 65535.0;
+        // Handle studio vs full-range input
+        int32_t luma_range = white_level_ - black_level_;
+        int32_t luma_scaled;
+        
+        if (studio_range_input) {
+            // Studio codes: 64→black_level, 940→white_level, preserve sub-black
+            int32_t y_signal = black_level_ + ((static_cast<int32_t>(y) - 64) * luma_range) / 876;
+            luma_scaled = clamp_signal(y_signal);
+        } else {
+            // Full-range: 0-65535 → normalized to black-white range
+            double y_norm = static_cast<double>(y) / 65535.0;
+            luma_scaled = black_level_ + static_cast<int32_t>(y_norm * luma_range);
+        }
         
         // Scale I/Q back to their actual ranges
         // NTSC IQ values typically range differently than PAL UV
         const double I_MAX = 0.5957;
         const double Q_MAX = 0.5226;
-        double i_norm = ((static_cast<double>(i) / 65535.0) - 0.5) * 2.0 * I_MAX;
-        double q_norm = ((static_cast<double>(q) / 65535.0) - 0.5) * 2.0 * Q_MAX;
-        
-        // Scale luma to video range
-        int32_t luma_range = white_level_ - black_level_;
-        int32_t luma_scaled = black_level_ + 
-                             static_cast<int32_t>(y_norm * luma_range);
+        double i_norm, q_norm;
+        if (studio_range_input) {
+            // Studio chroma: 0-896 range (64-960 studio codes)
+            i_norm = ((static_cast<double>(i) / 896.0) - 0.5) * 2.0 * I_MAX;
+            q_norm = ((static_cast<double>(q) / 896.0) - 0.5) * 2.0 * Q_MAX;
+        } else {
+            // Full-range: 0-65535
+            i_norm = ((static_cast<double>(i) / 65535.0) - 0.5) * 2.0 * I_MAX;
+            q_norm = ((static_cast<double>(q) / 65535.0) - 0.5) * 2.0 * Q_MAX;
+        }
         
         // NTSC chroma encoding
         // Composite = Y + I*sin(ωt) + Q*cos(ωt)
@@ -489,10 +513,13 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
     const uint16_t* y_plane = frame_data;
     const uint16_t* i_plane = frame_data + pixel_count;
     const uint16_t* q_plane = frame_data + pixel_count * 2;
-    
-    // For separate Y/C encoding, we use the source data directly
-    // (filters are applied during composite encoding, but for Y/C we skip filtering
-    // to avoid complexity with line-by-line processing)
+
+    // Detect studio-range input (≤1023) to preserve sub-black
+    uint16_t y_max = 0;
+    for (int32_t i = 0; i < pixel_count; ++i) {
+        if (y_plane[i] > y_max) y_max = y_plane[i];
+    }
+    const bool studio_range_input = (y_max <= 1023);
     
     // Process field 1 (even lines from source)
     for (int32_t line = 0; line < params_.field_height; ++line) {
@@ -579,15 +606,31 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
                 uint16_t q_val = q_plane[source_line * frame_width + pixel_x];
                 
                 // Convert Y to luma signal level
-                double y_norm = static_cast<double>(y_val) / 65535.0;
                 int32_t luma_range = white_level_ - black_level_;
-                int32_t y_signal = black_level_ + static_cast<int32_t>(y_norm * luma_range);
+                int32_t y_signal;
+                if (studio_range_input) {
+                    // Studio codes: 64→black_level, 940→white_level, preserve sub-black
+                    int32_t y_delta = static_cast<int32_t>(y_val) - 64;
+                    y_signal = black_level_ + (y_delta * luma_range) / 876; // 940-64=876
+                } else {
+                    // Full-range input
+                    double y_norm = static_cast<double>(y_val) / 65535.0;
+                    y_signal = black_level_ + static_cast<int32_t>(y_norm * luma_range);
+                }
                 
                 // Convert I/Q to chroma signal
                 const double I_MAX = 0.5959;
                 const double Q_MAX = 0.5229;
-                double i_norm = ((static_cast<double>(i_val) / 65535.0) - 0.5) * 2.0 * I_MAX;
-                double q_norm = ((static_cast<double>(q_val) / 65535.0) - 0.5) * 2.0 * Q_MAX;
+                double i_norm, q_norm;
+                if (studio_range_input) {
+                    // Studio chroma: 0-896 range
+                    i_norm = ((static_cast<double>(i_val) / 896.0) - 0.5) * 2.0 * I_MAX;
+                    q_norm = ((static_cast<double>(q_val) / 896.0) - 0.5) * 2.0 * Q_MAX;
+                } else {
+                    // Full-range chroma
+                    i_norm = ((static_cast<double>(i_val) / 65535.0) - 0.5) * 2.0 * I_MAX;
+                    q_norm = ((static_cast<double>(q_val) / 65535.0) - 0.5) * 2.0 * Q_MAX;
+                }
                 
                 // Calculate subcarrier phase (include line phase offset for correct NTSC phase)
                 double t = static_cast<double>(sample) / sample_rate_;
@@ -683,17 +726,33 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
                 if (pixel_x >= frame_width) pixel_x = frame_width - 1;
                 
                 uint16_t y_val = y_plane[source_line * frame_width + pixel_x];
-                    uint16_t i_val = i_plane[source_line * frame_width + pixel_x];
-                    uint16_t q_val = q_plane[source_line * frame_width + pixel_x];
-                
-                double y_norm = static_cast<double>(y_val) / 65535.0;
+                uint16_t i_val = i_plane[source_line * frame_width + pixel_x];
+                uint16_t q_val = q_plane[source_line * frame_width + pixel_x];
+
                 int32_t luma_range = white_level_ - black_level_;
-                int32_t y_signal = black_level_ + static_cast<int32_t>(y_norm * luma_range);
+                int32_t y_signal;
+                if (studio_range_input) {
+                    // Studio codes: 64→black_level, 940→white_level, preserve sub-black
+                    int32_t y_delta = static_cast<int32_t>(y_val) - 64;
+                    y_signal = black_level_ + (y_delta * luma_range) / 876; // 940-64=876
+                } else {
+                    // Full-range input
+                    double y_norm = static_cast<double>(y_val) / 65535.0;
+                    y_signal = black_level_ + static_cast<int32_t>(y_norm * luma_range);
+                }
                 
                 const double I_MAX = 0.5959;
                 const double Q_MAX = 0.5229;
-                double i_norm = ((static_cast<double>(i_val) / 65535.0) - 0.5) * 2.0 * I_MAX;
-                double q_norm = ((static_cast<double>(q_val) / 65535.0) - 0.5) * 2.0 * Q_MAX;
+                double i_norm, q_norm;
+                if (studio_range_input) {
+                    // Studio chroma: 0-896 range
+                    i_norm = ((static_cast<double>(i_val) / 896.0) - 0.5) * 2.0 * I_MAX;
+                    q_norm = ((static_cast<double>(q_val) / 896.0) - 0.5) * 2.0 * Q_MAX;
+                } else {
+                    // Full-range chroma
+                    i_norm = ((static_cast<double>(i_val) / 65535.0) - 0.5) * 2.0 * I_MAX;
+                    q_norm = ((static_cast<double>(q_val) / 65535.0) - 0.5) * 2.0 * Q_MAX;
+                }
                 
                 // Calculate subcarrier phase (include line phase offset for correct NTSC phase)
                 double t = static_cast<double>(sample) / sample_rate_;

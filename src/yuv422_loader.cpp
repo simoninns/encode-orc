@@ -62,6 +62,23 @@ bool YUV422Loader::load_yuv422(const std::string& filename,
         uint16_t* u_plane = y_plane + (expected_width * expected_height);
         uint16_t* v_plane = u_plane + (expected_width * expected_height);
         
+        // Keep studio-range codes as-is (0-1023 for luma, 0-1023 for chroma)
+        // This preserves sub-black (0-63) and allows the encoder to detect studio range by checking y_max <= 1023.
+        // The encoder will then apply final scaling/mapping to video levels.
+        auto to_luma = [](uint16_t studio_value) {
+            // Clamp to 10-bit studio range but allow full range in 16-bit container
+            return std::min<uint16_t>(studio_value, 1023);
+        };
+
+        // Chroma: keep in studio range (64-960 → mapped to 0-1023)
+        auto to_chroma = [](uint16_t studio_value) {
+            // Studio chroma: 64→0, 512→448, 960→896; clamp upper only
+            uint16_t capped = std::min<uint16_t>(studio_value, 960);
+            int32_t delta = capped - 64;
+            int32_t scaled = (delta * 896) / 896;  // This is just delta, 0-896
+            return static_cast<uint16_t>(std::min(896, scaled));
+        };
+
         // Convert YUYV 4:2:2 to YUV444 (upsample chroma)
         // Process pairs of pixels
         for (int32_t row = 0; row < expected_height; ++row) {
@@ -76,10 +93,10 @@ bool YUV422Loader::load_yuv422(const std::string& filename,
                 uint16_t cr_studio = yuyv_data[component_idx + 3];
                 
                 // Convert studio range to full range (16-bit)
-                uint16_t y0_full = studio10_to_full16(y0_studio, true);
-                uint16_t y1_full = studio10_to_full16(y1_studio, true);
-                uint16_t cb_full = studio10_to_full16(cb_studio, false);
-                uint16_t cr_full = studio10_to_full16(cr_studio, false);
+                uint16_t y0_full = to_luma(y0_studio);
+                uint16_t y1_full = to_luma(y1_studio);
+                uint16_t cb_full = to_chroma(cb_studio);
+                uint16_t cr_full = to_chroma(cr_studio);
                 
                 // Calculate linear indices for the pixel pair
                 int32_t idx0 = row * expected_width + col;
@@ -126,37 +143,6 @@ void YUV422Loader::get_expected_dimensions(const VideoParameters& params,
         // Fallback to calculating from parameters
         width = params.active_video_end - params.active_video_start;
         height = params.field_height - 2;  // Conservative (excluding top/bottom blanking)
-    }
-}
-
-uint16_t YUV422Loader::studio10_to_full16(uint16_t value, bool is_luma) {
-    // Convert ITU-R BT.601 studio range to full 16-bit range
-    //
-    // Studio ranges (10-bit):
-    //   Y':     64-940   (876 levels)
-    //   Cb/Cr:  64-960   (896 levels, centered at 512)
-    //
-    // Full range (16-bit):
-    //   Y', Cb, Cr: 0-65535
-    
-    if (is_luma) {
-        // Luma: Y' 64-940 → 0-65535
-        // Clamp to valid range
-        uint16_t clamped = std::max<uint16_t>(64, std::min<uint16_t>(940, value));
-        // Scale: (value - 64) / (940 - 64) * 65535
-        int32_t normalized = clamped - 64;
-        int32_t scaled = (normalized * 65535) / (940 - 64);
-        return static_cast<uint16_t>(scaled);
-    } else {
-        // Chroma: Cb/Cr 64-960 (centered at 512) → 0-65535 (centered at 32768)
-        // Clamp to valid range
-        uint16_t clamped = std::max<uint16_t>(64, std::min<uint16_t>(960, value));
-        // Scale: (value - 512) / (960 - 64) * 65535 + 32768
-        int32_t normalized = static_cast<int32_t>(clamped) - 512;
-        int32_t scaled = (normalized * 65535) / (960 - 64) + 32768;
-        // Clamp result to 16-bit range
-        scaled = std::max(0, std::min(65535, scaled));
-        return static_cast<uint16_t>(scaled);
     }
 }
 
