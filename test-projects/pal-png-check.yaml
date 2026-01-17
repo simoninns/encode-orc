@@ -1,5 +1,5 @@
 name: "PAL PNG Check Composite"
-description: "PAL encoding using PNG testcard image"
+description: "PAL encoding using PNG testcard images - 1 frame each"
 
 output:
   filename: "test-output/pal-png-check.tbc"
@@ -10,18 +10,1028 @@ laserdisc:
   mode: "none"
 
 sections:
+  - name: "Check Clipping Target Broadcast"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Clipping-Target-Broadcast.png"
+  - name: "Check Clipping Target Full"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Clipping-Target-Full.png"
+  - name: "Check Color Wipe Full"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Color-Wipe-Full.png"
+  - name: "Check Color Wipe Half"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Color-Wipe-Half.png"
   - name: "Check Composite"
-    duration: 10
+    duration: 1
     source:
       type: "png-image"
       file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Composite.png"
+  - name: "Check Contrast Checker"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Contrast-Checker.png"
+  - name: "Check Contrast Lines"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Contrast-Lines.png"
+  - name: "Check Convergence Hori"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Convergence-Hori.png"
+  - name: "Check Convergence Vert"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Convergence-Vert.png"
+  - name: "Check Gamma Checker"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Gamma-Checker.png"
+  - name: "Check Gamma Lines"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Gamma-Lines.png"
+  - name: "Check Length Hori"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Length-Hori.png"
+  - name: "Check Length Vert"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Length-Vert.png"
+  - name: "Check Overscan"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Overscan.png"
+  - name: "Check Patterns Background"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Patterns-Background.png"
+  - name: "Check Patterns"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Patterns.png"
+  - name: "Check Resolution Hori Wedge Inv"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Resolution-Hori-Wedge-Inv.png"
+  - name: "Check Resolution Hori Wedge"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Resolution-Hori-Wedge.png"
+  - name: "Check Resolution Star"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Resolution-Star.png"
+  - name: "Check Resolution Vert Wedge Inv"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Resolution-Vert-Wedge-Inv.png"
+  - name: "Check Resolution Vert Wedge"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Resolution-Vert-Wedge.png"
+  - name: "Clipping High Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Clipping-High-Blue.png"
+  - name: "Clipping High Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Clipping-High-Green.png"
+  - name: "Clipping High"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Clipping-High.png"
+  - name: "Clipping High Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Clipping-High-Red.png"
+  - name: "Clipping Low Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Clipping-Low-Blue.png"
+  - name: "Clipping Low Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Clipping-Low-Green.png"
+  - name: "Clipping Low"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Clipping-Low.png"
+  - name: "Clipping Low Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Clipping-Low-Red.png"
+  - name: "Color Bars Hori 03"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Bars-Hori-03.png"
+  - name: "Color Bars Hori 06"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Bars-Hori-06.png"
+  - name: "Color Bars Hori 12"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Bars-Hori-12.png"
+  - name: "Color Bars Hori Cont"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Bars-Hori-Cont.png"
+  - name: "Color Bars Vert 03"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Bars-Vert-03.png"
+  - name: "Color Bars Vert 06"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Bars-Vert-06.png"
+  - name: "Color Bars Vert 12"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Bars-Vert-12.png"
+  - name: "Color Bars Vert Cont"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Bars-Vert-Cont.png"
+  - name: "Color Composite Step Wipe Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Composite-Step-Wipe-Blue.png"
+  - name: "Color Composite Step Wipe Gray"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Composite-Step-Wipe-Gray.png"
+  - name: "Color Composite Step Wipe Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Composite-Step-Wipe-Green.png"
+  - name: "Color Composite Step Wipe Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Composite-Step-Wipe-Red.png"
+  - name: "Color One Black"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Black.png"
+  - name: "Color One Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Blue.png"
+  - name: "Color One Cyan"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Cyan.png"
+  - name: "Color One Gray"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Gray.png"
+  - name: "Color One Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Green.png"
+  - name: "Color One Magenta"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Magenta.png"
+  - name: "Color One Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Red.png"
+  - name: "Color One White"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-White.png"
+  - name: "Color One Yellow"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Yellow.png"
+  - name: "Color Patch 4096 Rgb B"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Patch-4096-Rgb-B.png"
+  - name: "Color Random 01"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-01.png"
+  - name: "Color Random 02"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-02.png"
+  - name: "Color Random 04"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-04.png"
+  - name: "Color Random 08"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-08.png"
+  - name: "Color Random 16"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-16.png"
+  - name: "Color Random Gray 01"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-Gray-01.png"
+  - name: "Color Random Gray 02"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-Gray-02.png"
+  - name: "Color Random Gray 04"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-Gray-04.png"
+  - name: "Color Random Gray 08"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-Gray-08.png"
+  - name: "Color Random Gray 16"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-Gray-16.png"
+  - name: "Color Step Lin Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Lin-Blue.png"
+  - name: "Color Step Lin Cyan"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Lin-Cyan.png"
+  - name: "Color Step Lin Gray"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Lin-Gray.png"
+  - name: "Color Step Lin Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Lin-Green.png"
   - name: "Color Step Lin Magenta"
-    duration: 10
+    duration: 1
     source:
       type: "png-image"
       file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Lin-Magenta.png"
+  - name: "Color Step Lin Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Lin-Red.png"
+  - name: "Color Step Lin Yellow"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Lin-Yellow.png"
+  - name: "Color Step Log Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Log-Blue.png"
+  - name: "Color Step Log Cyan"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Log-Cyan.png"
+  - name: "Color Step Log Gray"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Log-Gray.png"
+  - name: "Color Step Log Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Log-Green.png"
+  - name: "Color Step Log Magenta"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Log-Magenta.png"
+  - name: "Color Step Log Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Log-Red.png"
+  - name: "Color Step Log Yellow"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Log-Yellow.png"
+  - name: "Color Triangle Solid"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Triangle-Solid.png"
+  - name: "Color Triangle Wireframe"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Triangle-Wireframe.png"
+  - name: "Color Wipe Full Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Full-Blue.png"
+  - name: "Color Wipe Full Cyan"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Full-Cyan.png"
+  - name: "Color Wipe Full Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Full-Green.png"
+  - name: "Color Wipe Full Magenta"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Full-Magenta.png"
+  - name: "Color Wipe Full Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Full-Red.png"
+  - name: "Color Wipe Full Yellow"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Full-Yellow.png"
+  - name: "Color Wipe Half Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Half-Blue.png"
+  - name: "Color Wipe Half Cyan"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Half-Cyan.png"
+  - name: "Color Wipe Half Gray"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Half-Gray.png"
+  - name: "Color Wipe Half Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Half-Green.png"
+  - name: "Color Wipe Half Magenta"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Half-Magenta.png"
+  - name: "Color Wipe Half Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Half-Red.png"
+  - name: "Color Wipe Half Yellow"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Half-Yellow.png"
+  - name: "Gamma Checker Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Gamma-Checker-Blue.png"
+  - name: "Gamma Checker Gray"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Gamma-Checker-Gray.png"
+  - name: "Gamma Checker Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Gamma-Checker-Green.png"
+  - name: "Gamma Checker Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Gamma-Checker-Red.png"
+  - name: "Gamma Lines Gray Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Gamma-Lines-Gray-Blue.png"
+  - name: "Gamma Lines Gray Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Gamma-Lines-Gray-Green.png"
+  - name: "Gamma Lines Gray"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Gamma-Lines-Gray.png"
+  - name: "Gamma Lines Gray Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Gamma-Lines-Gray-Red.png"
+  - name: "Geometry Bars Hori"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Bars-Hori.png"
+  - name: "Geometry Bars Vert"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Bars-Vert.png"
+  - name: "Geometry Checkers 02"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-02.png"
+  - name: "Geometry Checkers 04"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-04.png"
+  - name: "Geometry Checkers 08"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-08.png"
+  - name: "Geometry Checkers 16"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-16.png"
   - name: "Geometry Checkers 32"
-    duration: 10
+    duration: 1
     source:
       type: "png-image"
       file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-32.png"
+  - name: "Geometry Checkers Log Inv"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-Log-Inv.png"
+  - name: "Geometry Checkers Log"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-Log.png"
+  - name: "Geometry Distortion Circle Many Inv"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Distortion-Circle-Many-Inv.png"
+  - name: "Geometry Distortion Circle Many"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Distortion-Circle-Many.png"
+  - name: "Geometry Distortion Circle One Inv"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Distortion-Circle-One-Inv.png"
+  - name: "Geometry Distortion Circle One"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Distortion-Circle-One.png"
+  - name: "Geometry Distortion Square Many Inv"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Distortion-Square-Many-Inv.png"
+  - name: "Geometry Distortion Square Many"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Distortion-Square-Many.png"
+  - name: "Geometry Grid Inv"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Grid-Inv.png"
+  - name: "Geometry Grid"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Grid.png"
+  - name: "Geometry Lines Hori 2"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Hori-2.png"
+  - name: "Geometry Lines Hori 4 Inv"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Hori-4-Inv.png"
+  - name: "Geometry Lines Hori 4"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Hori-4.png"
+  - name: "Geometry Lines Hori 8 Inv"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Hori-8-Inv.png"
+  - name: "Geometry Lines Hori 8"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Hori-8.png"
+  - name: "Geometry Lines Hori Log Inv"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Hori-Log-Inv.png"
+  - name: "Geometry Lines Hori Log"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Hori-Log.png"
+  - name: "Geometry Lines Vert 2"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Vert-2.png"
+  - name: "Geometry Lines Vert 4 Inv"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Vert-4-Inv.png"
+  - name: "Geometry Lines Vert 4"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Vert-4.png"
+  - name: "Geometry Lines Vert 8 Inv"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Vert-8-Inv.png"
+  - name: "Geometry Lines Vert 8"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Vert-8.png"
+  - name: "Geometry Lines Vert Log"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Vert-Log.png"
+  - name: "Geometry Points 02"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-02.png"
+  - name: "Geometry Points 04 Inv"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-04-Inv.png"
+  - name: "Geometry Points 04"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-04.png"
+  - name: "Geometry Points 08 Inv"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-08-Inv.png"
+  - name: "Geometry Points 08"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-08.png"
+  - name: "Geometry Points 16 Inv"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-16-Inv.png"
+  - name: "Geometry Points 16"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-16.png"
+  - name: "Geometry Points 32 Inv"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-32-Inv.png"
+  - name: "Geometry Points 32"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-32.png"
+  - name: "Geometry Squares 02"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Squares-02.png"
+  - name: "Geometry Squares 04"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Squares-04.png"
+  - name: "Geometry Squares 08"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Squares-08.png"
+  - name: "Geometry Squares 16"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Squares-16.png"
+  - name: "Geometry Squares 32"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Squares-32.png"
+  - name: "Swatch Hsl Fix Hue Blue Magenta Var Sat Lev"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Blue-Magenta-Var-Sat-Lev.png"
+  - name: "Swatch Hsl Fix Hue Blue Var Sat Lev"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Blue-Var-Sat-Lev.png"
+  - name: "Swatch Hsl Fix Hue Cyan Blue Var Sat Lev"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Cyan-Blue-Var-Sat-Lev.png"
+  - name: "Swatch Hsl Fix Hue Cyan Var Sat Lev"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Cyan-Var-Sat-Lev.png"
+  - name: "Swatch Hsl Fix Hue Green Cyan Var Sat Lev"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Green-Cyan-Var-Sat-Lev.png"
+  - name: "Swatch Hsl Fix Hue Green Var Sat Lev"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Green-Var-Sat-Lev.png"
+  - name: "Swatch Hsl Fix Hue Magenta Red Var Sat Lev"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Magenta-Red-Var-Sat-Lev.png"
+  - name: "Swatch Hsl Fix Hue Magenta Var Sat Lev"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Magenta-Var-Sat-Lev.png"
+  - name: "Swatch Hsl Fix Hue Red Var Sat Lev"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Red-Var-Sat-Lev.png"
+  - name: "Swatch Hsl Fix Hue Yellow Green Var Sat Lev"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Yellow-Green-Var-Sat-Lev.png"
+  - name: "Swatch Hsl Fix Hue Yellow Red Var Sat Lev"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Yellow-Red-Var-Sat-Lev.png"
+  - name: "Swatch Hsl Fix Hue Yellow Var Sat Lev"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Yellow-Var-Sat-Lev.png"
+  - name: "Swatch Hsv Fix Hue Blue Magenta Var Sat Val"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Blue-Magenta-Var-Sat-Val.png"
+  - name: "Swatch Hsv Fix Hue Blue Var Sat Val"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Blue-Var-Sat-Val.png"
+  - name: "Swatch Hsv Fix Hue Cyan Blue Var Sat Val"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Cyan-Blue-Var-Sat-Val.png"
+  - name: "Swatch Hsv Fix Hue Cyan Var Sat Val"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Cyan-Var-Sat-Val.png"
+  - name: "Swatch Hsv Fix Hue Green Cyan Var Sat Val"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Green-Cyan-Var-Sat-Val.png"
+  - name: "Swatch Hsv Fix Hue Green Var Sat Val"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Green-Var-Sat-Val.png"
+  - name: "Swatch Hsv Fix Hue Magenta Red Var Sat Val"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Magenta-Red-Var-Sat-Val.png"
+  - name: "Swatch Hsv Fix Hue Magenta Var Sat Val"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Magenta-Var-Sat-Val.png"
+  - name: "Swatch Hsv Fix Hue Red Var Sat Val"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Red-Var-Sat-Val.png"
+  - name: "Swatch Hsv Fix Hue Yellow Green Var Sat Val"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Yellow-Green-Var-Sat-Val.png"
+  - name: "Swatch Hsv Fix Hue Yellow Red Var Sat Val"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Yellow-Red-Var-Sat-Val.png"
+  - name: "Swatch Hsv Fix Hue Yellow Var Sat Val"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Yellow-Var-Sat-Val.png"
+  - name: "Swatch Rgb Fix Blue 064 Var Red Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Blue-064-Var-Red-Green.png"
+  - name: "Swatch Rgb Fix Blue 127 Var Red Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Blue-127-Var-Red-Green.png"
+  - name: "Swatch Rgb Fix Blue 191 Var Red Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Blue-191-Var-Red-Green.png"
+  - name: "Swatch Rgb Fix Blue 255 Var Red Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Blue-255-Var-Red-Green.png"
+  - name: "Swatch Rgb Fix Green 064 Var Blue Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Green-064-Var-Blue-Red.png"
+  - name: "Swatch Rgb Fix Green 127 Var Blue Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Green-127-Var-Blue-Red.png"
+  - name: "Swatch Rgb Fix Green 191 Var Blue Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Green-191-Var-Blue-Red.png"
+  - name: "Swatch Rgb Fix Green 255 Var Blue Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Green-255-Var-Blue-Red.png"
+  - name: "Swatch Rgb Fix Red 064 Var Green Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Red-064-Var-Green-Blue.png"
+  - name: "Swatch Rgb Fix Red 127 Var Green Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Red-127-Var-Green-Blue.png"
+  - name: "Swatch Rgb Fix Red 191 Var Green Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Red-191-Var-Green-Blue.png"
+  - name: "Swatch Rgb Fix Red 255 Var Green Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Red-255-Var-Green-Blue.png"
+  - name: "Wipe Hsl Fix Hue 0.00 Var Sat Lev"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Hue-0.00-Var-Sat-Lev.png"
+  - name: "Wipe Hsl Fix Hue 0.33 Var Sat Lev"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Hue-0.33-Var-Sat-Lev.png"
+  - name: "Wipe Hsl Fix Hue 0.66 Var Sat Lev"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Hue-0.66-Var-Sat-Lev.png"
+  - name: "Wipe Hsl Fix Lev 0.25 Var Hue Sat"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Lev-0.25-Var-Hue-Sat.png"
+  - name: "Wipe Hsl Fix Lev 0.50 Var Hue Sat"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Lev-0.50-Var-Hue-Sat.png"
+  - name: "Wipe Hsl Fix Lev 0.75 Var Hue Sat"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Lev-0.75-Var-Hue-Sat.png"
+  - name: "Wipe Hsl Fix Sat 0.00 Var Lev Hue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Sat-0.00-Var-Lev-Hue.png"
+  - name: "Wipe Hsl Fix Sat 0.50 Var Lev Hue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Sat-0.50-Var-Lev-Hue.png"
+  - name: "Wipe Hsl Fix Sat 1.00 Var Lev Hue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Sat-1.00-Var-Lev-Hue.png"
+  - name: "Wipe Hsv Fix Hue 0.00 Var Sat Val"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Hue-0.00-Var-Sat-Val.png"
+  - name: "Wipe Hsv Fix Hue 0.33 Var Sat Val"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Hue-0.33-Var-Sat-Val.png"
+  - name: "Wipe Hsv Fix Hue 0.66 Var Sat Val"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Hue-0.66-Var-Sat-Val.png"
+  - name: "Wipe Hsv Fix Sat 0.00 Var Val Hue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Sat-0.00-Var-Val-Hue.png"
+  - name: "Wipe Hsv Fix Sat 0.50 Var Val Hue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Sat-0.50-Var-Val-Hue.png"
+  - name: "Wipe Hsv Fix Sat 1.00 Var Val Hue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Sat-1.00-Var-Val-Hue.png"
+  - name: "Wipe Hsv Fix Val 0.00 Var Hue Sat"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Val-0.00-Var-Hue-Sat.png"
+  - name: "Wipe Hsv Fix Val 0.50 Var Hue Sat"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Val-0.50-Var-Hue-Sat.png"
+  - name: "Wipe Hsv Fix Val 1.00 Var Hue Sat"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Val-1.00-Var-Hue-Sat.png"
+  - name: "Wipe Rgb Fix Blue 000 Var Red Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Blue-000-Var-Red-Green.png"
+  - name: "Wipe Rgb Fix Blue 127 Var Red Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Blue-127-Var-Red-Green.png"
+  - name: "Wipe Rgb Fix Blue 255 Var Red Green"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Blue-255-Var-Red-Green.png"
+  - name: "Wipe Rgb Fix Green 000 Var Blue Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Green-000-Var-Blue-Red.png"
+  - name: "Wipe Rgb Fix Green 127 Var Blue Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Green-127-Var-Blue-Red.png"
+  - name: "Wipe Rgb Fix Green 255 Var Blue Red"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Green-255-Var-Blue-Red.png"
+  - name: "Wipe Rgb Fix Red 000 Var Green Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Red-000-Var-Green-Blue.png"
+  - name: "Wipe Rgb Fix Red 127 Var Green Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Red-127-Var-Green-Blue.png"
+  - name: "Wipe Rgb Fix Red 255 Var Green Blue"
+    duration: 1
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Red-255-Var-Green-Blue.png"
