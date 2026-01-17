@@ -14,7 +14,7 @@ sections:
     duration: 10
     source:
       type: "rgb30-image"
-      file: "testcard-images/ntsc-eia-colorbars-75.raw"
+      file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-75.raw"
     laserdisc:
       leadin: true
 
@@ -22,7 +22,7 @@ sections:
     duration: 10
     source:
       type: "rgb30-image"
-      file: "testcard-images/ntsc-eia-colorbars-75.raw"
+      file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-75.raw"
     laserdisc:
       picture_start: 1
       chapter: 1
@@ -31,7 +31,7 @@ sections:
     duration: 10
     source:
       type: "rgb30-image"
-      file: "testcard-images/ntsc-eia-colorbars-75.raw"
+      file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-75.raw"
     laserdisc:
       picture_start: 11
       chapter: 2
@@ -40,7 +40,7 @@ sections:
     duration: 10
     source:
       type: "rgb30-image"
-      file: "testcard-images/ntsc-eia-colorbars-75.raw"
+      file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-75.raw"
     laserdisc:
       picture_start: 21
       chapter: 3
@@ -49,6 +49,6 @@ sections:
     duration: 10
     source:
       type: "rgb30-image"
-      file: "testcard-images/ntsc-eia-colorbars-75.raw"
+      file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-75.raw"
     laserdisc:
       leadout: true

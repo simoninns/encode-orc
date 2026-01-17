@@ -19,7 +19,7 @@ sections:
     duration: 10
     source:
       type: "rgb30-image"
-      file: "testcard-images/ntsc-eia-colorbars-75.raw"
+      file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-75.raw"
     
     # Explicitly ENABLE chroma filtering for clean output
     filters:

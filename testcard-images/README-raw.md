@@ -1,6 +1,6 @@
 # Testcard Raw RGB30 Assets
 
-This folder contains raw **RGB30** (10-bit per channel) color bar frames stored in **RGB48 containers** (16-bit little-endian per channel, interleaved R,G,B) for PAL EBU and NTSC EIA at 75% and 100% saturation. Files are single-frame images sized to the active picture area only. All values use the **10-bit 64-940 standard** (ITU-R BT.601).
+The pal-raw and ntsc-raw folders contains raw **RGB30** (10-bit per channel) color bar frames stored in **RGB48 containers** (16-bit little-endian per channel, interleaved R,G,B) for PAL EBU and NTSC EIA at 75% and 100% saturation. Files are single-frame images sized to the active picture area only. All values use the **10-bit 64-940 standard** (ITU-R BT.601).
 
 ## Files
 - `pal-ebu-colorbars-100.raw` — 720x576, PAL EBU bars, 100% saturation

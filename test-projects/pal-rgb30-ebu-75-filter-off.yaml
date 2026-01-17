@@ -18,7 +18,7 @@ sections:
     duration: 10
     source:
       type: "rgb30-image"
-      file: "testcard-images/pal-ebu-colorbars-75.raw"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
     
     # Explicitly DISABLE chroma filtering to see artifacts
     filters:

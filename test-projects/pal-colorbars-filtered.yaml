@@ -17,7 +17,7 @@ sections:
     duration: 625  # 25 seconds at 25fps
     source:
       type: "rgb30-image"
-      file: "testcard-images/pal-ebu-colorbars-75.raw"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
     
     # Filter configuration (optional, defaults shown)
     filters:
@@ -37,7 +37,7 @@ sections:
     duration: 625  # 25 more seconds at 25fps
     source:
       type: "rgb30-image"
-      file: "testcard-images/pal-ebu-colorbars-100.raw"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-100.raw"
     
     # Filters inherited from defaults (chroma enabled, luma disabled)
     # You can still override per-section if needed
