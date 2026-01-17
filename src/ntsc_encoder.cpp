@@ -207,12 +207,17 @@ void NTSCEncoder::generate_color_burst_chroma(uint16_t* line_buffer, int32_t lin
     // Burst phase: 180° (fixed for NTSC)
     double burst_phase_offset = PI;
     
-    int32_t line_number_composite = (field_number * params_.field_height) + line_number;
+    // Use the same phase calculation as composite mode to ensure consistency
+    // NTSC has 262.5 lines per field and 227.5 cycles per line
+    const double lines_per_field = 262.5;
+    const double cycles_per_line = 227.5;
+    double absolute_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line_number);
+    double prev_cycles = absolute_lines * cycles_per_line;
     
     for (int32_t sample = burst_start; sample < burst_end; ++sample) {
         if (sample >= 0 && sample < params_.field_width) {
             double t = static_cast<double>(sample) / sample_rate_;
-            double phase = 2.0 * PI * subcarrier_freq_ * t + (line_number_composite * PI) + burst_phase_offset;
+            double phase = 2.0 * PI * (subcarrier_freq_ * t + prev_cycles) + burst_phase_offset;
             
             // NTSC burst reference signal
             double burst_signal = std::sin(phase);
@@ -242,7 +247,12 @@ void NTSCEncoder::generate_color_burst_chroma_line(uint16_t* line_buffer, int32_
     // Burst phase: 180° (fixed for NTSC)
     double burst_phase_offset = PI;
     
-    int32_t line_number_composite = (field_number * params_.field_height) + line_number;
+    // Use the same phase calculation as composite mode to ensure consistency
+    // NTSC has 262.5 lines per field and 227.5 cycles per line
+    const double lines_per_field = 262.5;
+    const double cycles_per_line = 227.5;
+    double absolute_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line_number);
+    double prev_cycles = absolute_lines * cycles_per_line;
     
     // Generate color burst using the proper window
     const int32_t actual_burst_end = std::min(burst_end, params_.colour_burst_end);
@@ -250,7 +260,7 @@ void NTSCEncoder::generate_color_burst_chroma_line(uint16_t* line_buffer, int32_
     for (int32_t sample = burst_start; sample < actual_burst_end; ++sample) {
         if (sample < params_.field_width) {
             double t = static_cast<double>(sample) / sample_rate_;
-            double phase = 2.0 * PI * subcarrier_freq_ * t + (line_number_composite * PI) + burst_phase_offset;
+            double phase = 2.0 * PI * (subcarrier_freq_ * t + prev_cycles) + burst_phase_offset;
             
             // NTSC burst reference signal
             double burst_signal = std::sin(phase);
@@ -550,6 +560,13 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
             int32_t active_end = params_.active_video_end;
             int32_t active_width = active_end - active_start;
             
+            // Calculate NTSC subcarrier phase offset for this line
+            // Use 262.5 lines per field to preserve half-line offset between fields
+            const double lines_per_field = 262.5;
+            const double cycles_per_line = 227.5;
+            double absolute_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line);
+            double prev_cycles = absolute_lines * cycles_per_line;
+            
             for (int32_t sample = active_start; sample < active_end; ++sample) {
                 // Map sample position to source pixel
                 double pixel_pos = static_cast<double>(sample - active_start) * frame_width / active_width;
@@ -572,12 +589,12 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
                 double i_norm = ((static_cast<double>(i_val) / 65535.0) - 0.5) * 2.0 * I_MAX;
                 double q_norm = ((static_cast<double>(q_val) / 65535.0) - 0.5) * 2.0 * Q_MAX;
                 
-                // Calculate subcarrier phase
+                // Calculate subcarrier phase (include line phase offset for correct NTSC phase)
                 double t = static_cast<double>(sample) / sample_rate_;
-                double phase = 2.0 * PI * subcarrier_freq_ * t;
+                double phase = 2.0 * PI * (subcarrier_freq_ * t + prev_cycles);
                 
-                // Modulate chroma onto subcarrier (NTSC encoding: C = I*cos(ωt) + Q*sin(ωt))
-                double chroma = (i_norm * std::cos(phase)) + (q_norm * std::sin(phase));
+                // Modulate chroma onto subcarrier (NTSC encoding: C = I*sin(ωt) + Q*cos(ωt))
+                double chroma = (i_norm * std::sin(phase)) + (q_norm * std::cos(phase));
                 int32_t chroma_signal = static_cast<int32_t>(chroma * luma_range);
                 
                 // Y field: luma only (no chroma)
@@ -653,12 +670,19 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
             int32_t active_end = params_.active_video_end;
             int32_t active_width = active_end - active_start;
             
+            // Calculate NTSC subcarrier phase offset for this line
+            // Use 262.5 lines per field to preserve half-line offset between fields
+            const double lines_per_field = 262.5;
+            const double cycles_per_line = 227.5;
+            double absolute_lines = static_cast<double>(field_number + 1) * lines_per_field + static_cast<double>(line);
+            double prev_cycles = absolute_lines * cycles_per_line;
+            
             for (int32_t sample = active_start; sample < active_end; ++sample) {
                 double pixel_pos = static_cast<double>(sample - active_start) * frame_width / active_width;
                 int32_t pixel_x = static_cast<int32_t>(pixel_pos);
                 if (pixel_x >= frame_width) pixel_x = frame_width - 1;
                 
-uint16_t y_val = y_plane[source_line * frame_width + pixel_x];
+                uint16_t y_val = y_plane[source_line * frame_width + pixel_x];
                     uint16_t i_val = i_plane[source_line * frame_width + pixel_x];
                     uint16_t q_val = q_plane[source_line * frame_width + pixel_x];
                 
@@ -671,10 +695,12 @@ uint16_t y_val = y_plane[source_line * frame_width + pixel_x];
                 double i_norm = ((static_cast<double>(i_val) / 65535.0) - 0.5) * 2.0 * I_MAX;
                 double q_norm = ((static_cast<double>(q_val) / 65535.0) - 0.5) * 2.0 * Q_MAX;
                 
+                // Calculate subcarrier phase (include line phase offset for correct NTSC phase)
                 double t = static_cast<double>(sample) / sample_rate_;
-                double phase = 2.0 * PI * subcarrier_freq_ * t;
+                double phase = 2.0 * PI * (subcarrier_freq_ * t + prev_cycles);
                 
-                double chroma = (i_norm * std::cos(phase)) + (q_norm * std::sin(phase));
+                // Modulate chroma onto subcarrier (NTSC encoding: C = I*sin(ωt) + Q*cos(ωt))
+                double chroma = (i_norm * std::sin(phase)) + (q_norm * std::cos(phase));
                 int32_t chroma_signal = static_cast<int32_t>(chroma * luma_range);
                 
                 y_line[sample] = clamp_to_16bit(y_signal);
