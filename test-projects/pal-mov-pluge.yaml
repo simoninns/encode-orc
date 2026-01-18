@@ -1,0 +1,25 @@
+name: "PAL MOV Full File Test"
+description: "Example of encoding entire MOV file 3 times with auto-detected duration and continuous picture numbers"
+
+output:
+  filename: "test-output/pal-mov-pluge.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  standard: "iec60857-1986"
+  mode: "cav"
+
+sections:
+  # First section: entire MOV, duration auto-detected
+  - name: "Section 1"
+    source:
+      type: "mov-file"
+      file: "testcard-images/pal-mov/625-50-i_PLUGE.mov"
+      # No duration specified - will auto-probe and use all frames
+    laserdisc:
+      picture_start: 1
+    filters:
+      chroma:
+        enabled: true
+      luma:
+        enabled: false
