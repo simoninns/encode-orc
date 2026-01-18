@@ -210,6 +210,11 @@ void MOVLoader::convert_yuv422p10le_to_frame(const std::vector<uint8_t>& yuv_dat
     // - Y plane: width * height samples (10-bit, little-endian in 16-bit words)
     // - U plane: (width/2) * height samples (10-bit, little-endian in 16-bit words)
     // - V plane: (width/2) * height samples (10-bit, little-endian in 16-bit words)
+    // 
+    // Note: ffmpeg outputs YUV values in studio range:
+    // - Y: 64-940 (10-bit)
+    // - U/V: 64-960 (10-bit), with 512 as neutral
+    // These must be converted to normalized form matching YUV422 loader expectations
     
     // Use the provided width directly
     int32_t actual_width = width;
@@ -233,15 +238,30 @@ void MOVLoader::convert_yuv422p10le_to_frame(const std::vector<uint8_t>& yuv_dat
         return static_cast<uint16_t>(value & 0x3FF);
     };
     
+    // Luma: keep in studio range (64-940 clamped to 10-bit)
+    auto to_luma = [](uint16_t studio_value) {
+        return std::min<uint16_t>(studio_value, 1023);
+    };
+    
+    // Chroma: convert from studio range (64-960) to normalized form (0-896)
+    // This matches the conversion in YUV422Loader to ensure consistent results
+    auto to_chroma = [](uint16_t studio_value) {
+        // Studio chroma: 64→0, 512→448, 960→896
+        uint16_t capped = std::min<uint16_t>(studio_value, 960);
+        int32_t delta = capped - 64;
+        int32_t scaled = (delta * 896) / 896;  // This is just delta, 0-896
+        return static_cast<uint16_t>(std::min(896, scaled));
+    };
+    
     // Calculate padding (distribute evenly on left and right)
     int32_t pixels_to_add = target_width - actual_width;
     int32_t left_pad = pixels_to_add / 2;
     int32_t right_pad = pixels_to_add - left_pad;
     
-    // Neutral values for padding (10-bit studio range)
-    const uint16_t neutral_y = 64;    // Black
-    const uint16_t neutral_u = 512;   // Neutral chroma
-    const uint16_t neutral_v = 512;   // Neutral chroma
+    // Neutral values for padding (normalized range, matching chroma conversion)
+    const uint16_t neutral_y = 64;    // Black in studio range
+    const uint16_t neutral_u = to_chroma(512);   // Neutral chroma converted to normalized form
+    const uint16_t neutral_v = to_chroma(512);   // Neutral chroma converted to normalized form
     
     // Convert planar YUV422 to YUV444 with padding
     for (int32_t row = 0; row < height; ++row) {
@@ -259,14 +279,18 @@ void MOVLoader::convert_yuv422p10le_to_frame(const std::vector<uint8_t>& yuv_dat
             int32_t dst_idx = dst_row_offset + left_pad + col;
             int32_t src_idx = row * actual_width + col;
             
-            // Y is full resolution
-            y_plane[dst_idx] = extract_10bit(y_plane_src[src_idx]);
+            // Y is full resolution - convert from studio range
+            uint16_t y_studio = extract_10bit(y_plane_src[src_idx]);
+            y_plane[dst_idx] = to_luma(y_studio);
             
             // U and V are half-resolution horizontally (4:2:2)
+            // Convert from studio range to normalized form
             int32_t chroma_col = col / 2;
             int32_t uv_idx = row * (actual_width / 2) + chroma_col;
-            u_plane[dst_idx] = extract_10bit(u_plane_src[uv_idx]);
-            v_plane[dst_idx] = extract_10bit(v_plane_src[uv_idx]);
+            uint16_t u_studio = extract_10bit(u_plane_src[uv_idx]);
+            uint16_t v_studio = extract_10bit(v_plane_src[uv_idx]);
+            u_plane[dst_idx] = to_chroma(u_studio);
+            v_plane[dst_idx] = to_chroma(v_studio);
         }
         
         // Right padding
