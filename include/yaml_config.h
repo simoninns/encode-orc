@@ -110,15 +110,24 @@ struct PNGImageSource {
 };
 
 /**
+ * @brief MOV file source configuration
+ */
+struct MOVFileSource {
+    std::string file;  // Path to MOV file (v210 or other ffmpeg-supported format)
+    std::optional<int32_t> start_frame;  // Optional: which frame to start from (0-indexed, default: 0)
+};
+
+/**
  * @brief Video section configuration
  */
 struct VideoSection {
     std::string name;
-    std::optional<int32_t> duration;  // Required for RGB30 images
+    std::optional<int32_t> duration;  // Required for RGB30 images and MOV files
     
-    std::string source_type;  // "yuv422-image" or "png-image"
+    std::string source_type;  // "yuv422-image", "png-image", or "mov-file"
     std::optional<YUV422ImageSource> yuv422_image_source;
     std::optional<PNGImageSource> png_image_source;
+    std::optional<MOVFileSource> mov_file_source;
     
     std::optional<FilterConfig> filters;  // Optional filter settings
     std::optional<LaserDiscConfig> laserdisc;

@@ -110,6 +110,14 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                         png.file = source["file"].as<std::string>();
                         section.png_image_source = png;
                     }
+                    if (section.source_type == "mov-file" && source["file"]) {
+                        MOVFileSource mov;
+                        mov.file = source["file"].as<std::string>();
+                        if (source["start_frame"]) {
+                            mov.start_frame = source["start_frame"].as<int32_t>();
+                        }
+                        section.mov_file_source = mov;
+                    }
                 }
                 
                 // Parse filter configuration
@@ -277,6 +285,14 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
                 error_message = "Duration must be positive for section: " + section.name;
                 return false;
             }
+        }
+        if (section.source_type == "mov-file") {
+            if (!section.mov_file_source) {
+                error_message = "MOV file source missing for section: " + section.name;
+                return false;
+            }
+            // Note: duration is optional - if omitted, all frames from start_frame to end will be used
+            // However, this requires file probing at runtime
         }
         
         // Validate LaserDisc picture numbers if specified

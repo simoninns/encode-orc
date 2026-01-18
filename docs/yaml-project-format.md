@@ -84,10 +84,11 @@ Each section in the `sections` list represents a continuous sequence of frames w
 ```yaml
 sections:
   - name: "Section Name"
-    duration: 100  # Number of frames in this section
+    duration: 100  # Number of frames (required for yuv422/png; optional for mov-file - omit to use all remaining frames)
     source:
-      type: "yuv422-image"  # or "png-image"
-      file: "path/to/image.raw"  # or .png file
+      type: "yuv422-image"  # or "png-image" or "mov-file"
+      file: "path/to/image.raw"  # or .png or .mov file
+      start_frame: 0  # Optional: for mov-file, which frame to start from (0-indexed, default: 0)
     
     # Optional: filter configuration
     filters:
@@ -102,7 +103,10 @@ sections:
       # ... section-specific parameters: picture_start, chapter, timecode_start, vbi, vits ...
 ```
 
-**Note on source types**: The `type` field accepts `yuv422-image` (raw planar YUV 4:2:2 data) or `png-image`. For yuv422-image, the file must contain exactly `width × height × 2` bytes (2 bytes per pixel). For PNG images, any standard PNG format is supported.
+**Note on source types**: 
+- `yuv422-image`: Raw planar YUV 4:2:2 data. File must contain exactly `width × height × 2` bytes (2 bytes per pixel).
+- `png-image`: Any standard PNG format is supported. Single image repeated for `duration` frames.
+- `mov-file`: Video file in any format supported by ffmpeg (v210, ProRes, etc.). Extracts `duration` frames starting from `start_frame` (default: 0). If `duration` is omitted, all remaining frames from `start_frame` to end of file are used.
 
 
 
@@ -742,6 +746,85 @@ The command-line interface (with switches like `-o`, `-f`, `-t`, `-n`, etc.) has
 - **Version control**: Easy to track changes to encoding configurations
 - **Complex projects**: Multi-section projects with different standards and sources
 - **Reproducibility**: Same project file always produces the same output
+
+---
+
+## Example: MOV File Input
+
+Here's an example of using a MOV file as input. This is useful for frame-accurate studio-level video files:
+
+```yaml
+name: "PAL Testcard from MOV"
+description: "Encoding PAL testcards with moving elements from v210 MOV file"
+
+output:
+  filename: "test-output/pal-testcard-mov.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  standard: "iec60857-1986"
+  mode: "cav"
+
+sections:
+  # Encode frames 0-49 (first 2 seconds at 25fps)
+  - name: "Opening Sequence"
+    duration: 50
+    source:
+      type: "mov-file"
+      file: "testcard-images/pal-mov/pt5300.mov"
+      start_frame: 0
+    laserdisc:
+      picture_start: 1
+    filters:
+      chroma:
+        enabled: true
+      luma:
+        enabled: false
+  
+  # Continue with frames 50-99 (next 2 seconds)
+  - name: "Continuation"
+    duration: 50
+    source:
+      type: "mov-file"
+      file: "testcard-images/pal-mov/pt5300.mov"
+      start_frame: 50
+    # LaserDisc picture numbers continue automatically (51-100)
+```
+
+**MOV File Requirements:**
+- Any video format supported by ffmpeg (v210, ProRes, etc.)
+- Dimensions must match the target video system (720×576 for PAL, 720×486 for NTSC)
+- Use `start_frame` to specify which frame to start extracting from (0-indexed, optional, default: 0)
+- Use `duration` to specify how many frames to extract and encode
+  - If `duration` is omitted, all remaining frames from `start_frame` to the end of the file will be used
+  - This is useful for encoding entire MOV files or splitting them across multiple sections with continuous picture numbers
+
+**Example: Encoding entire MOV file across multiple sections:**
+
+```yaml
+name: "Complete PAL MOV File"
+description: "Encode entire MOV split into chapters"
+
+output:
+  filename: "test-output/complete-mov.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  standard: "iec60857-1986"
+  mode: "cav"
+
+sections:
+  # Use entire MOV file, picture numbers continue across all sections
+  - name: "Full Video"
+    source:
+      type: "mov-file"
+      file: "testcard-images/pal-mov/pt5300.mov"
+      # No start_frame or duration - uses all frames
+    laserdisc:
+      picture_start: 1
+```
+
+**Note:** The MOV loader uses ffmpeg/ffprobe internally, so these tools must be installed and available in your PATH.
 
 If you previously used CLI switches, create a YAML project file with equivalent settings (see examples below).
 

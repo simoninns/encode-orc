@@ -12,6 +12,7 @@
 #include "metadata_generator.h"
 #include "video_parameters.h"
 #include "cli_parser.h"
+#include "mov_loader.h"
 #include <iostream>
 #include <fstream>
 #include <cstdio>
@@ -106,7 +107,41 @@ int main(int argc, char* argv[]) {
         std::cout << "\n";
     }
     
-    // Calculate total frames and fps
+    // Preprocessing: probe MOV files without duration and populate them
+    // This ensures all downstream code can rely on duration being set
+    for (auto& section : config.sections) {
+        if (section.mov_file_source && !section.duration) {
+            MOVLoader probe_loader;
+            std::string probe_error;
+            if (!probe_loader.open(section.mov_file_source->file, probe_error)) {
+                std::cerr << "Error probing MOV file for section '" << section.name 
+                          << "': " << probe_error << "\n";
+                return 1;
+            }
+            
+            int32_t total_frames = probe_loader.get_frame_count();
+            int32_t start_frame = section.mov_file_source->start_frame.value_or(0);
+            probe_loader.close();
+            
+            if (total_frames <= 0) {
+                std::cerr << "Error: Could not determine frame count from MOV file for section '" 
+                          << section.name << "'\n";
+                return 1;
+            }
+            
+            if (start_frame >= total_frames) {
+                std::cerr << "Error: start_frame " << start_frame 
+                          << " is beyond available frames (" << total_frames 
+                          << ") in section '" << section.name << "'\n";
+                return 1;
+            }
+            
+            // Set duration to remaining frames from start_frame
+            const_cast<VideoSection&>(section).duration = total_frames - start_frame;
+        }
+    }
+    
+    // Calculate total frames now that all durations are known
     int32_t total_frames = 0;
     for (const auto& section : config.sections) {
         if (section.duration) {
@@ -123,10 +158,17 @@ int main(int argc, char* argv[]) {
         if (section.png_image_source) {
             std::cout << "  File: " << section.png_image_source->file << "\n";
         }
+        if (section.mov_file_source) {
+            std::cout << "  MOV File: " << section.mov_file_source->file << "\n";
+            if (section.mov_file_source->start_frame) {
+                std::cout << "  Start Frame: " << section.mov_file_source->start_frame.value() << "\n";
+            }
+        }
         if (section.duration) {
             std::cout << "  Frames: " << section.duration.value() << "\n";
         }
     }
+    
     std::cout << "\nTotal frames: " << total_frames << "\n\n";
     
     // Encode video for each section
@@ -170,7 +212,10 @@ int main(int argc, char* argv[]) {
     for (const auto& section : config.sections) {
         std::cout << "Encoding section: " << section.name << "\n";
         
-        if (section.yuv422_image_source || section.png_image_source) {
+        // Track actual number of frames encoded in this section
+        int32_t section_frames = 0;
+        
+        if (section.yuv422_image_source || section.png_image_source || section.mov_file_source) {
             int32_t picture_start = 0;
             int32_t chapter = 0;
             std::string timecode_start = "";
@@ -198,20 +243,33 @@ int main(int argc, char* argv[]) {
             bool ok = false;
             if (section.yuv422_image_source) {
                 std::string yuv422_file = section.yuv422_image_source->file;
+                section_frames = section.duration.value();
                 ok = encoder.encode_yuv422_image(config.output.filename + ".temp",
                                                 system, config.laserdisc.standard, yuv422_file,
-                                                section.duration.value(), false,
+                                                section_frames, false,
                                                 picture_start, chapter, timecode_start,
                                                 enable_chroma_filter, enable_luma_filter,
                                                 is_separate_yc, is_yc_legacy);
             } else if (section.png_image_source) {
                 std::string png_file = section.png_image_source->file;
+                section_frames = section.duration.value();
                 ok = encoder.encode_png_image(config.output.filename + ".temp",
                                               system, config.laserdisc.standard, png_file,
-                                              section.duration.value(), false,
+                                              section_frames, false,
                                               picture_start, chapter, timecode_start,
                                               enable_chroma_filter, enable_luma_filter,
                                               is_separate_yc, is_yc_legacy);
+            } else if (section.mov_file_source) {
+                std::string mov_file = section.mov_file_source->file;
+                int32_t start_frame = section.mov_file_source->start_frame.value_or(0);
+                section_frames = section.duration.value();  // Already populated in preprocessing
+                
+                ok = encoder.encode_mov_file(config.output.filename + ".temp",
+                                            system, config.laserdisc.standard, mov_file,
+                                            section_frames, start_frame, false,
+                                            picture_start, chapter, timecode_start,
+                                            enable_chroma_filter, enable_luma_filter,
+                                            is_separate_yc, is_yc_legacy);
             }
             if (!ok) {
                 std::cerr << "Error: " << encoder.get_error() << "\n";
@@ -304,8 +362,8 @@ int main(int argc, char* argv[]) {
             std::remove((config.output.filename + ".temp.db").c_str());
             std::remove((config.output.filename + ".temp.json").c_str());
             
-            frame_offset += section.duration.value();
-            std::cout << "  ✓ Encoded " << section.duration.value() << " frames\n";
+            frame_offset += section_frames;
+            std::cout << "  ✓ Encoded " << section_frames << " frames\n";
         }
     }
     

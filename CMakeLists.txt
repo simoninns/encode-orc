@@ -67,6 +67,7 @@ set(SOURCES
     src/color_conversion.cpp
     src/yuv422_loader.cpp
     src/png_loader.cpp
+    src/mov_loader.cpp
     src/video_encoder.cpp
 )
 
