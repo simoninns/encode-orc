@@ -118,6 +118,14 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                         }
                         section.mov_file_source = mov;
                     }
+                    if (section.source_type == "mp4-file" && source["file"]) {
+                        MP4FileSource mp4;
+                        mp4.file = source["file"].as<std::string>();
+                        if (source["start_frame"]) {
+                            mp4.start_frame = source["start_frame"].as<int32_t>();
+                        }
+                        section.mp4_file_source = mp4;
+                    }
                 }
                 
                 // Parse filter configuration
@@ -289,6 +297,14 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
         if (section.source_type == "mov-file") {
             if (!section.mov_file_source) {
                 error_message = "MOV file source missing for section: " + section.name;
+                return false;
+            }
+            // Note: duration is optional - if omitted, all frames from start_frame to end will be used
+            // However, this requires file probing at runtime
+        }
+        if (section.source_type == "mp4-file") {
+            if (!section.mp4_file_source) {
+                error_message = "MP4 file source missing for section: " + section.name;
                 return false;
             }
             // Note: duration is optional - if omitted, all frames from start_frame to end will be used

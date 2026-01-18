@@ -1,0 +1,26 @@
+name: "NTSC MP4 File Example"
+description: "Example of encoding frames from an MP4 file (H.264/H.265) for NTSC output"
+
+output:
+  filename: "test-output/ntsc-mp4-example.tbc"
+  format: "ntsc-composite"
+
+laserdisc:
+  standard: "iec60857-1986"
+  mode: "cav"
+
+sections:
+  # Encode first 60 frames from MP4 file (2 seconds @ 29.97 fps)
+  - name: "Opening Sequence"
+    duration: 60
+    source:
+      type: "mp4-file"
+      file: "testcard-images/ntsc-mp4/ntsc-nynashamn.mp4"
+      start_frame: 0
+    laserdisc:
+      picture_start: 1
+    filters:
+      chroma:
+        enabled: true
+      luma:
+        enabled: false

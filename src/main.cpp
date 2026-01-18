@@ -13,6 +13,7 @@
 #include "video_parameters.h"
 #include "cli_parser.h"
 #include "mov_loader.h"
+#include "mp4_loader.h"
 #include <iostream>
 #include <fstream>
 #include <cstdio>
@@ -141,6 +142,39 @@ int main(int argc, char* argv[]) {
         }
     }
     
+    // Preprocessing: probe MP4 files without duration and populate them
+    for (auto& section : config.sections) {
+        if (section.mp4_file_source && !section.duration) {
+            MP4Loader probe_loader;
+            std::string probe_error;
+            if (!probe_loader.open(section.mp4_file_source->file, probe_error)) {
+                std::cerr << "Error probing MP4 file for section '" << section.name 
+                          << "': " << probe_error << "\n";
+                return 1;
+            }
+            
+            int32_t total_frames = probe_loader.get_frame_count();
+            int32_t start_frame = section.mp4_file_source->start_frame.value_or(0);
+            probe_loader.close();
+            
+            if (total_frames <= 0) {
+                std::cerr << "Error: Could not determine frame count from MP4 file for section '" 
+                          << section.name << "'\n";
+                return 1;
+            }
+            
+            if (start_frame >= total_frames) {
+                std::cerr << "Error: start_frame " << start_frame 
+                          << " is beyond available frames (" << total_frames 
+                          << ") in section '" << section.name << "'\n";
+                return 1;
+            }
+            
+            // Set duration to remaining frames from start_frame
+            const_cast<VideoSection&>(section).duration = total_frames - start_frame;
+        }
+    }
+    
     // Calculate total frames now that all durations are known
     int32_t total_frames = 0;
     for (const auto& section : config.sections) {
@@ -162,6 +196,12 @@ int main(int argc, char* argv[]) {
             std::cout << "  MOV File: " << section.mov_file_source->file << "\n";
             if (section.mov_file_source->start_frame) {
                 std::cout << "  Start Frame: " << section.mov_file_source->start_frame.value() << "\n";
+            }
+        }
+        if (section.mp4_file_source) {
+            std::cout << "  MP4 File: " << section.mp4_file_source->file << "\n";
+            if (section.mp4_file_source->start_frame) {
+                std::cout << "  Start Frame: " << section.mp4_file_source->start_frame.value() << "\n";
             }
         }
         if (section.duration) {
@@ -215,7 +255,7 @@ int main(int argc, char* argv[]) {
         // Track actual number of frames encoded in this section
         int32_t section_frames = 0;
         
-        if (section.yuv422_image_source || section.png_image_source || section.mov_file_source) {
+        if (section.yuv422_image_source || section.png_image_source || section.mov_file_source || section.mp4_file_source) {
             int32_t picture_start = 0;
             int32_t chapter = 0;
             std::string timecode_start = "";
@@ -266,6 +306,17 @@ int main(int argc, char* argv[]) {
                 
                 ok = encoder.encode_mov_file(config.output.filename + ".temp",
                                             system, config.laserdisc.standard, mov_file,
+                                            section_frames, start_frame, false,
+                                            picture_start, chapter, timecode_start,
+                                            enable_chroma_filter, enable_luma_filter,
+                                            is_separate_yc, is_yc_legacy);
+            } else if (section.mp4_file_source) {
+                std::string mp4_file = section.mp4_file_source->file;
+                int32_t start_frame = section.mp4_file_source->start_frame.value_or(0);
+                section_frames = section.duration.value();  // Already populated in preprocessing
+                
+                ok = encoder.encode_mp4_file(config.output.filename + ".temp",
+                                            system, config.laserdisc.standard, mp4_file,
                                             section_frames, start_frame, false,
                                             picture_start, chapter, timecode_start,
                                             enable_chroma_filter, enable_luma_filter,

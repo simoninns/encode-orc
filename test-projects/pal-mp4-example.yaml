@@ -1,0 +1,26 @@
+name: "PAL MP4 File Example"
+description: "Example of encoding frames from an MP4 file (H.264/H.265) with normal color space"
+
+output:
+  filename: "test-output/pal-mp4-example.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  standard: "iec60857-1986"
+  mode: "cav"
+
+sections:
+  # Encode first 50 frames from MP4 file
+  - name: "Opening Sequence"
+    duration: 50
+    source:
+      type: "mp4-file"
+      file: "testcard-images/pal-mp4/pal-nynashamn.mp4"
+      start_frame: 0
+    laserdisc:
+      picture_start: 1
+    filters:
+      chroma:
+        enabled: true
+      luma:
+        enabled: false

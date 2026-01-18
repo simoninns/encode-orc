@@ -118,16 +118,25 @@ struct MOVFileSource {
 };
 
 /**
+ * @brief MP4 file source configuration
+ */
+struct MP4FileSource {
+    std::string file;  // Path to MP4 file (H.264, H.265, or other ffmpeg-supported codec)
+    std::optional<int32_t> start_frame;  // Optional: which frame to start from (0-indexed, default: 0)
+};
+
+/**
  * @brief Video section configuration
  */
 struct VideoSection {
     std::string name;
     std::optional<int32_t> duration;  // Required for RGB30 images and MOV files
     
-    std::string source_type;  // "yuv422-image", "png-image", or "mov-file"
+    std::string source_type;  // "yuv422-image", "png-image", "mov-file", or "mp4-file"
     std::optional<YUV422ImageSource> yuv422_image_source;
     std::optional<PNGImageSource> png_image_source;
     std::optional<MOVFileSource> mov_file_source;
+    std::optional<MP4FileSource> mp4_file_source;
     
     std::optional<FilterConfig> filters;  // Optional filter settings
     std::optional<LaserDiscConfig> laserdisc;

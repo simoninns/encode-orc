@@ -138,6 +138,39 @@ public:
                          bool yc_legacy = false);
     
     /**
+     * @brief Encode video from MP4 file frames
+     * @param output_filename Output .tbc filename (or base filename for Y/C mode)
+     * @param system Video system (PAL or NTSC)
+     * @param ld_standard LaserDisc standard
+     * @param mp4_file Path to MP4 file (H.264, H.265, or other ffmpeg-supported codec)
+     * @param num_frames Number of frames to encode
+     * @param start_frame Starting frame number in MP4 file (0-indexed, default: 0)
+     * @param verbose Enable verbose output
+     * @param picture_start Starting CAV picture number (0 = not used)
+     * @param chapter CLV chapter number (0 = not used)
+     * @param timecode_start CLV timecode HH:MM:SS:FF (empty = not used)
+     * @param enable_chroma_filter Enable 1.3 MHz chroma low-pass filter (default: true)
+     * @param enable_luma_filter Enable luma low-pass filter (default: false)
+     * @param separate_yc Enable separate Y/C TBC output (default: false)
+     * @param yc_legacy Use legacy naming (.tbc/.tbc_chroma) instead of modern (.tbcy/.tbcc) (default: false)
+     * @return true on success, false on error
+     */
+    bool encode_mp4_file(const std::string& output_filename,
+                         VideoSystem system,
+                         LaserDiscStandard ld_standard,
+                         const std::string& mp4_file,
+                         int32_t num_frames,
+                         int32_t start_frame = 0,
+                         bool verbose = false,
+                         int32_t picture_start = 0,
+                         int32_t chapter = 0,
+                         const std::string& timecode_start = "",
+                         bool enable_chroma_filter = true,
+                         bool enable_luma_filter = false,
+                         bool separate_yc = false,
+                         bool yc_legacy = false);
+    
+    /**
      * @brief Get error message from last operation
      */
     const std::string& get_error() const { return error_message_; }
