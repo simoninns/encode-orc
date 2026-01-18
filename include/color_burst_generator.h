@@ -34,20 +34,26 @@ public:
     explicit ColorBurstGenerator(const VideoParameters& params);
     
     /**
-     * @brief Generate color burst for NTSC
+     * @brief Generate NTSC color burst with custom center level
      * @param line_buffer Output buffer for one line
      * @param line_number Line number within field
      * @param field_number Field number in sequence
+     * @param center_level Center level for the signal (e.g., blanking_level or 32768)
+     * @param amplitude Burst amplitude
      */
-    void generate_ntsc_burst(uint16_t* line_buffer, int32_t line_number, int32_t field_number);
+    void generate_ntsc_burst(uint16_t* line_buffer, int32_t line_number, int32_t field_number,
+                            int32_t center_level, int32_t amplitude);
     
     /**
-     * @brief Generate color burst for PAL
+     * @brief Generate PAL color burst with custom center level
      * @param line_buffer Output buffer for one line
      * @param line_number Line number within field
      * @param field_number Field number in sequence
+     * @param center_level Center level for the signal (e.g., blanking_level or 32768)
+     * @param amplitude Burst amplitude
      */
-    void generate_pal_burst(uint16_t* line_buffer, int32_t line_number, int32_t field_number);
+    void generate_pal_burst(uint16_t* line_buffer, int32_t line_number, int32_t field_number,
+                           int32_t center_level, int32_t amplitude);
 
 private:
     const VideoParameters& params_;

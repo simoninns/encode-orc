@@ -79,7 +79,9 @@ void NTSCVITSGenerator::generate_sync_pulse(uint16_t* line_buffer) {
 void NTSCVITSGenerator::generate_color_burst(uint16_t* line_buffer, int32_t field_number, int32_t line_number) {
     // Delegate to shared color burst generator
     ColorBurstGenerator burst_gen(params_);
-    burst_gen.generate_ntsc_burst(line_buffer, line_number, field_number);
+    int32_t luma_range = white_level_ - blanking_level_;
+    int32_t burst_amplitude = static_cast<int32_t>((20.0 / 100.0) * luma_range);
+    burst_gen.generate_ntsc_burst(line_buffer, line_number, field_number, blanking_level_, burst_amplitude);
 }
 
 void NTSCVITSGenerator::generate_flat_level(uint16_t* line_buffer, double start_time, double end_time, double ire) {

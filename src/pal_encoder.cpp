@@ -201,90 +201,34 @@ void PALEncoder::generate_sync_pulse(uint16_t* line_buffer, int32_t /* line_numb
 void PALEncoder::generate_color_burst(uint16_t* line_buffer, int32_t line_number, int32_t field_number) {
     // Delegate to shared color burst generator
     ColorBurstGenerator burst_gen(params_);
-    burst_gen.generate_pal_burst(line_buffer, line_number, field_number);
+    int32_t luma_range = white_level_ - blanking_level_;
+    int32_t burst_amplitude = static_cast<int32_t>((3.0 / 14.0) * luma_range);
+    burst_gen.generate_pal_burst(line_buffer, line_number, field_number, blanking_level_, burst_amplitude);
 }
 
 void PALEncoder::generate_color_burst_chroma(uint16_t* line_buffer, int32_t line_number, int32_t field_number) {
     // Generate color burst on chroma channel (centered at 32768)
-    // The burst is a reference signal for the color subcarrier
-    // For chroma-only output, we generate the modulated burst centered at 16-bit midpoint
-    
-    std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(32768));
-    
-    // Generate burst signal modulated at the PAL color subcarrier frequency
-    // Use the proper burst window from video parameters
-    const int32_t burst_start = params_.colour_burst_start;
-    const int32_t burst_end = params_.colour_burst_end;
+    ColorBurstGenerator burst_gen(params_);
     
     // Calculate burst amplitude: 3/14 of luma range (same as composite mode)
     int32_t luma_range = white_level_ - blanking_level_;
     int32_t burst_amplitude = static_cast<int32_t>((3.0 / 14.0) * luma_range);
     
-    // Calculate field-specific phase for PAL
-    bool is_first_field = (field_number % 2) == 0;
-    int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
-    int32_t field_id = field_number % 8;
-    int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
-    int32_t v_switch = (prev_lines % 2 == 0) ? 1 : -1;
-    double burst_phase_offset = v_switch * (135.0 * PI / 180.0);
-    double prev_cycles = prev_lines * 283.7516;
-    
-    for (int32_t sample = burst_start; sample < burst_end; ++sample) {
-        if (sample >= 0 && sample < params_.field_width) {
-            // Standard PAL burst phase with V-switch
-            double t = static_cast<double>(sample) / sample_rate_;
-            double phase = 2.0 * PI * (subcarrier_freq_ * t + prev_cycles) + burst_phase_offset;
-            
-            // PAL burst uses sine with V-switch modulation
-            double burst_signal = std::sin(phase);
-            
-            int32_t sample_value = 32768 + static_cast<int32_t>(burst_amplitude * burst_signal);
-            line_buffer[sample] = clamp_to_16bit(sample_value);
-        }
-    }
+    // Generate burst centered at 32768 (16-bit midpoint for separate-yc chroma)
+    burst_gen.generate_pal_burst(line_buffer, line_number, field_number, 32768, burst_amplitude);
 }
 
 void PALEncoder::generate_color_burst_chroma_line(uint16_t* line_buffer, int32_t line_number, 
-                                                   int32_t field_number, int32_t burst_end) {
+                                                   int32_t field_number, int32_t /* burst_end */) {
     // Generate color burst on chroma for the portion before active video
-    // Chroma should be centered at 32768 with NO sync pulse
-    // Use the proper burst window from video parameters
+    ColorBurstGenerator burst_gen(params_);
     
-    // First, fill entire line with blanking level (32768 - centered, no sync)
-    std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(32768));
-    
-    // Color burst position from video parameters
-    const int32_t burst_start = params_.colour_burst_start;
-    
-    // Calculate burst amplitude: 3/14 of luma range (same as composite mode)
+    // Calculate burst amplitude: 3/14 of luma range (same as composite mode for PAL)
     int32_t luma_range = white_level_ - blanking_level_;
     int32_t burst_amplitude = static_cast<int32_t>((3.0 / 14.0) * luma_range);
     
-    // Calculate field-specific phase for PAL
-    bool is_first_field = (field_number % 2) == 0;
-    int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
-    int32_t field_id = field_number % 8;
-    int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
-    int32_t v_switch = (prev_lines % 2 == 0) ? 1 : -1;
-    double burst_phase_offset = v_switch * (135.0 * PI / 180.0);
-    double prev_cycles = prev_lines * 283.7516;
-    
-    // Generate color burst using the proper window
-    const int32_t actual_burst_end = std::min(burst_end, params_.colour_burst_end);
-    
-    for (int32_t sample = burst_start; sample < actual_burst_end; ++sample) {
-        if (sample < params_.field_width) {
-            // Generate burst during back porch period
-            double t = static_cast<double>(sample) / sample_rate_;
-            double phase = 2.0 * PI * (subcarrier_freq_ * t + prev_cycles) + burst_phase_offset;
-            
-            // PAL burst reference signal with V-switch modulation
-            double burst_signal = std::sin(phase);
-            
-            int32_t sample_value = 32768 + static_cast<int32_t>(burst_amplitude * burst_signal);
-            line_buffer[sample] = clamp_to_16bit(sample_value);
-        }
-    }
+    // Generate burst centered at 32768
+    burst_gen.generate_pal_burst(line_buffer, line_number, field_number, 32768, burst_amplitude);
 }
 
 void PALEncoder::generate_vsync_line(uint16_t* line_buffer, int32_t line_number) {

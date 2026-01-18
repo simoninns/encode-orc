@@ -118,91 +118,127 @@ double ColorBurstGenerator::calculate_envelope(int32_t sample, int32_t burst_sta
     return envelope;
 }
 
-void ColorBurstGenerator::generate_ntsc_burst(uint16_t* line_buffer, int32_t line_number, int32_t field_number) {
-    // NTSC color burst
-    // Position: Starts approximately 5.3 µs after sync (back porch)
-    // Duration: 9 cycles of subcarrier (approximately 2.5 µs at 3.58 MHz) at 100% amplitude
-    // Amplitude: 40 IRE peak-to-peak (±20 IRE about blanking level)
-    // Phase: fixed at +180°
-    // Envelope: Rise/fall shaped over 3 cycles (outside the 100% region)
+void ColorBurstGenerator::generate_ntsc_burst(uint16_t* line_buffer, int32_t line_number, 
+                                               int32_t field_number, int32_t center_level, 
+                                               int32_t amplitude) {
+    // Generate burst with envelope shaping, then shift to the specified center level
+    // The burst signal is generated relative to 0, then offset to center_level
     
     int32_t burst_start = params_.colour_burst_start;
     int32_t burst_end = params_.colour_burst_end;
     
-    // Calculate burst amplitude: ±20 IRE (40 IRE peak-to-peak)
-    int32_t luma_range = white_level_ - blanking_level_;
-    int32_t burst_amplitude = static_cast<int32_t>((20.0 / 100.0) * luma_range);
-    
-    // Burst phase: 180° (fixed for NTSC)
+    // NTSC burst phase is fixed at 180°
     double burst_phase_offset = PI;
     
-    // Envelope shaping: 3 cycles of subcarrier for rise and fall (same ramp speed)
-    // But positioned so 2 cycles are outside and 1 cycle is inside the burst region
+    // Envelope shaping: 3 cycles rise/fall with cosine S-curve
     double cycle_time_ns = (1.0 / subcarrier_freq_) * 1e9;
     const double rise_time_ns = 3.0 * cycle_time_ns;
     const double fall_time_ns = 3.0 * cycle_time_ns;
     
-    // Calculate sample range (2 cycles outside, 1 cycle inside on each side)
-    int32_t cycles_outside = static_cast<int32_t>((2.0 * cycle_time_ns / 1e9) * sample_rate_);
-    int32_t ramp_start = burst_start - cycles_outside;
-    int32_t ramp_end = burst_end + cycles_outside;
+    // Calculate ramp positions: 2 cycles outside, 1 cycle inside
+    double rise_samples = (rise_time_ns / 1e9) * sample_rate_;
+    double fall_samples = (fall_time_ns / 1e9) * sample_rate_;
+    rise_samples = std::max(rise_samples, 1.0);
+    fall_samples = std::max(fall_samples, 1.0);
     
-    // Generate color burst with envelope shaping
-    for (int32_t sample = ramp_start; sample < ramp_end; ++sample) {
+    int32_t rise_start = burst_start - static_cast<int32_t>(rise_samples * 2.0 / 3.0);
+    int32_t rise_end = burst_start + static_cast<int32_t>(rise_samples / 3.0);
+    int32_t fall_start = burst_end - static_cast<int32_t>(fall_samples / 3.0);
+    int32_t fall_end = burst_end + static_cast<int32_t>(fall_samples * 2.0 / 3.0);
+    
+    // Fill line with center level first
+    std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(center_level));
+    
+    // Generate burst with envelope and write with center offset
+    for (int32_t sample = std::max(0, rise_start); sample < std::min(static_cast<int32_t>(params_.field_width), fall_end); ++sample) {
         double phase = calculate_ntsc_phase(field_number, line_number, sample) + burst_phase_offset;
         double burst_signal = std::sin(phase);
         
         // Apply envelope shaping
-        double envelope = calculate_envelope(sample, burst_start, burst_end, rise_time_ns, fall_time_ns);
+        double envelope = 0.0;
+        if (sample >= rise_start && sample < rise_end) {
+            double position_in_rise = static_cast<double>(sample - rise_start);
+            double t_env = position_in_rise / rise_samples;
+            t_env = std::min(1.0, t_env);
+            envelope = (1.0 - std::cos(PI * t_env)) / 2.0;
+        } else if (sample >= rise_end && sample < fall_start) {
+            envelope = 1.0;
+        } else if (sample >= fall_start && sample < fall_end) {
+            double position_in_fall = static_cast<double>(sample - fall_start);
+            double t_env = position_in_fall / fall_samples;
+            t_env = std::min(1.0, t_env);
+            envelope = (1.0 + std::cos(PI * t_env)) / 2.0;
+        } else {
+            envelope = 0.0;
+        }
         
-        int32_t sample_value = blanking_level_ + 
-                              static_cast<int32_t>(burst_amplitude * envelope * burst_signal);
+        // Shift burst signal to center level
+        int32_t sample_value = center_level + static_cast<int32_t>(amplitude * envelope * burst_signal);
         line_buffer[sample] = clamp_to_16bit(sample_value);
     }
 }
 
-void ColorBurstGenerator::generate_pal_burst(uint16_t* line_buffer, int32_t line_number, int32_t field_number) {
-    // PAL color burst
-    // Position: Starts approximately 5.6 µs after sync (back porch)
-    // Duration: 10 cycles of subcarrier (approximately 2.25 µs) at 100% amplitude
-    // Amplitude: ±150 mV (300mV peak-to-peak for 700mV white reference)
-    // Phase: Swinging burst (V-switch modulated at ±135°)
-    // Envelope: Rise/fall shaped over 3 cycles (outside the 100% region)
+void ColorBurstGenerator::generate_pal_burst(uint16_t* line_buffer, int32_t line_number,
+                                              int32_t field_number, int32_t center_level,
+                                              int32_t amplitude) {
+    // Generate burst with envelope shaping, then shift to the specified center level
+    // The burst signal is generated relative to 0, then offset to center_level
     
     int32_t burst_start = params_.colour_burst_start;
     int32_t burst_end = params_.colour_burst_end;
     
-    // Calculate V-switch for burst phase
-    int32_t v_switch = get_pal_v_switch(field_number, line_number);
-    
-    // Burst phase alternates with V-switch: ±135°
+    // Calculate PAL phase with V-switch
+    bool is_first_field = (field_number % 2) == 0;
+    int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
+    int32_t field_id = field_number % 8;
+    int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
+    int32_t v_switch = (prev_lines % 2 == 0) ? 1 : -1;
     double burst_phase_offset = v_switch * (135.0 * PI / 180.0);
     
-    // Calculate burst amplitude: 3/14 of luma range (gives ±300mV for 700mV white)
-    int32_t luma_range = white_level_ - blanking_level_;
-    int32_t burst_amplitude = static_cast<int32_t>((3.0 / 14.0) * luma_range);
-    
-    // Envelope shaping: 3 cycles of subcarrier for rise and fall (same ramp speed)
-    // But positioned so 2 cycles are outside and 1 cycle is inside the burst region
+    // Envelope shaping: 3 cycles rise/fall with cosine S-curve
     double cycle_time_ns = (1.0 / subcarrier_freq_) * 1e9;
     const double rise_time_ns = 3.0 * cycle_time_ns;
     const double fall_time_ns = 3.0 * cycle_time_ns;
     
-    // Calculate sample range (2 cycles outside, 1 cycle inside on each side)
-    int32_t cycles_outside = static_cast<int32_t>((2.0 * cycle_time_ns / 1e9) * sample_rate_);
-    int32_t ramp_start = burst_start - cycles_outside;
-    int32_t ramp_end = burst_end + cycles_outside;
+    // Calculate ramp positions: 2 cycles outside, 1 cycle inside
+    double rise_samples = (rise_time_ns / 1e9) * sample_rate_;
+    double fall_samples = (fall_time_ns / 1e9) * sample_rate_;
+    rise_samples = std::max(rise_samples, 1.0);
+    fall_samples = std::max(fall_samples, 1.0);
     
-    // Generate color burst with envelope shaping
-    for (int32_t sample = ramp_start; sample < ramp_end; ++sample) {
+    int32_t rise_start = burst_start - static_cast<int32_t>(rise_samples * 2.0 / 3.0);
+    int32_t rise_end = burst_start + static_cast<int32_t>(rise_samples / 3.0);
+    int32_t fall_start = burst_end - static_cast<int32_t>(fall_samples / 3.0);
+    int32_t fall_end = burst_end + static_cast<int32_t>(fall_samples * 2.0 / 3.0);
+    
+    // Fill line with center level first
+    std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(center_level));
+    
+    // Generate burst with envelope and write with center offset
+    for (int32_t sample = std::max(0, rise_start); sample < std::min(static_cast<int32_t>(params_.field_width), fall_end); ++sample) {
         double phase = calculate_pal_phase(field_number, line_number, sample) + burst_phase_offset;
         double burst_signal = std::sin(phase);
         
         // Apply envelope shaping
-        double envelope = calculate_envelope(sample, burst_start, burst_end, rise_time_ns, fall_time_ns);
+        double envelope = 0.0;
+        if (sample >= rise_start && sample < rise_end) {
+            double position_in_rise = static_cast<double>(sample - rise_start);
+            double t_env = position_in_rise / rise_samples;
+            t_env = std::min(1.0, t_env);
+            envelope = (1.0 - std::cos(PI * t_env)) / 2.0;
+        } else if (sample >= rise_end && sample < fall_start) {
+            envelope = 1.0;
+        } else if (sample >= fall_start && sample < fall_end) {
+            double position_in_fall = static_cast<double>(sample - fall_start);
+            double t_env = position_in_fall / fall_samples;
+            t_env = std::min(1.0, t_env);
+            envelope = (1.0 + std::cos(PI * t_env)) / 2.0;
+        } else {
+            envelope = 0.0;
+        }
         
-        int32_t sample_value = blanking_level_ + 
-                              static_cast<int32_t>(burst_amplitude * envelope * burst_signal);
+        // Shift burst signal to center level
+        int32_t sample_value = center_level + static_cast<int32_t>(amplitude * envelope * burst_signal);
         line_buffer[sample] = clamp_to_16bit(sample_value);
     }
 }

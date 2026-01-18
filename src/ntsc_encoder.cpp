@@ -195,89 +195,34 @@ void NTSCEncoder::generate_sync_pulse(uint16_t* line_buffer, int32_t /* line_num
 void NTSCEncoder::generate_color_burst(uint16_t* line_buffer, int32_t line_number, int32_t field_number) {
     // Delegate to shared color burst generator
     ColorBurstGenerator burst_gen(params_);
-    burst_gen.generate_ntsc_burst(line_buffer, line_number, field_number);
+    int32_t luma_range = white_level_ - blanking_level_;
+    int32_t burst_amplitude = static_cast<int32_t>((20.0 / 100.0) * luma_range);
+    burst_gen.generate_ntsc_burst(line_buffer, line_number, field_number, blanking_level_, burst_amplitude);
 }
 
 void NTSCEncoder::generate_color_burst_chroma(uint16_t* line_buffer, int32_t line_number, int32_t field_number) {
     // Generate color burst on chroma channel (centered at 32768)
-    // For NTSC, the burst is a reference signal at 180° phase
-    
-    std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(32768));
-    
-    // Generate burst signal modulated at the NTSC color subcarrier frequency
-    // Use the proper burst window from video parameters
-    const int32_t burst_start = params_.colour_burst_start;
-    const int32_t burst_end = params_.colour_burst_end;
+    ColorBurstGenerator burst_gen(params_);
     
     // Calculate burst amplitude: ±20 IRE (same as composite mode)
     int32_t luma_range = white_level_ - blanking_level_;
     int32_t burst_amplitude = static_cast<int32_t>((20.0 / 100.0) * luma_range);
     
-    // Burst phase: 180° (fixed for NTSC)
-    double burst_phase_offset = PI;
-    
-    // Use the same phase calculation as composite mode to ensure consistency
-    // NTSC has 262.5 lines per field and 227.5 cycles per line
-    const double lines_per_field = 262.5;
-    const double cycles_per_line = 227.5;
-    double absolute_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line_number);
-    double prev_cycles = absolute_lines * cycles_per_line;
-    
-    for (int32_t sample = burst_start; sample < burst_end; ++sample) {
-        if (sample >= 0 && sample < params_.field_width) {
-            double t = static_cast<double>(sample) / sample_rate_;
-            double phase = 2.0 * PI * (subcarrier_freq_ * t + prev_cycles) + burst_phase_offset;
-            
-            // NTSC burst reference signal
-            double burst_signal = std::sin(phase);
-            
-            int32_t sample_value = 32768 + static_cast<int32_t>(burst_amplitude * burst_signal);
-            line_buffer[sample] = clamp_to_16bit(sample_value);
-        }
-    }
+    // Generate burst centered at 32768 (16-bit midpoint for separate-yc chroma)
+    burst_gen.generate_ntsc_burst(line_buffer, line_number, field_number, 32768, burst_amplitude);
 }
 
 void NTSCEncoder::generate_color_burst_chroma_line(uint16_t* line_buffer, int32_t line_number, 
-                                                    int32_t field_number, int32_t burst_end) {
+                                                    int32_t field_number, int32_t /* burst_end */) {
     // Generate color burst on chroma for the portion before active video
-    // Chroma should be centered at 32768 with NO sync pulse
-    // Use the proper burst window from video parameters
-    
-    // First, fill entire line with blanking level (32768 - centered, no sync)
-    std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(32768));
-    
-    // Color burst position from video parameters
-    const int32_t burst_start = params_.colour_burst_start;
+    ColorBurstGenerator burst_gen(params_);
     
     // Calculate burst amplitude: ±20 IRE (same as composite mode)
     int32_t luma_range = white_level_ - blanking_level_;
     int32_t burst_amplitude = static_cast<int32_t>((20.0 / 100.0) * luma_range);
     
-    // Burst phase: 180° (fixed for NTSC)
-    double burst_phase_offset = PI;
-    
-    // Use the same phase calculation as composite mode to ensure consistency
-    // NTSC has 262.5 lines per field and 227.5 cycles per line
-    const double lines_per_field = 262.5;
-    const double cycles_per_line = 227.5;
-    double absolute_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line_number);
-    double prev_cycles = absolute_lines * cycles_per_line;
-    
-    // Generate color burst using the proper window
-    const int32_t actual_burst_end = std::min(burst_end, params_.colour_burst_end);
-    
-    for (int32_t sample = burst_start; sample < actual_burst_end; ++sample) {
-        if (sample < params_.field_width) {
-            double t = static_cast<double>(sample) / sample_rate_;
-            double phase = 2.0 * PI * (subcarrier_freq_ * t + prev_cycles) + burst_phase_offset;
-            
-            // NTSC burst reference signal
-            double burst_signal = std::sin(phase);
-            
-            int32_t sample_value = 32768 + static_cast<int32_t>(burst_amplitude * burst_signal);
-            line_buffer[sample] = clamp_to_16bit(sample_value);
-        }
-    }
+    // Generate burst centered at 32768
+    burst_gen.generate_ntsc_burst(line_buffer, line_number, field_number, 32768, burst_amplitude);
 }
 
 void NTSCEncoder::generate_vsync_line(uint16_t* line_buffer, int32_t line_number) {
