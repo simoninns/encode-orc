@@ -91,6 +91,18 @@ private:
     int32_t get_pal_v_switch(int32_t field_number, int32_t line_number) const;
     
     /**
+     * @brief Calculate envelope shaping factor for burst amplitude
+     * @param sample Current sample position within burst
+     * @param burst_start Start of burst region
+     * @param burst_end End of burst region
+     * @param rise_time_ns Rise time in nanoseconds (10-90%)
+     * @param fall_time_ns Fall time in nanoseconds (90-10%)
+     * @return Envelope factor [0.0, 1.0]
+     */
+    double calculate_envelope(int32_t sample, int32_t burst_start, int32_t burst_end,
+                             double rise_time_ns, double fall_time_ns) const;
+    
+    /**
      * @brief Clamp value to 16-bit unsigned range
      */
     static uint16_t clamp_to_16bit(int32_t value) {
