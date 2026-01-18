@@ -34,6 +34,7 @@ description: "A multi-section PAL LaserDisc test disc with various test signals"
 output:
   filename: "output.tbc"
   format: "pal-composite"  # pal-composite, ntsc-composite, pal-yc, ntsc-yc
+  mode: "combined"  # Optional: combined (default), separate-yc, separate-yc-legacy
   metadata_decoder: "encode-orc"  # Optional: decoder string in metadata (default: "encode-orc")
   
   # Optional: Override video signal levels (16-bit IRE scale)
@@ -44,10 +45,11 @@ output:
     black_16b_ire: 17125      # Optional: black level (default: system-dependent)
     white_16b_ire: 54016      # Optional: white/peak level (default: system-dependent)
 
-# For YC formats (pal-yc, ntsc-yc), two files are produced:
+# When mode is "separate-yc" or "separate-yc-legacy", two files are produced:
 # - <basename>.tbcy : luma
 # - <basename>.tbcc : chroma
 # The base name comes from output.filename without extension.
+# Note: format can still be pal-composite/ntsc-composite; mode controls output splitting.
   
 # LaserDisc / IEC project settings (applies to all sections)
 laserdisc:
@@ -84,14 +86,23 @@ sections:
   - name: "Section Name"
     duration: 100  # Number of frames in this section
     source:
-      type: "rgb30-image"  # Only supported source type
-      file: "path/to/image.raw"
+      type: "yuv422-image"  # or "png-image"
+      file: "path/to/image.raw"  # or .png file
+    
+    # Optional: filter configuration
+    filters:
+      chroma:
+        enabled: true  # Default: true
+      luma:
+        enabled: false  # Default: false
     
     # LaserDisc section settings
     laserdisc:
       disc_area: "programme-area"  # lead-in, programme-area, or lead-out
       # ... section-specific parameters: picture_start, chapter, timecode_start, vbi, vits ...
 ```
+
+**Note on source types**: The `type` field accepts `yuv422-image` (raw planar YUV 4:2:2 data) or `png-image`. For yuv422-image, the file must contain exactly `width × height × 2` bytes (2 bytes per pixel). For PNG images, any standard PNG format is supported.
 
 
 
@@ -119,21 +130,22 @@ All sections inherit these project-level values; sections cannot change `standar
 laserdisc:
   disc_area: "programme-area"  # lead-in, programme-area, or lead-out
   
+  # Convenience boolean flags (alternative to disc_area string):
+  # leadin: true   # Equivalent to disc_area: "lead-in"
+  # leadout: true  # Equivalent to disc_area: "lead-out"
+  
   # Mode-specific per-section starts (inherit mode from project)
   picture_start: 1        # CAV mode: starting picture number (optional, continues if omitted)
   chapter: 1              # CLV mode: chapter number (optional, continues if omitted)
   timecode_start: "00:00:00:00"  # CLV mode: start timecode (optional, continues if omitted)
   start: 1000             # picture-numbers mode: starting number (optional)
   
-  # VBI configuration (lines 16, 17, 18)
+  # VBI/VITS configuration (parsed but not applied in current version)
   vbi:
-    enabled: true
-    # ... VBI settings ...
+    enabled: true  # Currently ignored
   
-  # VITS configuration
   vits:
-    enabled: true
-    # ... VITS settings ...
+    enabled: true  # Currently ignored
 ```
 
 ---
@@ -166,7 +178,7 @@ sections:
   - name: "Section with filters"
     duration: 100
     source:
-      type: "rgb30-image"
+      type: "yuv422-image"
       file: "image.raw"
     
     # Optional: Configure filters for this section
@@ -200,7 +212,7 @@ sections:
   - name: "No filtering (not recommended)"
     duration: 100
     source:
-      type: "rgb30-image"
+      type: "yuv422-image"
       file: "image.raw"
     
     filters:
@@ -304,12 +316,13 @@ laserdisc:
 ### VBI (Vertical Blanking Interval) – current implementation
 
 - VBI is generated only when the project standard is IEC 60856-1986 (NTSC) or IEC 60857-1986 (PAL). Standard `none` disables VBI.
-- Section-level `vbi.enabled` flags and line overrides are not currently applied (reserved for future use).
+- Section-level `vbi.enabled` flag is **parsed but not applied** (reserved for future use).
+- VBI line-level configuration (line16, line17, line18 with auto modes, bytes, status codes) is **not parsed or implemented**.
 - Encoding is automatic and standard-driven:
   - CAV: lines 16–18 carry picture numbers in biphase per IEC LaserDisc rules.
   - CLV chapter/timecode: lines carry chapter or timecode in biphase per IEC rules.
-  - Programme/lead-in/lead-out status follows the IEC defaults; there is no custom byte injection.
-- Manual byte arrays, custom status codes, and signal parameter overrides described previously are **not implemented** yet.
+  - Programme/lead-in/lead-out status follows the IEC defaults.
+- The examples showing detailed VBI line configuration are **for future reference only** and do not work in the current version.
 
 ---
 
@@ -317,8 +330,9 @@ laserdisc:
 
 - VITS is generated only when the project standard is IEC 60856-1986 (NTSC) or IEC 60857-1986 (PAL). Standard `none` disables VITS entirely.
 - VITS is included for both composite and separate Y/C outputs when the standard allows it.
-- Section-level `vits.enabled` flags and custom line overrides are not currently applied (reserved for future use).
-- Only the built-in IEC waveforms/line assignments are emitted (PAL: lines 19/20/332/333 per parity; NTSC: lines 19/20/282/283). No per-section overrides yet.
+- Section-level `vits.enabled` flag is **parsed but not applied** (reserved for future use).
+- Only the built-in IEC waveforms/line assignments are emitted (PAL: lines 19/20/332/333 per parity; NTSC: lines 19/20/282/283).
+- Custom VITS line overrides are **not implemented**.
 
 ---
 
@@ -382,11 +396,11 @@ output:
 
 ## Complete Example Projects
 
-### Example 1: Simple PAL Test with RGB30
+### Example 1: Simple PAL Test with YUV422
 
 ```yaml
 name: "PAL Color Bars Test"
-description: "RGB30 EBU color bars with IEC 60857 VITS"
+description: "YUV422 EBU color bars with IEC 60857 VITS"
 
 output:
   filename: "pal-test.tbc"
@@ -400,31 +414,23 @@ sections:
   - name: "Color Bars"
     duration: 100
     source:
-      type: "rgb30-image"
-      file: "testcard-images/pal-ebu-colorbars-100.raw"
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
+    filters:
+      chroma:
+        enabled: true  # Apply 1.3 MHz filter to prevent artifacts
+      luma:
+        enabled: false
     laserdisc:
       disc_area: "programme-area"
       picture_start: 1
-      
-      vbi:
-        enabled: true
-        line16:
-          auto: "status"
-          status_code: 0x80
-        line17:
-          auto: "picture-number"
-        line18:
-          auto: "picture-number"
-      
-      vits:
-        enabled: true
 ```
 
-### Example 2: Multi-Section LaserDisc with RGB30
+### Example 2: Multi-Section LaserDisc with YUV422
 
 ```yaml
-name: "RGB30 Educational LaserDisc"
-description: "Multi-chapter CLV disc with RGB30 images"
+name: "Educational LaserDisc"
+description: "Multi-chapter CLV disc with YUV422 images"
 
 output:
   filename: "educational-master.tbc"
@@ -435,75 +441,45 @@ laserdisc:
   mode: "clv"
 
 sections:
-  # Leader with RGB30 bars
+  # Leader
   - name: "Leader - Color Bars"
     duration: 250  # 10 seconds at 25fps
     source:
-      type: "rgb30-image"
-      file: "testcard-images/pal-ebu-colorbars-75.raw"
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
     laserdisc:
       disc_area: "lead-in"
       chapter: 0
       timecode_start: "00:00:00:00"
-      
-      vbi:
-        enabled: true
-        line17:
-          auto: "timecode"
-        line18:
-          auto: "chapter"
-      
-      vits:
-        enabled: true
         
-  # Chapter 1: RGB30 content
+  # Chapter 1
   - name: "Chapter 1 - Content"
     duration: 2500  # 100 seconds
     source:
-      type: "rgb30-image"
-      file: "testcard-images/custom-content-1.raw"
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/custom-content-1.raw"
     laserdisc:
       disc_area: "programme-area"
       chapter: 1
       timecode_start: "00:00:10:00"
-      
-      vbi:
-        enabled: true
-        line17:
-          auto: "timecode"
-        line18:
-          auto: "chapter"
-      
-      vits:
-        enabled: true
         
-  # Chapter 2: Different RGB30 image
+  # Chapter 2
   - name: "Chapter 2 - Content"
     duration: 7500  # 300 seconds (5 minutes)
     source:
-      type: "rgb30-image"
-      file: "testcard-images/custom-content-2.raw"
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/custom-content-2.raw"
     laserdisc:
       disc_area: "programme-area"
       chapter: 2
       timecode_start: "00:01:50:00"
-      
-      vbi:
-        enabled: true
-        line17:
-          auto: "timecode"
-        line18:
-          auto: "chapter"
-      
-      vits:
-        enabled: true
 ```
 
-### Example 3: NTSC CAV with RGB30
+### Example 3: NTSC CAV with YUV422
 
 ```yaml
-name: "NTSC CAV RGB30 Reference"
-description: "CAV test disc with RGB30 color bars"
+name: "NTSC CAV Reference"
+description: "CAV test disc with YUV422 color bars"
 
 output:
   filename: "ntsc-cav-reference.tbc"
@@ -514,52 +490,32 @@ laserdisc:
   mode: "cav"
 
 sections:
-  # RGB30 EIA bars - 100%
+  # EIA bars - 100%
   - name: "EIA Bars 100%"
     duration: 1800  # 60 seconds at 29.97fps
     source:
-      type: "rgb30-image"
-      file: "testcard-images/ntsc-eia-colorbars-100.raw"
+      type: "yuv422-image"
+      file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-100.raw"
     laserdisc:
       disc_area: "programme-area"
       picture_start: 1
-      
-      vbi:
-        enabled: true
-        line17:
-          auto: "picture-number"
-        line18:
-          auto: "picture-number"
-      
-      vits:
-        enabled: true
         
-  # RGB30 EIA bars - 75%
+  # EIA bars - 75%
   - name: "EIA Bars 75%"
     duration: 1800
     source:
-      type: "rgb30-image"
-      file: "testcard-images/ntsc-eia-colorbars-75.raw"
+      type: "yuv422-image"
+      file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-75.raw"
     laserdisc:
       disc_area: "programme-area"
       picture_start: 1801
-      
-      vbi:
-        enabled: true
-        line17:
-          auto: "picture-number"
-        line18:
-          auto: "picture-number"
-      
-      vits:
-        enabled: true
 ```
 
-### Example 4: Minimal RGB30 Configuration
+### Example 4: Minimal YUV422 Configuration
 
 ```yaml
-name: "Simple RGB30 Test"
-description: "Quick test with RGB30 image"
+name: "Simple Test"
+description: "Quick test with YUV422 image"
 
 output:
   filename: "test.tbc"
@@ -570,14 +526,66 @@ laserdisc:
   mode: "none"
 
 sections:
-  - name: "RGB30 Content"
+  - name: "Test Content"
     duration: 50
     source:
-      type: "rgb30-image"
-      file: "testcard-images/pal-ebu-colorbars-100.raw"
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
 ```
 
-### Example 5: Custom Metadata Decoder String
+### Example 5: PNG Image Source
+
+```yaml
+name: "PNG Test"
+description: "Encoding from PNG images"
+
+output:
+  filename: "png-test.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  standard: "none"
+  mode: "none"
+
+sections:
+  - name: "Test Pattern 1"
+    duration: 25
+    source:
+      type: "png-image"
+      file: "testcard-images/test-pattern-1.png"
+  - name: "Test Pattern 2"
+    duration: 25
+    source:
+      type: "png-image"
+      file: "testcard-images/test-pattern-2.png"
+```
+
+### Example 6: Separate Y/C Output
+
+```yaml
+name: "Separate Y/C Test"
+description: "Output separate luma and chroma TBC files"
+
+output:
+  filename: "test.tbc"
+  format: "pal-composite"
+  mode: "separate-yc"  # Creates test.tbcy and test.tbcc
+
+laserdisc:
+  standard: "iec60857-1986"
+  mode: "cav"
+
+sections:
+  - name: "Test Content"
+    duration: 100
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
+    laserdisc:
+      picture_start: 1
+```
+
+### Example 7: Custom Metadata Decoder String
 
 ```yaml
 name: "Custom Decoder String Test"
@@ -596,8 +604,8 @@ sections:
   - name: "Test Content"
     duration: 100
     source:
-      type: "rgb30-image"
-      file: "testcard-images/pal-ebu-colorbars-100.raw"
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
 ```
 
 **Note**: The `metadata_decoder` field controls the decoder string written to the SQLite metadata database. This can be useful for compatibility testing with different decoder tools (e.g., "ld-decode", "vhs-decode") or for identifying files generated by custom encoding workflows. If omitted, it defaults to "encode-orc".
@@ -621,17 +629,19 @@ sections:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `filename` | string | Yes | Output TBC filename |
-| `format` | string | Yes | Output format (pal-composite, ntsc-composite, pal-yc, ntsc-yc); YC formats emit two files: .tbcy (luma) and .tbcc (chroma) |
-| `metadata_decoder` | string | No | Decoder string written to metadata database (default: "encode-orc"); can be set to any string like "ld-decode" or "custom-encoder" |
+| `format` | string | Yes | Output format (pal-composite, ntsc-composite, pal-yc, ntsc-yc) |
+| `mode` | string | No | Output mode: "combined" (default, single .tbc file), "separate-yc" (separate .tbcy/.tbcc files), or "separate-yc-legacy" |
+| `metadata_decoder` | string | No | Decoder string written to metadata database (default: "encode-orc") |
 
 ### Section Fields
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | string | Yes | Section name |
-| `duration` | integer | Yes | Number of frames in section; frames = duration (RGB30 files must have exactly this many frames) |
-| `source` | object | Yes | Video source configuration (must be type: "rgb30-image") |
-| `laserdisc` | object | No | Section-level LaserDisc settings (disc_area, per-section starts). VBI/VITS flags are parsed but currently not applied. |
+| `duration` | integer | Yes | Number of frames in section |
+| `source` | object | Yes | Video source configuration. Type must be "yuv422-image" for raw YUV 4:2:2 planar, or "png-image" for PNG files |
+| `filters` | object | No | Filter configuration with optional chroma/luma filter settings (default: chroma enabled, luma disabled) |
+| `laserdisc` | object | No | Section-level LaserDisc settings. Supports: disc_area (or leadin/leadout flags), picture_start, chapter, timecode_start, start. VBI/VITS enabled flags are parsed but not applied. |
 
 ### LaserDisc Modes
 
@@ -647,20 +657,25 @@ sections:
 
 ## Validation Rules
 
-The YAML parser should enforce:
+The YAML parser enforces the following:
 
-1. **Required fields**: `name`, `description`, `output.filename`, `output.format` must be present
-2. **Valid format**: Output format must be one of the four supported types
-3. **Section duration**: Must be positive integer; required for all RGB30 image sections
-4. **RGB30 file validation**: File must exist, be readable, and have exactly `width × height × 6` bytes (720×576 = 2,488,320 for PAL; 720×486 = 2,099,520 for NTSC)
-5. **Picture numbers**: CAV picture numbers must be in range 1-79999
-6. **Chapter numbers**: CLV chapters must be in range 0-79
-7. **Timecode format**: Must be HH:MM:SS:FF with valid values
-8. **VBI bytes**: Must be in range 0x00-0xFF
-9. **IEC standard**: Choosing `none` disables VBI/VITS. A PAL/NTSC match is recommended but not currently enforced by the parser.
-10. **Non-empty sections**: At least one section must be defined
-11. **Project-wide mode**: Mode is set once at the project level; sections cannot override it
-12. **Continuation logic**: If start values are omitted, the first section must specify initial values; subsequent sections continue from previous
+1. **Required top-level fields**: `name` and `output.filename`, `output.format` must be present
+2. **Valid format**: Output format must be one of: `pal-composite`, `ntsc-composite`, `pal-yc`, `ntsc-yc`
+3. **Valid mode**: Output mode must be one of: `combined` (default), `separate-yc`, `separate-yc-legacy`
+4. **Section presence**: At least one section must be defined
+5. **Section name**: Each section must have a non-empty name
+6. **Section source**: Each section must specify a source type (only `yuv422-image` and `png-image` are supported)
+7. **Section duration**: Duration must be specified and be a positive integer for all sections
+8. **Picture numbers**: If specified, `picture_start` and `start` must be greater than 0
+9. **LaserDisc standard**: If specified, must be `iec60856-1986`, `iec60857-1986`, or `none`
+
+**Note**: The following are NOT currently validated:
+- Matching of video system (PAL/NTSC) between format and LaserDisc standard
+- Timecode format validity
+- Chapter number ranges (0-79)
+- CAV picture number ranges (1-79999)
+- File existence or size
+- Video level ranges
 
 ---
 
@@ -692,15 +707,24 @@ Section 3: chapter=2, timecode omitted, duration=1500 → continues timecode but
 
 ### Metadata Generation
 
-The application should automatically:
-- Generate appropriate TBC metadata JSON
-- Encode VBI data in biphase format
-- Insert VITS signals on correct lines
-- Calculate field phase IDs correctly
+The application automatically:
+- Generates TBC metadata in JSON and SQLite formats
+- Encodes VBI data in biphase format (when LaserDisc standard is enabled)
+- Inserts VITS signals on correct lines (when LaserDisc standard is enabled)
+- Calculates field phase IDs correctly
+- Writes the decoder identifier to the metadata (configurable via `metadata_decoder`)
+
+### Current Limitations
+
+- **VBI line-level configuration**: While the YAML structure supports detailed VBI configuration (line16, line17, line18 with auto modes, custom bytes, status codes), **this is not currently implemented**. VBI is generated automatically based on the LaserDisc standard and mode.
+- **VITS line-level configuration**: Section-level VITS enabled flags are parsed but not applied. VITS generation is controlled solely by the project-level LaserDisc standard.
+- **Per-section VBI/VITS control**: The `vbi.enabled` and `vits.enabled` flags at the section level are parsed but currently ignored.
 
 ### Future Extensions
 
 Possible future additions:
+- Per-section and per-line VBI configuration
+- Per-section VITS control
 - Closed caption data configuration
 - VITC (Vertical Interval Timecode) support
 - Audio configuration (currently silent)

@@ -14,5 +14,5 @@ sections:
   - name: "Test Frame"
     duration: 5
     source:
-      type: "rgb30-image"
+      type: "yuv422-image"
       file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"

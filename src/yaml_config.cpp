@@ -100,7 +100,7 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                         section.source_type = source["type"].as<std::string>();
                     }
                     
-                    if ((section.source_type == "rgb30-image" || section.source_type == "yuv422-image") && source["file"]) {
+                    if (section.source_type == "yuv422-image" && source["file"]) {
                         YUV422ImageSource yuv422;
                         yuv422.file = source["file"].as<std::string>();
                         section.yuv422_image_source = yuv422;
@@ -250,7 +250,7 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
             return false;
         }
         
-        if (section.source_type == "rgb30-image" || section.source_type == "yuv422-image") {
+        if (section.source_type == "yuv422-image") {
             if (!section.yuv422_image_source) {
                 error_message = "Raw image source missing for section: " + section.name;
                 return false;

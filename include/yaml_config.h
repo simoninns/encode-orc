@@ -116,7 +116,7 @@ struct VideoSection {
     std::string name;
     std::optional<int32_t> duration;  // Required for RGB30 images
     
-    std::string source_type;  // "rgb30-image" or "png-image"
+    std::string source_type;  // "yuv422-image" or "png-image"
     std::optional<YUV422ImageSource> yuv422_image_source;
     std::optional<PNGImageSource> png_image_source;
     

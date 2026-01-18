@@ -31,7 +31,7 @@ sections:
   - name: "Section Name"
     duration: 10          # Number of frames to encode
     source:
-      type: "rgb30-image"
+      type: "yuv422-image"
       file: "testcard-images/path-to-image.raw"
     laserdisc:
       picture_start: 1    # Optional: CAV picture numbering

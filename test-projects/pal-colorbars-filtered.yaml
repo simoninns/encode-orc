@@ -16,7 +16,7 @@ sections:
   - name: "EBU Color Bars (75%)"
     duration: 60
     source:
-      type: "rgb30-image"
+      type: "yuv422-image"
       file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
     
     # Filter configuration (optional, defaults shown)
@@ -36,7 +36,7 @@ sections:
   - name: "EBU Color Bars (100%)"
     duration: 60
     source:
-      type: "rgb30-image"
+      type: "yuv422-image"
       file: "testcard-images/pal-raw/pal-ebu-colorbars-100.raw"
     
     # Filters inherited from defaults (chroma enabled, luma disabled)
