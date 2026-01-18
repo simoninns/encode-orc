@@ -99,7 +99,7 @@ struct VideoParameters {
         params.white_16b_ire = 0xD300;      // 54016 (peak white)
         params.black_16b_ire = 0x42E5;      // 17125
         params.blanking_16b_ire = 0x42E5;   // 17125
-        params.is_subcarrier_locked = true;
+        params.is_subcarrier_locked = false;
         params.is_mapped = false;
         params.is_widescreen = false;
         return params;
@@ -122,7 +122,7 @@ struct VideoParameters {
         params.white_16b_ire = 0xC800;      // 51200
         params.black_16b_ire = 0x4568;      // 17768
         params.blanking_16b_ire = 0x3AD2;   // 15058
-        params.is_subcarrier_locked = true;
+        params.is_subcarrier_locked = false;
         params.is_mapped = false;
         params.is_widescreen = false;
         return params;
