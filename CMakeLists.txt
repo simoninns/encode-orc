@@ -25,8 +25,30 @@ find_package(yaml-cpp REQUIRED)
 # Find libpng
 find_package(PNG REQUIRED)
 
+# Get git commit hash
+execute_process(
+    COMMAND git rev-parse --short HEAD
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_COMMIT_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+
+# If git command fails, use "unknown"
+if(NOT GIT_COMMIT_HASH)
+    set(GIT_COMMIT_HASH "unknown")
+endif()
+
+# Generate version header
+configure_file(
+    ${CMAKE_SOURCE_DIR}/include/version.h.in
+    ${CMAKE_BINARY_DIR}/generated/version.h
+    @ONLY
+)
+
 # Include directories
 include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${CMAKE_BINARY_DIR}/generated)
 
 # Source files
 set(SOURCES

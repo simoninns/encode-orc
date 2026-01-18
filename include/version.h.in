@@ -1,0 +1,19 @@
+/*
+ * File:        version.h
+ * Module:      encode-orc
+ * Purpose:     Version information (auto-generated)
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: 2026 Simon Inns
+ */
+
+#ifndef ENCODE_ORC_VERSION_H
+#define ENCODE_ORC_VERSION_H
+
+#define ENCODE_ORC_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define ENCODE_ORC_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define ENCODE_ORC_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#define ENCODE_ORC_VERSION_STRING "@PROJECT_VERSION@"
+#define ENCODE_ORC_GIT_COMMIT "@GIT_COMMIT_HASH@"
+
+#endif // ENCODE_ORC_VERSION_H

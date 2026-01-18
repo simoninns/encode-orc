@@ -8,13 +8,14 @@
  */
 
 #include "cli_parser.h"
+#include "version.h"
 #include <iostream>
 #include <cstring>
 
 namespace encode_orc {
 
 void print_version() {
-    std::cout << "encode-orc version 0.1.0\n";
+    std::cout << "encode-orc git commit: " << ENCODE_ORC_GIT_COMMIT << "\n";
     std::cout << "Encoder for decode-orc (for making test TBC/Metadata files)\n";
 }
 

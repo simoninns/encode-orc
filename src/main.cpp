@@ -11,6 +11,7 @@
 #include "video_encoder.h"
 #include "metadata_generator.h"
 #include "video_parameters.h"
+#include "cli_parser.h"
 #include <iostream>
 #include <fstream>
 #include <cstdio>
@@ -18,10 +19,31 @@
 int main(int argc, char* argv[]) {
     using namespace encode_orc;
     
+    // Check for help and version flags first
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--version" || arg == "-v") {
+            print_version();
+            return 0;
+        }
+        if (arg == "--help" || arg == "-h") {
+            std::cout << "Usage: " << argv[0] << " <project.yaml>\n";
+            std::cout << "       " << argv[0] << " [OPTIONS]\n\n";
+            std::cout << "Options:\n";
+            std::cout << "  -h, --help              Show this help message\n";
+            std::cout << "  -v, --version           Show version information\n";
+            std::cout << "\n";
+            std::cout << "Arguments:\n";
+            std::cout << "  <project.yaml>          YAML project file to process\n";
+            return 0;
+        }
+    }
+    
     // Require exactly one argument - a YAML project file
     if (argc != 2) {
         std::cerr << "Usage: " << argv[0] << " <project.yaml>\n";
-        std::cerr << "\nOnly YAML project files are supported.\n";
+        std::cerr << "       " << argv[0] << " --help\n";
+        std::cerr << "\nYou must specify a YAML project file\n";
         return 1;
     }
     
