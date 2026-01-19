@@ -84,11 +84,11 @@ Each section in the `sections` list represents a continuous sequence of frames w
 ```yaml
 sections:
   - name: "Section Name"
-    duration: 100  # Number of frames (required for yuv422/png; optional for mov-file - omit to use all remaining frames)
+    duration: 100  # Number of frames (required for yuv422/png; optional for mov-file/mp4-file - omit to use all remaining frames)
     source:
-      type: "yuv422-image"  # or "png-image" or "mov-file"
-      file: "path/to/image.raw"  # or .png or .mov file
-      start_frame: 0  # Optional: for mov-file, which frame to start from (0-indexed, default: 0)
+      type: "yuv422-image"  # or "png-image" or "mov-file" or "mp4-file"
+      file: "path/to/image.raw"  # or .png or .mov or .mp4 file
+      start_frame: 0  # Optional: for mov-file/mp4-file, which frame to start from (0-indexed, default: 0)
     
     # Optional: filter configuration
     filters:
@@ -107,6 +107,7 @@ sections:
 - `yuv422-image`: Raw planar YUV 4:2:2 data. File must contain exactly `width × height × 2` bytes (2 bytes per pixel).
 - `png-image`: Any standard PNG format is supported. Single image repeated for `duration` frames.
 - `mov-file`: Video file in any format supported by ffmpeg (v210, ProRes, etc.). Extracts `duration` frames starting from `start_frame` (default: 0). If `duration` is omitted, all remaining frames from `start_frame` to end of file are used.
+- `mp4-file`: Video file in MP4 container format supported by ffmpeg (H.264, H.265, etc.). Works identically to `mov-file` with the same `duration` and `start_frame` behavior.
 
 
 
@@ -317,7 +318,7 @@ laserdisc:
 
 ---
 
-### VBI (Vertical Blanking Interval) – current implementation
+### VBI (Vertical Blanking Interval)
 
 - VBI is generated only when the project standard is IEC 60856-1986 (NTSC) or IEC 60857-1986 (PAL). Standard `none` disables VBI.
 - Section-level `vbi.enabled` flag is **parsed but not applied** (reserved for future use).
@@ -330,7 +331,7 @@ laserdisc:
 
 ---
 
-### VITS (Vertical Interval Test Signals) – current implementation
+### VITS (Vertical Interval Test Signals)
 
 - VITS is generated only when the project standard is IEC 60856-1986 (NTSC) or IEC 60857-1986 (PAL). Standard `none` disables VITS entirely.
 - VITS is included for both composite and separate Y/C outputs when the standard allows it.
@@ -791,13 +792,17 @@ sections:
     # LaserDisc picture numbers continue automatically (51-100)
 ```
 
-**MOV File Requirements:**
-- Any video format supported by ffmpeg (v210, ProRes, etc.)
+**MOV/MP4 File Requirements:**
+- Any video format supported by ffmpeg
+  - MOV: v210, ProRes, etc.
+  - MP4: H.264, H.265, etc.
 - Dimensions must match the target video system (720×576 for PAL, 720×486 for NTSC)
 - Use `start_frame` to specify which frame to start extracting from (0-indexed, optional, default: 0)
 - Use `duration` to specify how many frames to extract and encode
   - If `duration` is omitted, all remaining frames from `start_frame` to the end of the file will be used
-  - This is useful for encoding entire MOV files or splitting them across multiple sections with continuous picture numbers
+  - This is useful for encoding entire video files or splitting them across multiple sections with continuous picture numbers
+
+**Note:** Both `mov-file` and `mp4-file` source types work identically. The choice depends on your container format.
 
 **Example: Encoding entire MOV file across multiple sections:**
 
@@ -824,7 +829,7 @@ sections:
       picture_start: 1
 ```
 
-**Note:** The MOV loader uses ffmpeg/ffprobe internally, so these tools must be installed and available in your PATH.
+**Note:** The MOV and MP4 loaders use ffmpeg/ffprobe internally, so these tools must be installed and available in your PATH.
 
 If you previously used CLI switches, create a YAML project file with equivalent settings (see examples below).
 
