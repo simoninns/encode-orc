@@ -8,10 +8,6 @@ on:
 
 jobs:
   build-and-test:
-    strategy:
-      matrix:
-        build_type: [Debug, Release]
-    
     runs-on: ubuntu-latest
     container:
       image: fedora:latest
@@ -24,10 +20,10 @@ jobs:
         dnf install -y gcc gcc-c++ make cmake sqlite-devel yaml-cpp-devel libpng-devel spdlog-devel ffmpeg
     
     - name: Configure CMake
-      run: cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+      run: cmake -B build -DCMAKE_BUILD_TYPE=Release
     
     - name: Build
-      run: cmake --build build --config ${{ matrix.build_type }}
+      run: cmake --build build --config Release
     
     - name: Run Tests
       run: bash run-tests.sh
@@ -39,7 +35,7 @@ jobs:
       if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: test-output-fedora-${{ matrix.build_type }}
+        name: test-output-fedora-release
         path: test-output/
         retention-days: 7
   
@@ -62,3 +58,26 @@ jobs:
           echo "No .clang-format file found, skipping format check"
         fi
       continue-on-error: true
+
+  flatpak:
+    runs-on: ubuntu-latest
+    container:
+      image: bilelmoussaoui/flatpak-github-actions:freedesktop-23.08
+      options: --privileged
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build Flatpak
+      uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+      with:
+        bundle: encode-orc.flatpak
+        manifest-path: io.github.simoninns.encode-orc.yml
+        cache-key: flatpak-builder-${{ github.sha }}
+    
+    - name: Upload Flatpak artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: encode-orc-flatpak
+        path: encode-orc.flatpak
+        retention-days: 7

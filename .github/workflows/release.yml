@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-flatpak:
+    runs-on: ubuntu-latest
+    container:
+      image: bilelmoussaoui/flatpak-github-actions:freedesktop-23.08
+      options: --privileged
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build Flatpak
+      uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+      with:
+        bundle: encode-orc.flatpak
+        manifest-path: io.github.simoninns.encode-orc.yml
+        cache-key: flatpak-builder-${{ github.sha }}
+    
+    - name: Upload Flatpak artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: encode-orc-flatpak
+        path: encode-orc.flatpak
+        retention-days: 90
+
+  create-release:
+    needs: build-flatpak
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download Flatpak artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: encode-orc-flatpak
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: encode-orc.flatpak
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
