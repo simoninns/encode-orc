@@ -21,10 +21,10 @@ namespace encode_orc {
  * @brief PAL VITS Signal Generator
  * 
  * Generates PAL Vertical Interval Test Signals according to:
- * - ITU Composite Test Signal (BT.628/BT.473) - Line 19
- * - UK PAL National Test Signal #1 - Line 332
- * - ITU Combination ITS - Line 20
- * - ITU Multiburst Test Signal (BT.473) - Line 333
+ * - ITU Composite Test Signal (BT.628/BT.473)
+ * - UK PAL National Test Signal #1 
+ * - ITU Combination ITS
+ * - ITU Multiburst Test Signal (BT.473)
  * 
  * Reference: Video Demystified, 5th Edition (ISBN 978-0-750-68395-1)
  */
@@ -38,35 +38,35 @@ public:
     
     /**
      * @brief Generate ITU Composite Test Signal (Figure 8.41)
-     * Line 19: White flag, 2T pulse, 5-step modulated staircase
+     * White flag, 2T pulse, 5-step modulated staircase
      * @param line_buffer Output buffer for one line
      * @param field_number Field number for V-switch and phase calculation
      */
-    void generate_itu_composite_line19(uint16_t* line_buffer, int32_t field_number);
+    void generate_itu_composite(uint16_t* line_buffer, int32_t field_number);
     
     /**
      * @brief Generate UK PAL National Test Signal #1 (Figure 8.42)
-     * Line 332: White flag, 2T pulse, 10T pulse, 5-step modulated staircase
+     * White flag, 2T pulse, 10T pulse, 5-step modulated staircase
      * @param line_buffer Output buffer for one line
      * @param field_number Field number for V-switch and phase calculation
      */
-    void generate_uk_national_line332(uint16_t* line_buffer, int32_t field_number);
+    void generate_uk_national(uint16_t* line_buffer, int32_t field_number);
     
     /**
      * @brief Generate ITU Combination ITS Test Signal (Figure 8.45)
-     * Line 20: 3-step modulated pedestal and extended subcarrier packet
+     * 3-step modulated pedestal and extended subcarrier packet
      * @param line_buffer Output buffer for one line
      * @param field_number Field number for V-switch and phase calculation
      */
-    void generate_itu_its_line20(uint16_t* line_buffer, int32_t field_number);
+    void generate_itu_its(uint16_t* line_buffer, int32_t field_number);
     
     /**
      * @brief Generate ITU Multiburst Test Signal (Figure 8.38)
-     * Line 333: White flag and six frequency packets
+     * White flag and six frequency packets
      * @param line_buffer Output buffer for one line
      * @param field_number Field number for phase calculation
      */
-    void generate_multiburst_line333(uint16_t* line_buffer, int32_t field_number);
+    void generate_multiburst(uint16_t* line_buffer, int32_t field_number);
 
 private:
     VideoParameters params_;

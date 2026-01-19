@@ -112,18 +112,18 @@ Field PALEncoder::encode_field(const FrameBuffer& frame_buffer,
             // VITS lines (if enabled)
             else if (is_vits_enabled()) {
                 // First field VITS lines (0-indexed in field)
-                if (is_first_field && line == 18) {  // Line 332 in PAL frame (odd-first field parity)
-                    vits_generator_->generate_uk_national_line332(line_buffer, field_number);
+                if (is_first_field && line == 12) {  // Line 13 in PAL frame (odd-first field parity)
+                    vits_generator_->generate_multiburst(line_buffer, field_number);
                 }
-                else if (is_first_field && line == 19) {  // Line 333 in PAL frame
-                    vits_generator_->generate_multiburst_line333(line_buffer, field_number);
+                else if (is_first_field && line == 18) {  // Line 332 in PAL frame
+                    vits_generator_->generate_uk_national(line_buffer, field_number);
                 }
                 // Second field VITS lines (0-indexed in field)
-                else if (!is_first_field && line == 18) {  // Line 19 in PAL frame
-                    vits_generator_->generate_itu_composite_line19(line_buffer, field_number);
+                else if (!is_first_field && line == 12) {  // Line 13 in PAL frame
+                    vits_generator_->generate_itu_its(line_buffer, field_number);
                 }
-                else if (!is_first_field && line == 19) {  // Line 20 in PAL frame
-                    vits_generator_->generate_itu_its_line20(line_buffer, field_number);
+                else if (!is_first_field && line == 18) {  // Line 19 in PAL frame
+                    vits_generator_->generate_itu_composite(line_buffer, field_number);
                 }
                 else {
                     generate_blanking_line(line_buffer);
@@ -542,10 +542,10 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
             else if (vits_enabled_ && vits_generator_) {
                 // First field VITS lines (0-indexed in field)
                 if (line == 18) {  // Line 332 in PAL frame (odd-first field parity)
-                    vits_generator_->generate_uk_national_line332(y_line, field_number);
+                    vits_generator_->generate_uk_national(y_line, field_number);
                 }
                 else if (line == 19) {  // Line 333 in PAL frame
-                    vits_generator_->generate_multiburst_line333(y_line, field_number);
+                    vits_generator_->generate_multiburst(y_line, field_number);
                 }
                 else {
                     // Other VBI lines - regular blanking
@@ -671,11 +671,11 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
             // VITS lines for field 2 (if enabled)
             else if (vits_enabled_ && vits_generator_) {
                 // Second field VITS lines (0-indexed in field)
-                if (line == 18) {  // Line 19 in PAL frame
-                    vits_generator_->generate_itu_composite_line19(y_line, field_number + 1);
+                if (line == 11) {  // Line 12 in PAL frame
+                    vits_generator_->generate_itu_composite(y_line, field_number + 1);
                 }
                 else if (line == 19) {  // Line 20 in PAL frame
-                    vits_generator_->generate_itu_its_line20(y_line, field_number + 1);
+                    vits_generator_->generate_itu_its(y_line, field_number + 1);
                 }
                 else {
                     // Other VBI lines - regular blanking

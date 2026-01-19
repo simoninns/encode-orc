@@ -282,8 +282,8 @@ void PALVITSGenerator::generate_multiburst_packet(uint16_t* line_buffer, double 
 // VITS Line Generators
 // ============================================================================
 
-void PALVITSGenerator::generate_itu_composite_line19(uint16_t* line_buffer, int32_t field_number) {
-    // ITU Composite Test Signal for PAL (Figure 8.41) - Line 19
+void PALVITSGenerator::generate_itu_composite(uint16_t* line_buffer, int32_t field_number) {
+    // ITU Composite Test Signal for PAL (Figure 8.41) - Line 12
     // Components:
     // - White flag: 100 IRE, 10 µs (12-22 µs)
     // - 2T pulse: 100 IRE, centered at 26 µs
@@ -314,7 +314,7 @@ void PALVITSGenerator::generate_itu_composite_line19(uint16_t* line_buffer, int3
     generate_flat_level(line_buffer, 60.0, 62.0, 100.0);
 }
 
-void PALVITSGenerator::generate_uk_national_line332(uint16_t* line_buffer, int32_t field_number) {
+void PALVITSGenerator::generate_uk_national(uint16_t* line_buffer, int32_t field_number) {
     // UK PAL National Test Signal #1 (Figure 8.42) - Line 332
     // Components:
     // - White flag: 100 IRE, 10 µs (12-22 µs)
@@ -344,7 +344,7 @@ void PALVITSGenerator::generate_uk_national_line332(uint16_t* line_buffer, int32
                                 21.43, 60.0, field_number, 332);
 }
 
-void PALVITSGenerator::generate_itu_its_line20(uint16_t* line_buffer, int32_t field_number) {
+void PALVITSGenerator::generate_itu_its(uint16_t* line_buffer, int32_t field_number) {
     // ITU Combination ITS Test Signal (Figure 8.45) - Line 20
     // Components:
     // - 3-step modulated pedestal: 20, 60, 100 IRE peak-to-peak (14-28 µs)
@@ -376,7 +376,7 @@ void PALVITSGenerator::generate_itu_its_line20(uint16_t* line_buffer, int32_t fi
     generate_flat_level(line_buffer, 61.0, 64.0, 0.0);
 }
 
-void PALVITSGenerator::generate_multiburst_line333(uint16_t* line_buffer, int32_t field_number) {
+void PALVITSGenerator::generate_multiburst(uint16_t* line_buffer, int32_t field_number) {
     // ITU Multiburst Test Signal (Figure 8.38) - Line 333
     // Components:
     // - White flag: 80 IRE, 4 µs
