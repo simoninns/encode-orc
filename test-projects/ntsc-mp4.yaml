@@ -1,0 +1,29 @@
+name: "NTSC MP4 Loader Test"
+description: "NTSC encoding from MP4/H.264 video file - tests MP4 loader and frame extraction"
+
+output:
+  filename: "test-output/ntsc-mp4.tbc"
+  format: "ntsc-composite"
+
+laserdisc:
+  standard: "iec60856-1986"
+  mode: "cav"
+
+sections:
+  # Encode first 40 frames from MP4 file
+  - name: "Video Sequence"
+    duration: 40
+    source:
+      type: "mp4-file"
+      file: "testcard-images/ntsc-mp4/ntsc-nynashamn.mp4"
+      start_frame: 0
+    laserdisc:
+      picture_start: 1
+    filters:
+      chroma:
+        enabled: true
+      luma:
+        enabled: false
+    vbi:
+      vits:
+        enabled: true

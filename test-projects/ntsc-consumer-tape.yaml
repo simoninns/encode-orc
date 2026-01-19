@@ -1,0 +1,21 @@
+name: "NTSC Consumer Tape Test"
+description: "NTSC consumer tape encoding with VITC - tests consumer-tape mode (VHS/Betamax/Video8)"
+
+output:
+  filename: "test-output/ntsc-consumer-tape.tbc"
+  format: "ntsc-composite"
+
+laserdisc:
+  standard: "consumer-tape"  # Enables VITC, disables LaserDisc VBI and VITS
+  mode: "none"
+
+sections:
+  - name: "Recording Start"
+    duration: 40
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-75.raw"
+    vbi:
+      vitc:
+        enabled: true
+        start_time: "00:00:00:00"

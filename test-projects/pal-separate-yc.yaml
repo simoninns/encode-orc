@@ -1,0 +1,29 @@
+name: "PAL Separate Y/C Test"
+description: "PAL separate Y/C encoding - tests .tbcy and .tbcc output format with filtering"
+
+output:
+  filename: "test-output/pal-separate-yc.tbc"
+  format: "pal-composite"
+  mode: "separate-yc"  # Output separate .tbcy and .tbcc files
+
+laserdisc:
+  standard: "none"
+  mode: "none"
+
+sections:
+  - name: "Test Pattern with Filtering"
+    duration: 40
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
+    laserdisc:
+      picture_start: 1
+    filters:
+      chroma:
+        enabled: true
+      luma:
+        enabled: true
+    vbi:
+      vitc:
+        enabled: true
+        start_time: "00:00:00:00"

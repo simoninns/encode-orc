@@ -1,64 +1,91 @@
 # encode-orc Test Projects
 
-This folder contains YAML project files for comprehensive testing of RGB30 raw image encoding. All outputs are written to `../test-output/`.
+This folder contains a minimal comprehensive set of YAML project files for testing encode-orc functionality. All outputs are written to `../test-output/`.
 
-## RGB30 Raw Image Projects
+## Test Projects Overview
 
-These four projects use raw RGB30 images (10-bit per channel in 64-940 standard) from the testcard-images folder. Each image is repeated for all frames in the section:
+The test suite consists of 9 projects covering all major features:
 
-### PAL with EBU Bars 75%
-- `pal-rgb30-ebu-75.yaml` — PAL composite with 75% saturation EBU color bars, 50 frames
-  - Source: `testcard-images/pal-ebu-colorbars-75.raw` (720×576, RGB30 64-940)
+### PAL Tests
 
-### PAL with EBU Bars 100%
-- `pal-rgb30-ebu-100.yaml` — PAL composite with 100% saturation EBU color bars, 50 frames
-  - Source: `testcard-images/pal-ebu-colorbars-100.raw` (720×576, RGB30 64-940)
+1. **pal-composite.yaml** - PAL composite encoding
+   - Tests: Lead-in/lead-out, LaserDisc CAV mode, chapters, VITC timecode
+   - Source: YUV422 EBU color bars (75% and 100%)
+   - Output: Standard composite TBC
 
-### NTSC with EIA Bars 75%
-- `ntsc-rgb30-eia-75.yaml` — NTSC composite with 75% saturation EIA color bars, 50 frames
-  - Source: `testcard-images/ntsc-eia-colorbars-75.raw` (720×486, RGB30 64-940)
+2. **pal-separate-yc.yaml** - PAL separate Y/C encoding
+   - Tests: Separate Y/C output mode (.tbcy and .tbcc files)
+   - Source: YUV422 EBU color bars (75%)
+   - Output: Separate luma and chroma TBC files
+   - Features: Chroma and luma filtering enabled
 
-### NTSC with EIA Bars 100%
-- `ntsc-rgb30-eia-100.yaml` — NTSC composite with 100% saturation EIA color bars, 50 frames
-  - Source: `testcard-images/ntsc-eia-colorbars-100.raw` (720×486, RGB30 64-940)
+3. **pal-png.yaml** - PAL PNG image loader
+   - Tests: PNG image loading and conversion
+   - Source: Multiple PNG test cards
+   - Output: Standard composite TBC
 
-## YAML Syntax for RGB30 Images
+4. **pal-mov.yaml** - PAL MOV/ProRes video loader
+   - Tests: MOV video file loading, frame extraction, ProRes decoding
+   - Source: MOV video file
+   - Output: Standard composite TBC
+   - Features: Chroma filtering enabled
 
-To use raw RGB30 images in a section:
+5. **pal-consumer-tape.yaml** - PAL consumer tape mode (VHS/Betamax/Video8)
+   - Tests: Consumer-tape standard with VITC timecode
+   - Source: YUV422 EBU color bars (75%)
+   - Output: PAL composite TBC with VITC (no LaserDisc VBI/VITS)
+   - Features: VITC timecode for consumer video tape formats
 
-```yaml
-sections:
-  - name: "Section Name"
-    duration: 10          # Number of frames to encode
-    source:
-      type: "yuv422-image"
-      file: "testcard-images/path-to-image.raw"
-    laserdisc:
-      picture_start: 1    # Optional: CAV picture numbering
-      chapter: 1          # Optional: CLV chapter numbering
+### NTSC Tests
+
+6. **ntsc-composite.yaml** - NTSC composite encoding
+   - Tests: Lead-in/lead-out, LaserDisc CAV mode, chapters, VITC timecode
+   - Source: YUV422 EIA color bars (75% and 100%)
+   - Output: Standard composite TBC
+
+7. **ntsc-separate-yc.yaml** - NTSC separate Y/C encoding
+   - Tests: Separate Y/C output mode (.tbcy and .tbcc files)
+   - Source: YUV422 EIA color bars (75%)
+   - Output: Separate luma and chroma TBC files
+   - Features: Chroma and luma filtering enabled
+
+8. **ntsc-mp4.yaml** - NTSC MP4/H.264 video loader
+   - Tests: MP4 video file loading, frame extraction, H.264 decoding
+   - Source: MP4 video file
+   - Output: Standard composite TBC
+   - Features: Chroma filtering enabled
+
+9. **ntsc-consumer-tape.yaml** - NTSC consumer tape mode (VHS/Betamax/Video8)
+   - Tests: Consumer-tape standard with VITC timecode
+   - Source: YUV422 EIA color bars (75%)
+   - Output: NTSC composite TBC with VITC (no LaserDisc VBI/VITS)
+   - Features: VITC timecode for consumer video tape formats
+
+## Coverage
+
+These 9 tests provide comprehensive coverage of:
+
+- **Video Standards**: PAL and NTSC
+- **Output Formats**: Composite TBC, Separate Y/C (.tbcy/.tbcc)
+- **Source Types**: YUV422 raw images, PNG images, MP4 video files, MOV video files
+- **LaserDisc Features**: Lead-in, lead-out, CAV picture numbering, chapters
+- **Consumer Tape**: Consumer-tape mode for both PAL and NTSC (VHS/Betamax/Video8) with VITC
+- **VBI Data**: VITC timecode encoding (both LaserDisc and consumer-tape modes)
+- **Filters**: Chroma and luma filtering
+- **Test Patterns**: EBU color bars (75%, 100%), EIA color bars (75%, 100%), various PNG test cards
+
+## Running Tests
+
+To run all tests:
+```bash
+./run-tests.sh
 ```
 
-The encoder will:
-1. Load the RGB30 raw file (verifying correct dimensions for the video format)
-2. Convert each pixel from 10-bit RGB (64-940 standard) to 16-bit RGB
-3. Convert to YUV for the target video system
-4. Encode the image into every frame of the section
+To run a specific test:
+```bash
+./build/encode-orc test-projects/pal-composite.yaml
+```
 
-## Features
+## Local Test Projects
 
-Each project tests:
-- **Lead-in/Lead-out areas** with appropriate VBI encoding
-- **Picture numbers (CAV)** or **Timecode (CLV)** with chapter markers
-- **Multi-section encoding** with proper VBI continuity
-- **IEC 60857-1986 (PAL)** or **IEC 60856-1986 (NTSC)** compliance
-- **Proper programme status codes** for each disc area
-
-## Running
-
-Use `./run-tests.sh` from the repo root to run all projects. The script will:
-1. Build the project if needed
-2. Encode all test projects (both built-in patterns and RGB30 images)
-3. Verify output files were created
-4. Display test summary
-
-Outputs land in `../test-output/` with corresponding `.tbc` and `.db` (metadata) files.
+Additional test projects have been moved to the `local-projects/` directory (gitignored). These can be used for development and experimentation without cluttering the main test suite.

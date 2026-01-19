@@ -1,0 +1,21 @@
+name: "Consumer Tape Test"
+description: "Consumer tape encoding with VITC - tests consumer-tape mode (VHS/Betamax/Video8)"
+
+output:
+  filename: "test-output/pal-consumer-tape.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  standard: "consumer-tape"  # Enables VITC, disables LaserDisc VBI and VITS
+  mode: "none"
+
+sections:
+  - name: "Recording Start"
+    duration: 40
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
+    vbi:
+      vitc:
+        enabled: true
+        start_time: "00:00:00:00"

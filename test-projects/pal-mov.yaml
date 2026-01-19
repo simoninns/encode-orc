@@ -1,0 +1,29 @@
+name: "PAL MOV Loader Test"
+description: "PAL encoding from MOV/ProRes video file - tests MOV loader and frame extraction"
+
+output:
+  filename: "test-output/pal-mov.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  standard: "iec60857-1986"
+  mode: "cav"
+
+sections:
+  # Encode first 40 frames from MOV file
+  - name: "Video Sequence"
+    duration: 40
+    source:
+      type: "mov-file"
+      file: "testcard-images/pal-mov/625-50-i_PLUGE.mov"
+      start_frame: 0
+    laserdisc:
+      picture_start: 1
+    filters:
+      chroma:
+        enabled: true
+      luma:
+        enabled: false
+    vbi:
+      vits:
+        enabled: true

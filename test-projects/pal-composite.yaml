@@ -1,17 +1,17 @@
-name: "PAL YUV422 EBU 75% Test"
-description: "PAL with YUV422 EBU color bars at 75% saturation - lead-in, chapters, lead-out"
+name: "PAL Composite Test"
+description: "PAL composite encoding with YUV422 EBU color bars - tests lead-in, chapters, lead-out, and VITC"
 
 output:
-  filename: "test-output/pal-yuv422-ebu-75.tbc"
+  filename: "test-output/pal-composite.tbc"
   format: "pal-composite"
 
 laserdisc:
-  standard: "none"
-  mode: "none"
+  standard: "iec60857-1986"
+  mode: "cav"
 
 sections:
   - name: "Lead-in"
-    duration: 10
+    duration: 5
     source:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
@@ -19,34 +19,37 @@ sections:
       leadin: true
 
   - name: "Chapter 1"
-    duration: 10
+    duration: 15
     source:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
     laserdisc:
       picture_start: 1
       chapter: 1
+    vbi:
+      vitc:
+        enabled: true
+        start_time: "00:00:00:00"
+      vits:
+        enabled: true
 
   - name: "Chapter 2"
-    duration: 10
+    duration: 15
     source:
       type: "yuv422-image"
-      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-100.raw"
     laserdisc:
-      picture_start: 11
+      picture_start: 16
       chapter: 2
-
-  - name: "Chapter 3"
-    duration: 10
-    source:
-      type: "yuv422-image"
-      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
-    laserdisc:
-      picture_start: 21
-      chapter: 3
+    vbi:
+      vitc:
+        enabled: true
+        start_time: "00:00:00:15"
+      vits:
+        enabled: true
 
   - name: "Lead-out"
-    duration: 10
+    duration: 5
     source:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"

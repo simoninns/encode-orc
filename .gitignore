@@ -58,3 +58,6 @@ vcpkg_installed/
 # Test output TBCs
 test-output/
 tmp/
+
+# Local test projects
+local-projects/

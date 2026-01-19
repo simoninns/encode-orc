@@ -1,0 +1,29 @@
+name: "NTSC Separate Y/C Test"
+description: "NTSC separate Y/C encoding - tests .tbcy and .tbcc output format with filtering"
+
+output:
+  filename: "test-output/ntsc-separate-yc.tbc"
+  format: "ntsc-composite"
+  mode: "separate-yc"  # Output separate .tbcy and .tbcc files
+
+laserdisc:
+  standard: "none"
+  mode: "none"
+
+sections:
+  - name: "Test Pattern with Filtering"
+    duration: 40
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-75.raw"
+    laserdisc:
+      picture_start: 1
+    filters:
+      chroma:
+        enabled: true
+      luma:
+        enabled: true
+    vbi:
+      vitc:
+        enabled: true
+        start_time: "00:00:00:00"

@@ -1,0 +1,47 @@
+name: "PAL PNG Loader Test"
+description: "PAL encoding with PNG images - tests PNG loader with multiple test cards"
+
+output:
+  filename: "test-output/pal-png.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  standard: "iec60857-1986"
+  mode: "cav"
+
+sections:
+  - name: "Composite Test Pattern"
+    duration: 2
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Composite.png"
+    vbi:
+      vits:
+        enabled: true
+  
+  - name: "Color Wipe Test"
+    duration: 2
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Color-Wipe-Full.png"
+    vbi:
+      vits:
+        enabled: true
+  
+  - name: "Contrast Test"
+    duration: 2
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Contrast-Checker.png"
+    vbi:
+      vits:
+        enabled: true
+  
+  - name: "Convergence Test"
+    duration: 2
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Convergence-Hori.png"
+    vbi:
+      vits:
+        enabled: true
