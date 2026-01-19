@@ -705,6 +705,12 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
                 tbc_file.write(reinterpret_cast<const char*>(field2.data().data()),
                               field2.data().size() * sizeof(uint16_t));
             }
+        }
+        
+        // Close files
+        if (separate_yc) {
+            yc_writer.close();
+        } else if (tbc_file.is_open()) {
             tbc_file.close();
         }
         
