@@ -12,6 +12,7 @@
 
 #include "frame_buffer.h"
 #include "video_parameters.h"
+#include "video_loader_base.h"
 #include <string>
 
 namespace encode_orc {
@@ -19,8 +20,9 @@ namespace encode_orc {
 /**
  * @brief Y'CbCr 4:2:2 raw image loader
  * 
- * Loads Y'CbCr 4:2:2 YUYV-packed (10-bit in 16-bit little-endian containers)
- * raw image files and converts them to YUV444P16 frame buffers for video encoding.
+ * Loads a Y'CbCr 4:2:2 YUYV-packed (10-bit in 16-bit little-endian containers)
+ * raw image file as a single frame (frame_count = 1).
+ * Inherits from VideoLoaderBase to provide consistent interface with video loaders.
  * 
  * Format specification:
  * - ITU-R BT.601-derived component video
@@ -30,49 +32,76 @@ namespace encode_orc {
  * - Byte order: little-endian
  * - Field order: top field first
  */
-class YUV422Loader {
+class YUV422Loader : public VideoLoaderBase {
 public:
+    YUV422Loader();
+    
     /**
-     * @brief Load a Y'CbCr 4:2:2 raw image and convert to YUV frame buffer
+     * @brief Open a YUV422 file and prepare for frame extraction
      * 
-     * @param filename Path to YUV422 YUYV raw file
-     * @param expected_width Expected width (must be even, validates file size)
-     * @param expected_height Expected height (validates file size)
-     * @param params Video parameters (for metadata, not conversion)
+     * @param filename Path to YUV422 file
+     * @param expected_width Expected width (must be even)
+     * @param expected_height Expected height
+     * @return true on success, false on error
+     */
+    bool open(const std::string& filename, int32_t expected_width, int32_t expected_height);
+    
+    // VideoLoaderBase overrides
+    /**
+     * @brief Get video dimensions from the opened file (from base class)
+     */
+    bool get_dimensions(int32_t& width, int32_t& height) const override;
+    
+    /**
+     * @brief Get total number of frames (always 1 for YUV422)
+     */
+    int32_t get_frame_count() const override;
+    
+    /**
+     * @brief Check if loader is open
+     */
+    bool is_open() const override;
+    
+    /**
+     * @brief Validate YUV422 format
+     */
+    bool validate_format(VideoSystem system, std::string& error_message) override;
+    
+    /**
+     * @brief Load a single frame
+     * 
+     * @param frame_index Frame index (must be 0 for YUV422)
      * @param frame Output frame buffer in YUV444P16 format
+     * @return true on success, false on error
+     */
+    bool load_frame(int32_t frame_index, FrameBuffer& frame);
+    
+    /**
+     * @brief Load multiple frames
+     * 
+     * @param start_frame Starting frame index (must be 0)
+     * @param end_frame Ending frame index (must be 0)
+     * @param frames Output frame buffers vector
      * @param error_message Error message if loading fails
      * @return true on success, false on error
      */
-    static bool load_yuv422(const std::string& filename,
-                            int32_t expected_width,
-                            int32_t expected_height,
-                            const VideoParameters& params,
-                            FrameBuffer& frame,
-                            std::string& error_message);
+    bool load_frames(int32_t start_frame, int32_t end_frame, 
+                     std::vector<FrameBuffer>& frames,
+                     std::string& error_message);
     
     /**
-     * @brief Get expected file size for a Y'CbCr 4:2:2 YUYV image
-     * 
-     * @param width Image width (must be even)
-     * @param height Image height
-     * @return Expected file size in bytes ((width/2) × height × 4 components × 2 bytes)
+     * @brief Close YUV422 file and release resources
      */
-    static size_t get_expected_file_size(int32_t width, int32_t height);
-    
-    /**
-     * @brief Get expected dimensions from video parameters
-     * 
-     * @param params Video parameters
-     * @param width Output: expected image width
-     * @param height Output: expected image height
-     */
-    static void get_expected_dimensions(const VideoParameters& params,
-                                       int32_t& width,
-                                       int32_t& height);
-
-    // Map 10-bit studio codes to full-range 16-bit (64->0, 940->65535; sub-black allowed)
+    void close();
 
 private:
+    std::string filename_;
+    FrameBuffer cached_frame_;
+    bool frame_cached_ = false;
+    
+    // Helper methods
+    static size_t get_expected_file_size(int32_t width, int32_t height);
+    static void get_expected_dimensions(const VideoParameters& params, int32_t& width, int32_t& height);
 };
 
 } // namespace encode_orc

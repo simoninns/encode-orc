@@ -80,8 +80,21 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
         }
         
         // Get expected dimensions for this system
-        int32_t img_width, img_height;
-        YUV422Loader::get_expected_dimensions(params, img_width, img_height);
+        int32_t img_width = 720, img_height = (system == VideoSystem::PAL) ? 576 : 480;
+        
+        // Load Y'CbCr 4:2:2 raw image
+        YUV422Loader yuv422_loader;
+        if (!yuv422_loader.open(yuv422_file, img_width, img_height)) {
+            error_message_ = "Failed to open YUV422 file: " + yuv422_file;
+            return false;
+        }
+        
+        FrameBuffer image_frame;
+        if (!yuv422_loader.load_frame(0, image_frame)) {
+            error_message_ = "Failed to load YUV422 frame";
+            yuv422_loader.close();
+            return false;
+        }
         
         if (verbose) {
             std::cout << "Encoding " << num_frames << " frames (" 
@@ -91,15 +104,7 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
             std::cout << "Field dimensions: " << params.field_width << "x" 
                       << params.field_height << "\n";
         }
-        
-        // Load Y'CbCr 4:2:2 raw image
-        FrameBuffer image_frame;
-        std::string load_error;
-        if (!YUV422Loader::load_yuv422(yuv422_file, img_width, img_height, params, 
-                                       image_frame, load_error)) {
-            error_message_ = load_error;
-            return false;
-        }
+        yuv422_loader.close();
         
         // Open TBC file for writing
         if (verbose) {
@@ -370,25 +375,37 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
             std::cout << "  white: " << params.white_16b_ire << "\n";
         }
 
+        // Load PNG image and convert to YUV444P16
+        PNGLoader png_loader;
+        std::string load_error;
+        if (!png_loader.open(png_file, load_error)) {
+            error_message_ = load_error;
+            return false;
+        }
+        
         int32_t img_width, img_height;
-        PNGLoader::get_expected_dimensions(params, img_width, img_height);
+        if (!png_loader.get_dimensions(img_width, img_height)) {
+            error_message_ = "Failed to get PNG dimensions";
+            png_loader.close();
+            return false;
+        }
 
         if (verbose) {
             std::cout << "Encoding " << num_frames << " frames ("
                       << (num_frames * 2) << " fields)\n";
             std::cout << "System: " << (system == VideoSystem::PAL ? "PAL" : "NTSC") << "\n";
-            std::cout << "Image: " << png_file << " (expected " << img_width << "x" << img_height << ")\n";
+            std::cout << "Image: " << png_file << " (" << img_width << "x" << img_height << ")\n";
             std::cout << "Field dimensions: " << params.field_width << "x" 
                       << params.field_height << "\n";
         }
 
-        // Load PNG image and convert to YUV444P16
         FrameBuffer image_frame;
-        std::string load_error;
-        if (!PNGLoader::load_png(png_file, params, image_frame, load_error)) {
+        if (!png_loader.load_frame(0, img_width, img_height, params, image_frame, load_error)) {
             error_message_ = load_error;
+            png_loader.close();
             return false;
         }
+        png_loader.close();
 
         std::ofstream tbc_file;
         YCTBCWriter yc_writer(yc_legacy ? YCTBCWriter::NamingMode::LEGACY : YCTBCWriter::NamingMode::MODERN);
@@ -618,8 +635,7 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
         }
         
         // Verify dimensions match expected video system
-        int32_t expected_width, expected_height;
-        YUV422Loader::get_expected_dimensions(params, expected_width, expected_height);
+        int32_t expected_width = 720, expected_height = (system == VideoSystem::PAL) ? 576 : 480;
         
         if (verbose) {
             std::cout << "MOV file: " << mov_width << "x" << mov_height << "\n";
@@ -896,8 +912,7 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
         }
         
         // Verify dimensions match expected video system
-        int32_t expected_width, expected_height;
-        YUV422Loader::get_expected_dimensions(params, expected_width, expected_height);
+        int32_t expected_width = 720, expected_height = (system == VideoSystem::PAL) ? 576 : 480;
         
         if (verbose) {
             std::cout << "MP4 file: " << mp4_width << "x" << mp4_height << "\n";

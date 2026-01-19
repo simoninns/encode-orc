@@ -8,6 +8,7 @@
  */
 
 #include "mov_loader.h"
+#include "video_loader_base.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -216,92 +217,42 @@ void MOVLoader::convert_yuv422p10le_to_frame(const std::vector<uint8_t>& yuv_dat
     // - U/V: 64-960 (10-bit), with 512 as neutral
     // These must be converted to normalized form matching YUV422 loader expectations
     
-    // Use the provided width directly
     int32_t actual_width = width;
-    
-    // Pad to 720 pixels for PAL (common case for cropped v210 files)
     int32_t target_width = (actual_width < 720) ? 720 : actual_width;
-    
-    frame.resize(target_width, height, FrameBuffer::Format::YUV444P16);
     
     const uint16_t* y_plane_src = reinterpret_cast<const uint16_t*>(yuv_data.data());
     const uint16_t* u_plane_src = y_plane_src + (actual_width * height);
     const uint16_t* v_plane_src = u_plane_src + ((actual_width / 2) * height);
     
-    // Get output plane pointers
-    uint16_t* y_plane = frame.data().data();
-    uint16_t* u_plane = y_plane + (target_width * height);
-    uint16_t* v_plane = u_plane + (target_width * height);
-    
-    // Lambda to extract 10-bit value
+    // Extract 10-bit values
     auto extract_10bit = [](uint16_t value) {
         return static_cast<uint16_t>(value & 0x3FF);
     };
     
-    // Luma: keep in studio range (64-940 clamped to 10-bit)
-    auto to_luma = [](uint16_t studio_value) {
-        return std::min<uint16_t>(studio_value, 1023);
-    };
+    // Create temporary full-resolution plane arrays with extracted 10-bit values
+    std::vector<uint16_t> y_full(actual_width * height);
+    std::vector<uint16_t> u_half(actual_width / 2 * height);
+    std::vector<uint16_t> v_half(actual_width / 2 * height);
     
-    // Chroma: convert from studio range (64-960) to normalized form (0-896)
-    // This matches the conversion in YUV422Loader to ensure consistent results
-    auto to_chroma = [](uint16_t studio_value) {
-        // Studio chroma: 64→0, 512→448, 960→896
-        uint16_t capped = std::min<uint16_t>(studio_value, 960);
-        int32_t delta = capped - 64;
-        int32_t scaled = (delta * 896) / 896;  // This is just delta, 0-896
-        return static_cast<uint16_t>(std::min(896, scaled));
-    };
-    
-    // Calculate padding (distribute evenly on left and right)
-    int32_t pixels_to_add = target_width - actual_width;
-    int32_t left_pad = pixels_to_add / 2;
-    int32_t right_pad = pixels_to_add - left_pad;
-    
-    // Neutral values for padding (normalized range, matching chroma conversion)
-    const uint16_t neutral_y = 64;    // Black in studio range
-    const uint16_t neutral_u = to_chroma(512);   // Neutral chroma converted to normalized form
-    const uint16_t neutral_v = to_chroma(512);   // Neutral chroma converted to normalized form
-    
-    // Convert planar YUV422 to YUV444 with padding
-    for (int32_t row = 0; row < height; ++row) {
-        int32_t dst_row_offset = row * target_width;
-        
-        // Left padding
-        for (int32_t col = 0; col < left_pad; ++col) {
-            y_plane[dst_row_offset + col] = neutral_y;
-            u_plane[dst_row_offset + col] = neutral_u;
-            v_plane[dst_row_offset + col] = neutral_v;
-        }
-        
-        // Convert actual data
-        for (int32_t col = 0; col < actual_width; ++col) {
-            int32_t dst_idx = dst_row_offset + left_pad + col;
-            int32_t src_idx = row * actual_width + col;
-            
-            // Y is full resolution - convert from studio range
-            uint16_t y_studio = extract_10bit(y_plane_src[src_idx]);
-            y_plane[dst_idx] = to_luma(y_studio);
-            
-            // U and V are half-resolution horizontally (4:2:2)
-            // Convert from studio range to normalized form
-            int32_t chroma_col = col / 2;
-            int32_t uv_idx = row * (actual_width / 2) + chroma_col;
-            uint16_t u_studio = extract_10bit(u_plane_src[uv_idx]);
-            uint16_t v_studio = extract_10bit(v_plane_src[uv_idx]);
-            u_plane[dst_idx] = to_chroma(u_studio);
-            v_plane[dst_idx] = to_chroma(v_studio);
-        }
-        
-        // Right padding
-        for (int32_t col = 0; col < right_pad; ++col) {
-            int32_t dst_idx = dst_row_offset + left_pad + actual_width + col;
-            y_plane[dst_idx] = neutral_y;
-            u_plane[dst_idx] = neutral_u;
-            v_plane[dst_idx] = neutral_v;
-        }
+    for (size_t i = 0; i < y_full.size(); ++i) {
+        y_full[i] = extract_10bit(y_plane_src[i]);
     }
+    for (size_t i = 0; i < u_half.size(); ++i) {
+        u_half[i] = VideoLoaderUtils::chroma_10bit_to_normalized(extract_10bit(u_plane_src[i]));
+        v_half[i] = VideoLoaderUtils::chroma_10bit_to_normalized(extract_10bit(v_plane_src[i]));
+    }
+    
+    // Use common padding and upsampling function (with 4:2:2 chroma subsampling)
+    uint16_t neutral_y = VideoLoaderUtils::NORMALIZED_LUMA_MIN_10BIT;
+    uint16_t neutral_u = VideoLoaderUtils::NORMALIZED_CHROMA_NEUTRAL_10BIT;
+    uint16_t neutral_v = VideoLoaderUtils::NORMALIZED_CHROMA_NEUTRAL_10BIT;
+    
+    VideoLoaderUtils::pad_and_upsample_yuv(target_width, actual_width, height, frame,
+                                           y_full.data(), u_half.data(), v_half.data(),
+                                           2, 1,  // 4:2:2 subsampling
+                                           neutral_y, neutral_u, neutral_v);
 }
+
 
 bool MOVLoader::load_frame(int32_t frame_number,
                            int32_t expected_width,
@@ -336,10 +287,9 @@ bool MOVLoader::load_frames(int32_t start_frame,
     }
     
     // Validate dimensions
-    if (width_ != expected_width || height_ != expected_height) {
-        error_message = "MOV dimension mismatch: expected " + 
-                       std::to_string(expected_width) + "x" + std::to_string(expected_height) +
-                       ", got " + std::to_string(width_) + "x" + std::to_string(height_);
+    std::string dim_error;
+    if (!validate_dimensions(expected_width, expected_height, dim_error)) {
+        error_message = dim_error;
         return false;
     }
     
@@ -351,10 +301,9 @@ bool MOVLoader::load_frames(int32_t start_frame,
     }
     
     // Validate frame range
-    if (frame_count_ > 0 && start_frame + num_frames > frame_count_) {
-        error_message = "Requested frame range exceeds video length: " +
-                       std::to_string(start_frame) + "-" + std::to_string(start_frame + num_frames - 1) +
-                       " (video has " + std::to_string(frame_count_) + " frames)";
+    std::string range_error;
+    if (!validate_frame_range(start_frame, num_frames, range_error)) {
+        error_message = range_error;
         return false;
     }
     
@@ -468,28 +417,16 @@ void MOVLoader::close() {
 }
 
 bool MOVLoader::validate_format(VideoSystem system, std::string& error_message) {
-    // Expected frame rates for each system
-    const double PAL_FRAME_RATE = 25.0;
-    const double NTSC_FRAME_RATE = 29.97;  // 30000/1001
-    const double TOLERANCE = 0.1;  // Allow ±0.1 fps tolerance
-    
-    if (frame_rate_ <= 0.0) {
-        error_message = "Warning: MOV file frame rate could not be determined";
-        return true;  // Not a hard error, just a warning
-    }
-    
-    double expected_fps = (system == VideoSystem::PAL) ? PAL_FRAME_RATE : NTSC_FRAME_RATE;
-    double fps_diff = std::abs(frame_rate_ - expected_fps);
-    
-    if (fps_diff > TOLERANCE) {
+    std::string format_error;
+    if (!VideoLoaderUtils::validate_frame_rate(frame_rate_, system, 0.1)) {
         error_message = "MOV frame rate mismatch: expected " + 
-                       std::to_string(expected_fps) + " fps for " +
-                       (system == VideoSystem::PAL ? "PAL" : "NTSC") +
+                       std::to_string(VideoLoaderUtils::get_expected_frame_rate(system)) + 
+                       " fps for " + (system == VideoSystem::PAL ? "PAL" : "NTSC") +
                        ", got " + std::to_string(frame_rate_) + " fps";
         return false;
     }
-    
     return true;
 }
+
 
 } // namespace encode_orc

@@ -8,6 +8,7 @@
  */
 
 #include "mp4_loader.h"
+#include "video_loader_base.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -235,84 +236,22 @@ void MP4Loader::convert_yuv420p_to_frame(const std::vector<uint8_t>& yuv_data,
     //   Studio chroma 16-240 (8-bit) -> (value - 16) * 4 = 0-896 (10-bit)
     
     int32_t actual_width = width;
-    
-    // Pad to 720 pixels if needed (common target for PAL)
     int32_t target_width = (actual_width < 720) ? 720 : actual_width;
-    
-    frame.resize(target_width, height, FrameBuffer::Format::YUV444P16);
     
     const uint8_t* y_plane_src = yuv_data.data();
     const uint8_t* u_plane_src = y_plane_src + (actual_width * height);
     const uint8_t* v_plane_src = u_plane_src + ((actual_width / 2) * (height / 2));
     
-    // Get output plane pointers
-    uint16_t* y_plane = frame.data().data();
-    uint16_t* u_plane = y_plane + (target_width * height);
-    uint16_t* v_plane = u_plane + (target_width * height);
+    // Use common padding and upsampling function (with 4:2:0 chroma subsampling)
+    // Neutral values for padding (8-bit input)
+    uint8_t neutral_y_src = VideoLoaderUtils::STUDIO_LUMA_MIN_8BIT;
+    uint8_t neutral_u_src = VideoLoaderUtils::STUDIO_CHROMA_NEUTRAL_8BIT;
+    uint8_t neutral_v_src = VideoLoaderUtils::STUDIO_CHROMA_NEUTRAL_8BIT;
     
-    // Y: convert from 8-bit studio range to 10-bit studio range (multiply by 4)
-    auto to_luma = [](uint8_t value) {
-        return static_cast<uint16_t>(static_cast<uint16_t>(value) << 2);
-    };
-    
-    // Chroma: convert from 8-bit studio range to 10-bit normalized form
-    // Studio 8-bit: 16-240 with 128 as neutral
-    // Normalized 10-bit: 0-896 with 448 as neutral
-    auto to_chroma = [](uint8_t studio_value) {
-        // Clamp to studio range
-        uint8_t clamped = std::clamp(studio_value, static_cast<uint8_t>(16), static_cast<uint8_t>(240));
-        // Subtract offset and scale: (value - 16) * 4
-        int32_t delta = clamped - 16;
-        int32_t scaled = delta * 4;
-        return static_cast<uint16_t>(std::min(896, scaled));
-    };
-    
-    // Calculate padding (distribute evenly on left and right)
-    int32_t pixels_to_add = target_width - actual_width;
-    int32_t left_pad = pixels_to_add / 2;
-    int32_t right_pad = pixels_to_add - left_pad;
-    
-    // Neutral values for padding
-    const uint16_t neutral_y = to_luma(16);      // Black in studio range
-    const uint16_t neutral_u = to_chroma(128);   // Neutral chroma in normalized form
-    const uint16_t neutral_v = to_chroma(128);   // Neutral chroma in normalized form
-    
-    // Convert planar YUV420 to YUV444 with padding
-    for (int32_t row = 0; row < height; ++row) {
-        int32_t dst_row_offset = row * target_width;
-        
-        // Left padding
-        for (int32_t col = 0; col < left_pad; ++col) {
-            y_plane[dst_row_offset + col] = neutral_y;
-            u_plane[dst_row_offset + col] = neutral_u;
-            v_plane[dst_row_offset + col] = neutral_v;
-        }
-        
-        // Convert actual data with nearest-neighbor sampling for chroma
-        for (int32_t col = 0; col < actual_width; ++col) {
-            int32_t dst_idx = dst_row_offset + left_pad + col;
-            int32_t src_idx = row * actual_width + col;
-            
-            // Y is full resolution
-            y_plane[dst_idx] = to_luma(y_plane_src[src_idx]);
-            
-            // U and V are quarter-resolution (4:2:0) - upsample with nearest neighbor
-            int32_t chroma_row = row / 2;
-            int32_t chroma_col = col / 2;
-            int32_t uv_idx = chroma_row * (actual_width / 2) + chroma_col;
-            
-            u_plane[dst_idx] = to_chroma(u_plane_src[uv_idx]);
-            v_plane[dst_idx] = to_chroma(v_plane_src[uv_idx]);
-        }
-        
-        // Right padding
-        for (int32_t col = 0; col < right_pad; ++col) {
-            int32_t dst_idx = dst_row_offset + left_pad + actual_width + col;
-            y_plane[dst_idx] = neutral_y;
-            u_plane[dst_idx] = neutral_u;
-            v_plane[dst_idx] = neutral_v;
-        }
-    }
+    VideoLoaderUtils::pad_and_upsample_yuv_8bit(target_width, actual_width, height, frame,
+                                                y_plane_src, u_plane_src, v_plane_src,
+                                                2, 2,  // 4:2:0 subsampling
+                                                neutral_y_src, neutral_u_src, neutral_v_src);
 }
 
 bool MP4Loader::load_frame(int32_t frame_number,
@@ -348,10 +287,9 @@ bool MP4Loader::load_frames(int32_t start_frame,
     }
     
     // Validate dimensions
-    if (width_ != expected_width || height_ != expected_height) {
-        error_message = "MP4 dimension mismatch: expected " + 
-                       std::to_string(expected_width) + "x" + std::to_string(expected_height) +
-                       ", got " + std::to_string(width_) + "x" + std::to_string(height_);
+    std::string dim_error;
+    if (!validate_dimensions(expected_width, expected_height, dim_error)) {
+        error_message = dim_error;
         return false;
     }
     
@@ -363,10 +301,9 @@ bool MP4Loader::load_frames(int32_t start_frame,
     }
     
     // Validate frame range
-    if (frame_count_ > 0 && start_frame + num_frames > frame_count_) {
-        error_message = "Requested frame range exceeds video length: " +
-                       std::to_string(start_frame) + "-" + std::to_string(start_frame + num_frames - 1) +
-                       " (video has " + std::to_string(frame_count_) + " frames)";
+    std::string range_error;
+    if (!validate_frame_range(start_frame, num_frames, range_error)) {
+        error_message = range_error;
         return false;
     }
     
@@ -464,28 +401,16 @@ void MP4Loader::close() {
 }
 
 bool MP4Loader::validate_format(VideoSystem system, std::string& error_message) {
-    // Expected frame rates for each system
-    const double PAL_FRAME_RATE = 25.0;
-    const double NTSC_FRAME_RATE = 29.97;  // 30000/1001
-    const double TOLERANCE = 0.1;  // Allow ±0.1 fps tolerance
-    
-    if (frame_rate_ <= 0.0) {
-        error_message = "Warning: MP4 file frame rate could not be determined";
-        return true;  // Not a hard error, just a warning
-    }
-    
-    double expected_fps = (system == VideoSystem::PAL) ? PAL_FRAME_RATE : NTSC_FRAME_RATE;
-    double fps_diff = std::abs(frame_rate_ - expected_fps);
-    
-    if (fps_diff > TOLERANCE) {
+    std::string format_error;
+    if (!VideoLoaderUtils::validate_frame_rate(frame_rate_, system, 0.1)) {
         error_message = "MP4 frame rate mismatch: expected " + 
-                       std::to_string(expected_fps) + " fps for " +
-                       (system == VideoSystem::PAL ? "PAL" : "NTSC") +
+                       std::to_string(VideoLoaderUtils::get_expected_frame_rate(system)) + 
+                       " fps for " + (system == VideoSystem::PAL ? "PAL" : "NTSC") +
                        ", got " + std::to_string(frame_rate_) + " fps";
         return false;
     }
-    
     return true;
 }
+
 
 } // namespace encode_orc

@@ -65,6 +65,7 @@ set(SOURCES
     src/ntsc_vits_generator.cpp
     src/biphase_encoder.cpp
     src/color_conversion.cpp
+    src/video_loader_base.cpp
     src/yuv422_loader.cpp
     src/png_loader.cpp
     src/mov_loader.cpp

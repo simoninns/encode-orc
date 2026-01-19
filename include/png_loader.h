@@ -12,60 +12,104 @@
 
 #include "frame_buffer.h"
 #include "video_parameters.h"
+#include "video_loader_base.h"
 #include <string>
 
 namespace encode_orc {
 
 /**
  * @brief PNG image loader
+ * 
+ * Loads a PNG image as a single frame (frame_count = 1).
+ * Inherits from VideoLoaderBase to provide consistent interface with video loaders.
  */
-class PNGLoader {
+class PNGLoader : public VideoLoaderBase {
 public:
     /**
-     * @brief Load a PNG image and convert to frame buffer
+     * @brief Open a PNG file and prepare for frame extraction
      * 
      * @param filename Path to PNG file
-     * @param params Video parameters (used to determine expected dimensions)
+     * @param error_message Error message if opening fails
+     * @return true on success, false on error
+     */
+    bool open(const std::string& filename, std::string& error_message);
+    
+    /**
+     * @brief Get video dimensions from the opened file
+     * 
+     * @param width Output: image width
+     * @param height Output: image height
+     * @return true if dimensions are available, false otherwise
+     */
+    bool get_dimensions(int32_t& width, int32_t& height) const override;
+    
+    /**
+     * @brief Get total number of frames (always 1 for PNG)
+     * 
+     * @return 1
+     */
+    int32_t get_frame_count() const override;
+    
+    /**
+     * @brief Load the PNG image
+     * 
+     * @param frame_number Frame number (must be 0 for PNG)
+     * @param expected_width Expected width (validates against image dimensions)
+     * @param expected_height Expected height (validates against image dimensions)
+     * @param params Video parameters (for clamping luma to video IRE limits)
      * @param frame Output frame buffer in YUV444P16 format
      * @param error_message Error message if loading fails
      * @return true on success, false on error
      */
-    static bool load_png(const std::string& filename, const VideoParameters& params,
-                         FrameBuffer& frame, std::string& error_message);
+    bool load_frame(int32_t frame_number,
+                    int32_t expected_width,
+                    int32_t expected_height,
+                    const VideoParameters& params,
+                    FrameBuffer& frame,
+                    std::string& error_message);
     
     /**
-     * @brief Get dimensions of a PNG file without loading the full image
+     * @brief Load multiple frames (only frame 0 is valid for PNG)
      * 
-     * @param filename Path to PNG file
-     * @param width Output width in pixels
-     * @param height Output height in pixels
+     * @param start_frame Starting frame number (must be 0)
+     * @param num_frames Number of frames to load (must be 1)
+     * @param expected_width Expected width
+     * @param expected_height Expected height
+     * @param params Video parameters
+     * @param frames Output vector of frame buffers
      * @param error_message Error message if loading fails
      * @return true on success, false on error
      */
-    static bool get_png_dimensions(const std::string& filename, int32_t& width, 
-                                   int32_t& height, std::string& error_message);
+    bool load_frames(int32_t start_frame,
+                     int32_t num_frames,
+                     int32_t expected_width,
+                     int32_t expected_height,
+                     const VideoParameters& params,
+                     std::vector<FrameBuffer>& frames,
+                     std::string& error_message);
     
     /**
-     * @brief Get expected active video dimensions for a video system
-     * 
-     * @param params Video parameters
-     * @param width Output width in pixels
-     * @param height Output height in pixels
+     * @brief Close PNG file and release resources
      */
-    static void get_expected_dimensions(const VideoParameters& params, 
-                                       int32_t& width, int32_t& height);
+    void close();
+    
+    /**
+     * @brief Check if loader is open
+     */
+    bool is_open() const override { return is_open_; }
+    
+    /**
+     * @brief Validate PNG format (always succeeds - no frame rate)
+     */
+    bool validate_format(VideoSystem system, std::string& error_message) override;
 
 private:
-    /**
-     * @brief Convert RGB buffer to YUV444P16
-     */
-    static void rgb_to_yuv444p16(const uint8_t* rgb_data, int32_t width, int32_t height,
-                                  FrameBuffer& frame);
-
-    /**
-     * @brief Clamp luma to video-range IRE limits
-     */
-    static void clamp_luma(FrameBuffer& frame, const VideoParameters& params);
+    std::string filename_;
+    FrameBuffer cached_frame_;
+    bool frame_loaded_ = false;
+    
+    // Private helper methods
+    void rgb_to_yuv444p16(const uint8_t* rgb_data, int32_t width, int32_t height, FrameBuffer& frame);
 };
 
 } // namespace encode_orc

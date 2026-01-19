@@ -12,6 +12,7 @@
 
 #include "frame_buffer.h"
 #include "video_parameters.h"
+#include "video_loader_base.h"
 #include <string>
 #include <vector>
 #include <memory>
@@ -32,7 +33,7 @@ namespace encode_orc {
  * - ProRes (various profiles)
  * - Any other format supported by ffmpeg
  */
-class MOVLoader {
+class MOVLoader : public VideoLoaderBase {
 public:
     /**
      * @brief Open a MOV file and prepare for frame extraction
@@ -110,14 +111,15 @@ public:
      * @return true if format is compatible, false otherwise
      */
     bool validate_format(VideoSystem system, std::string& error_message);
+    
+    /**
+     * @brief Check if loader is open
+     */
+    bool is_open() const override { return is_open_; }
 
 private:
     std::string filename_;
-    int32_t width_ = 0;
-    int32_t height_ = 0;
-    int32_t frame_count_ = -1;
-    double frame_rate_ = 0.0;  // Frames per second
-    bool is_open_ = false;
+
     
     /**
      * @brief Get video information using ffprobe
