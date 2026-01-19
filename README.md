@@ -4,7 +4,9 @@ Encoder for decode-orc (for making test TBC/Metadata files)
 
 ## Overview
 
-encode-orc is a C++17 command-line application that generates test data for [decode-orc](https://github.com/happycube/ld-decode). It produces field-based video files in the TBC (Time Base Corrected) format along with accompanying metadata, simulating the output of RF capture devices used in the LaserDisc and analog video preservation community.
+encode-orc is a C++17 command-line application that generates test data for [decode-orc](https://github.com/simoninns/decode-orc). It produces field-based video files in the TBC (Time Base Corrected) format along with accompanying metadata, simulating the output of RF decoding applications such as ld-decode and vhs-decode used in the LaserDisc and analog video preservation community.
+
+The application uses YAML project files to define encoding configurations, supporting multiple input formats and output modes with both video-embedded and SQLite-based metadata generation.
 
 ## Purpose
 
@@ -24,7 +26,7 @@ encode-orc can generate the following output formats:
 - **Composite**: `video.tbc` + `video.tbc.db`
 - **Y/C (S-Video)**: `video.tbcy` + `video.tbcc` + `video.tbc.db`
 
-### NTSC (486i, 29.97 fps)
+### NTSC (480i, 29.97 fps)
 - **Composite**: `video.tbc` + `video.tbc.db`
 - **Y/C (S-Video)**: `video.tbcy` + `video.tbcc` + `video.tbc.db`
 
@@ -37,17 +39,22 @@ Where:
 ## Features
 
 ### Current
-- *Project is in early development*
-
-### Planned
-- RGB frame input processing
-- Built-in test card generation (SMPTE, PM5544, BBC Test Card F, etc.)
-- Proper PAL/NTSC signal encoding based on ld-chroma-encoder
-- VITS and VBI line generation
-- Timecode and frame number embedding
-- OSD overlay system for frame identification
-- Signal degradation simulation (dropouts, noise)
-- Configurable metadata generation
+- **YAML-based project configuration** - Define multi-section video projects in declarative configuration files
+- **Multiple input formats**:
+  - YUV422 raw image files
+  - PNG image files
+  - QuickTime MOV files
+  - MP4 video files
+- **PAL and NTSC encoding** - Full support for both 576i (PAL) and 486i (NTSC) video systems
+- **Multiple output modes**:
+  - Composite (.tbc)
+  - Separate Y/C (.tbcy + .tbcc)
+  - Legacy Y/C naming mode
+- **LaserDisc metadata generation** - IEC 60857/60856 standards with CAV/CLV timecodes, chapter numbers, and picture numbers
+- **VBI and VITS line generation** - Vertical blanking interval data for authentic LaserDisc simulation
+- **Configurable filtering** - Separate luma and chroma FIR filter controls
+- **Video level customization** - Override blanking, black, and white levels for specific projects
+- **Flexible section system** - Combine different sources with varying durations in a single output
 
 ## Building
 
@@ -57,9 +64,11 @@ Where:
 - SQLite3 development libraries
 
 ### Dependencies
-- SQLite3
-- A CLI parsing library (CLI11, cxxopts, or Boost.Program_options)
-- (Optional) Google Test for running unit tests
+- SQLite3 - For metadata database generation
+- yaml-cpp - For YAML project file parsing
+- libpng - For PNG image loading
+- spdlog - For structured logging
+- FFmpeg libraries (libavformat, libavcodec, libavutil, libswscale) - For MOV/MP4 file support
 
 ### Build Instructions
 
@@ -75,26 +84,58 @@ mkdir build && cd build
 cmake ..
 make
 
-# Run tests (optional)
-make test
+# Run tests
+./run-tests.sh
 ```
 
 ## Usage
 
-*Note: encode-orc is currently under development. Usage examples will be added as features are implemented.*
+encode-orc uses YAML project files to define encoding configurations. The application takes a single YAML file as input and generates TBC output files with metadata.
 
-### Basic Example (Planned)
+### Basic Example
 ```bash
-# Generate PAL composite video from RGB frames
-encode-orc --format pal-composite --input frames.rgb --output video.tbc
+# Encode a project
+./encode-orc project.yaml
 
-# Generate NTSC Y/C video with built-in test card
-encode-orc --format ntsc-yc --testcard smpte --frames 300 --output test.tbc
+# Enable debug logging
+./encode-orc project.yaml --log-level debug
 
-# Add frame numbers and simulate dropouts
-encode-orc --format pal-composite --input frames.rgb --output video.tbc \
-  --overlay frame-number --add-dropouts 5
+# Save logs to file
+./encode-orc project.yaml --log-level debug --log-file output.log
+
+# Show version
+./encode-orc --version
+
+# Show help
+./encode-orc --help
 ```
+
+### Example Project File
+
+```yaml
+name: "PAL Test Project"
+description: "PAL composite video with color bars"
+
+output:
+  filename: "output.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  standard: "iec60857-1986"
+  mode: "cav"
+
+sections:
+  - name: "Color Bars"
+    duration: 100
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
+    laserdisc:
+      picture_start: 1
+      chapter: 1
+```
+
+See [docs/yaml-project-format.md](docs/yaml-project-format.md) for complete YAML configuration documentation.
 
 ## File Format Documentation
 
@@ -106,15 +147,9 @@ https://happycube.github.io/ld-decode-docs/Development/tools-metadata-format.htm
 encode-orc's encoding is based on the ld-chroma-encoder component from the ld-decode project:
 https://github.com/happycube/ld-decode/tree/main/tools/ld-chroma-decoder
 
-For detailed information about the project vision and implementation plan, see:
-- [Vision Statement](docs/vision.md)
-- [Implementation Plan](docs/implementation-plan.md)
-
 ## Project Status
 
-**Current Milestone**: M0 - Initial development
-
-See the [Implementation Plan](docs/implementation-plan.md) for detailed roadmap and milestones.
+Initial development
 
 ## Contributing
 
@@ -124,10 +159,18 @@ Contributions are welcome! This project is in early development, so expect signi
 
 See [LICENSE](LICENSE) file for details.
 
+## Documentation
+
+- [YAML Project Format](docs/yaml-project-format.md) - Complete YAML configuration reference
+- [MOV File Support](docs/MOV-File-Support.md) - QuickTime MOV file format details
+- [MP4 File Support](docs/MP4-File-Support.md) - MP4 file format details
+- [Test Signals](docs/Test-Signals.md) - Available test signal documentation
+- [VBI Documentation](docs/VBI.md) - Vertical blanking interval implementation
+- [PAL Frame and Field Numbering](docs/PAL-frame-and-field-numbering.md) - PAL-specific details
+
 ## Related Projects
 
-- [ld-decode](https://github.com/happycube/ld-decode) - Software for decoding RF captures of analog video
-- [decode-orc](https://github.com/happycube/ld-decode) - The decoder this tool generates test data for
+- [decode-orc](https://github.com/simoninns/decode-orc) - The primary consumer of encode-orc test data
 
 ## Acknowledgments
 
