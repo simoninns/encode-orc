@@ -69,8 +69,8 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
             YAML::Node laserdisc = root["laserdisc"];
             if (laserdisc["standard"]) {
                 config.laserdisc.standard_name = laserdisc["standard"].as<std::string>();
-                if (!parse_laserdisc_standard(config.laserdisc.standard_name, config.laserdisc.standard)) {
-                    error_message = "Invalid laserdisc standard: " + config.laserdisc.standard_name + " (expected iec60856-1986, iec60857-1986, consumer-tape, or none)";
+                if (!parse_source_video_standard(config.laserdisc.standard_name, config.laserdisc.standard)) {
+                    error_message = "Invalid source video standard: " + config.laserdisc.standard_name + " (expected iec60856-1986, iec60857-1986, consumer-tape, or none)";
                     return false;
                 }
             }

@@ -11,7 +11,7 @@
 #define ENCODE_ORC_VIDEO_ENCODER_H
 
 #include "video_parameters.h"
-#include "laserdisc_standard.h"
+#include "source_video_standard.h"
 #include "pal_encoder.h"
 #include "ntsc_encoder.h"
 #include "tbc_writer.h"
@@ -62,7 +62,7 @@ public:
      */
     bool encode_yuv422_image(const std::string& output_filename,
                             VideoSystem system,
-                            LaserDiscStandard ld_standard,
+                            SourceVideoStandard source_standard,
                             const std::string& yuv422_file,
                             int32_t num_frames,
                             int32_t picture_start = 0,
@@ -91,7 +91,7 @@ public:
      */
     bool encode_png_image(const std::string& output_filename,
                           VideoSystem system,
-                          LaserDiscStandard ld_standard,
+                          SourceVideoStandard source_standard,
                           const std::string& png_file,
                           int32_t num_frames,
                           int32_t picture_start = 0,
@@ -106,7 +106,7 @@ public:
      * @brief Encode video from MOV file frames
      * @param output_filename Output .tbc filename (or base filename for Y/C mode)
      * @param system Video system (PAL or NTSC)
-     * @param ld_standard LaserDisc standard
+     * @param source_standard Source video standard (IEC LaserDisc, consumer-tape, or none)
      * @param mov_file Path to MOV file (v210 or other ffmpeg-supported format)
      * @param num_frames Number of frames to encode
      * @param start_frame Starting frame number in MOV file (0-indexed, default: 0)
@@ -122,7 +122,7 @@ public:
      */
     bool encode_mov_file(const std::string& output_filename,
                          VideoSystem system,
-                         LaserDiscStandard ld_standard,
+                         SourceVideoStandard source_standard,
                          const std::string& mov_file,
                          int32_t num_frames,
                          int32_t start_frame = 0,
@@ -138,7 +138,7 @@ public:
      * @brief Encode video from MP4 file frames
      * @param output_filename Output .tbc filename (or base filename for Y/C mode)
      * @param system Video system (PAL or NTSC)
-     * @param ld_standard LaserDisc standard
+     * @param source_standard Source video standard (IEC LaserDisc, consumer-tape, or none)
      * @param mp4_file Path to MP4 file (H.264, H.265, or other ffmpeg-supported codec)
      * @param num_frames Number of frames to encode
      * @param start_frame Starting frame number in MP4 file (0-indexed, default: 0)
@@ -154,7 +154,7 @@ public:
      */
     bool encode_mp4_file(const std::string& output_filename,
                          VideoSystem system,
-                         LaserDiscStandard ld_standard,
+                         SourceVideoStandard source_standard,
                          const std::string& mp4_file,
                          int32_t num_frames,
                          int32_t start_frame = 0,

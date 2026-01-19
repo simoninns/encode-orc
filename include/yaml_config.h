@@ -11,7 +11,7 @@
 #define ENCODE_ORC_YAML_CONFIG_H
 
 #include "video_parameters.h"
-#include "laserdisc_standard.h"
+#include "source_video_standard.h"
 #include <string>
 #include <vector>
 #include <optional>
@@ -167,7 +167,7 @@ struct OutputConfig {
  */
 struct ProjectLaserDiscConfig {
     std::string standard_name = "none";  // raw value from YAML
-    LaserDiscStandard standard = LaserDiscStandard::None;
+    SourceVideoStandard standard = SourceVideoStandard::None;
     std::string mode = "none";  // cav, clv, picture-numbers, none
 };
 

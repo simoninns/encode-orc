@@ -13,7 +13,7 @@
 #include "field.h"
 #include "frame_buffer.h"
 #include "video_parameters.h"
-#include "laserdisc_standard.h"
+#include "source_video_standard.h"
 #include "ntsc_vits_generator.h"
 #include "vitc_generator.h"
 #include "fir_filter.h"
@@ -84,11 +84,11 @@ public:
      * @param standard The LaserDisc standard to use
      * 
      * This method enables/disables VITS and VITC automatically based on the standard:
-     * - LaserDisc standards (CAV/CLV) enable VITS and VBI
-     * - Consumer tape enables VITC (no VBI)
+     * - LaserDisc standards (IEC60856/IEC60857) enable VITS and VBI
+     * - Consumer tape enables VITC (no LaserDisc VBI)
      * - None disables both VITS and VITC
      */
-    void set_laserdisc_standard(LaserDiscStandard standard);
+    void set_source_video_standard(SourceVideoStandard standard);
 
     /**
      * @brief Enable VITC generation (tape formats)

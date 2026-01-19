@@ -42,7 +42,7 @@ void VideoEncoder::clear_video_level_overrides() {
 
 bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
                                        VideoSystem system,
-                                       LaserDiscStandard ld_standard,
+                                       SourceVideoStandard source_standard,
                                        const std::string& yuv422_file,
                                        int32_t num_frames,
                                        int32_t picture_start,
@@ -99,7 +99,7 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
         ENCODE_ORC_LOG_DEBUG("Field dimensions: {}x{}", params.field_width, params.field_height);
         
         // Determine whether this standard should carry biphase VBI metadata (for metadata DB only)
-        const bool include_vbi = standard_supports_vbi(ld_standard, system);
+        const bool include_vbi = standard_supports_vbi(source_standard, system);
         yuv422_loader.close();
         
         // Open TBC file for writing
@@ -137,15 +137,15 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
                 
                 if (system == VideoSystem::PAL) {
                     PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    pal_encoder.set_laserdisc_standard(ld_standard);
+                    pal_encoder.set_source_video_standard(source_standard);
                     pal_encoder.encode_frame_yc(image_frame, field_number,
-                                                standard_supports_vbi(ld_standard, system) ? frame_num : -1,
+                                                standard_supports_vbi(source_standard, system) ? frame_num : -1,
                                                 y_field1, c_field1, y_field2, c_field2);
                 } else {
                     NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    ntsc_encoder.set_laserdisc_standard(ld_standard);
+                    ntsc_encoder.set_source_video_standard(source_standard);
                     ntsc_encoder.encode_frame_yc(image_frame, field_number,
-                                                 standard_supports_vbi(ld_standard, system) ? frame_num : -1,
+                                                 standard_supports_vbi(source_standard, system) ? frame_num : -1,
                                                  y_field1, c_field1, y_field2, c_field2);
                 }
                 
@@ -161,14 +161,14 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
                 
                 if (system == VideoSystem::PAL) {
                     PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    pal_encoder.set_laserdisc_standard(ld_standard);
+                    pal_encoder.set_source_video_standard(source_standard);
                     encoded_frame = pal_encoder.encode_frame(image_frame, field_number,
-                                                             standard_supports_vbi(ld_standard, system) ? frame_num : -1);
+                                                             standard_supports_vbi(source_standard, system) ? frame_num : -1);
                 } else {
                     NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    ntsc_encoder.set_laserdisc_standard(ld_standard);
+                    ntsc_encoder.set_source_video_standard(source_standard);
                     encoded_frame = ntsc_encoder.encode_frame(image_frame, field_number,
-                                                             standard_supports_vbi(ld_standard, system) ? frame_num : -1);
+                                                             standard_supports_vbi(source_standard, system) ? frame_num : -1);
                 }
                 
                 // Write field 1
@@ -324,7 +324,7 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
 
 bool VideoEncoder::encode_png_image(const std::string& output_filename,
                                     VideoSystem system,
-                                    LaserDiscStandard ld_standard,
+                                    SourceVideoStandard source_standard,
                                     const std::string& png_file,
                                     int32_t num_frames,
                                     int32_t picture_start,
@@ -406,15 +406,15 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
                 Field y_field1, c_field1, y_field2, c_field2;
                 if (system == VideoSystem::PAL) {
                     PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    pal_encoder.set_laserdisc_standard(ld_standard);
+                    pal_encoder.set_source_video_standard(source_standard);
                     pal_encoder.encode_frame_yc(image_frame, field_number,
-                                                standard_supports_vbi(ld_standard, system) ? frame_num : -1,
+                                                standard_supports_vbi(source_standard, system) ? frame_num : -1,
                                                 y_field1, c_field1, y_field2, c_field2);
                 } else {
                     NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    ntsc_encoder.set_laserdisc_standard(ld_standard);
+                    ntsc_encoder.set_source_video_standard(source_standard);
                     ntsc_encoder.encode_frame_yc(image_frame, field_number,
-                                                 standard_supports_vbi(ld_standard, system) ? frame_num : -1,
+                                                 standard_supports_vbi(source_standard, system) ? frame_num : -1,
                                                  y_field1, c_field1, y_field2, c_field2);
                 }
 
@@ -426,14 +426,14 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
                 Frame encoded_frame;
                 if (system == VideoSystem::PAL) {
                     PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    pal_encoder.set_laserdisc_standard(ld_standard);
+                    pal_encoder.set_source_video_standard(source_standard);
                     encoded_frame = pal_encoder.encode_frame(image_frame, field_number,
-                                                             standard_supports_vbi(ld_standard, system) ? frame_num : -1);
+                                                             standard_supports_vbi(source_standard, system) ? frame_num : -1);
                 } else {
                     NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    ntsc_encoder.set_laserdisc_standard(ld_standard);
+                    ntsc_encoder.set_source_video_standard(source_standard);
                     encoded_frame = ntsc_encoder.encode_frame(image_frame, field_number,
-                                                             standard_supports_vbi(ld_standard, system) ? frame_num : -1);
+                                                             standard_supports_vbi(source_standard, system) ? frame_num : -1);
                 }
 
                 const Field& field1 = encoded_frame.field1();
@@ -463,7 +463,7 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
         metadata.capture_notes = "PNG image from " + png_file;
 
         // Add VBI data if supported by the selected standard
-        const bool include_vbi_png = standard_supports_vbi(ld_standard, system);
+        const bool include_vbi_png = standard_supports_vbi(source_standard, system);
         if (include_vbi_png) {
             metadata.vbi_data.resize(total_fields);
         }
@@ -560,7 +560,7 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
 
 bool VideoEncoder::encode_mov_file(const std::string& output_filename,
                                    VideoSystem system,
-                                   LaserDiscStandard ld_standard,
+                                   SourceVideoStandard source_standard,
                                    const std::string& mov_file,
                                    int32_t num_frames,
                                    int32_t start_frame,
@@ -581,7 +581,7 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
         }
 
         // Determine whether this standard should carry biphase VBI metadata (for metadata DB only)
-        const bool include_vbi = standard_supports_vbi(ld_standard, system);
+        const bool include_vbi = standard_supports_vbi(source_standard, system);
         
         // Apply any video level overrides
         VideoParameters::apply_video_level_overrides(params, 
@@ -661,15 +661,15 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
                 
                 if (system == VideoSystem::PAL) {
                     PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    pal_encoder.set_laserdisc_standard(ld_standard);
+                    pal_encoder.set_source_video_standard(source_standard);
                     pal_encoder.encode_frame_yc(frames[frame_num], field_number,
-                                                standard_supports_vbi(ld_standard, system) ? frame_num : -1,
+                                                standard_supports_vbi(source_standard, system) ? frame_num : -1,
                                                 y_field1, c_field1, y_field2, c_field2);
                 } else {
                     NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    ntsc_encoder.set_laserdisc_standard(ld_standard);
+                    ntsc_encoder.set_source_video_standard(source_standard);
                     ntsc_encoder.encode_frame_yc(frames[frame_num], field_number,
-                                                 standard_supports_vbi(ld_standard, system) ? frame_num : -1,
+                                                 standard_supports_vbi(source_standard, system) ? frame_num : -1,
                                                  y_field1, c_field1, y_field2, c_field2);
                 }
                 
@@ -683,14 +683,14 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
                 Frame frame;
                 if (system == VideoSystem::PAL) {
                     PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    pal_encoder.set_laserdisc_standard(ld_standard);
+                    pal_encoder.set_source_video_standard(source_standard);
                     frame = pal_encoder.encode_frame(frames[frame_num], field_number,
-                                                    standard_supports_vbi(ld_standard, system) ? frame_num : -1);
+                                                    standard_supports_vbi(source_standard, system) ? frame_num : -1);
                 } else {
                     NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    ntsc_encoder.set_laserdisc_standard(ld_standard);
+                    ntsc_encoder.set_source_video_standard(source_standard);
                     frame = ntsc_encoder.encode_frame(frames[frame_num], field_number,
-                                                     standard_supports_vbi(ld_standard, system) ? frame_num : -1);
+                                                     standard_supports_vbi(source_standard, system) ? frame_num : -1);
                 }
                 
                 // Write fields to TBC file
@@ -827,7 +827,7 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
 
 bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
                                    VideoSystem system,
-                                   LaserDiscStandard ld_standard,
+                                   SourceVideoStandard source_standard,
                                    const std::string& mp4_file,
                                    int32_t num_frames,
                                    int32_t start_frame,
@@ -848,7 +848,7 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
         }
 
         // Determine whether this standard should carry biphase VBI metadata (for metadata DB only)
-        const bool include_vbi = standard_supports_vbi(ld_standard, system);
+        const bool include_vbi = standard_supports_vbi(source_standard, system);
         
         // Apply any video level overrides
         VideoParameters::apply_video_level_overrides(params, 
@@ -928,15 +928,15 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
                 
                 if (system == VideoSystem::PAL) {
                     PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    pal_encoder.set_laserdisc_standard(ld_standard);
+                    pal_encoder.set_source_video_standard(source_standard);
                     pal_encoder.encode_frame_yc(frames[frame_num], field_number,
-                                                standard_supports_vbi(ld_standard, system) ? frame_num : -1,
+                                                standard_supports_vbi(source_standard, system) ? frame_num : -1,
                                                 y_field1, c_field1, y_field2, c_field2);
                 } else {
                     NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    ntsc_encoder.set_laserdisc_standard(ld_standard);
+                    ntsc_encoder.set_source_video_standard(source_standard);
                     ntsc_encoder.encode_frame_yc(frames[frame_num], field_number,
-                                                 standard_supports_vbi(ld_standard, system) ? frame_num : -1,
+                                                 standard_supports_vbi(source_standard, system) ? frame_num : -1,
                                                  y_field1, c_field1, y_field2, c_field2);
                 }
                 
@@ -950,14 +950,14 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
                 Frame frame;
                 if (system == VideoSystem::PAL) {
                     PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    pal_encoder.set_laserdisc_standard(ld_standard);
+                    pal_encoder.set_source_video_standard(source_standard);
                     frame = pal_encoder.encode_frame(frames[frame_num], field_number,
-                                                    standard_supports_vbi(ld_standard, system) ? frame_num : -1);
+                                                    standard_supports_vbi(source_standard, system) ? frame_num : -1);
                 } else {
                     NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    ntsc_encoder.set_laserdisc_standard(ld_standard);
+                    ntsc_encoder.set_source_video_standard(source_standard);
                     frame = ntsc_encoder.encode_frame(frames[frame_num], field_number,
-                                                     standard_supports_vbi(ld_standard, system) ? frame_num : -1);
+                                                     standard_supports_vbi(source_standard, system) ? frame_num : -1);
                 }
                 
                 // Write fields to TBC file

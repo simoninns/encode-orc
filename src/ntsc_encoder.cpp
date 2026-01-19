@@ -417,7 +417,7 @@ bool NTSCEncoder::is_vitc_enabled() const {
     return vitc_enabled_;
 }
 
-void NTSCEncoder::set_laserdisc_standard(LaserDiscStandard standard) {
+void NTSCEncoder::set_source_video_standard(SourceVideoStandard standard) {
     // Configure VITS and VITC based on the standard
     bool should_have_vits = standard_supports_vits(standard, VideoSystem::NTSC);
     bool should_have_vitc = standard_supports_vitc(standard, VideoSystem::NTSC);
