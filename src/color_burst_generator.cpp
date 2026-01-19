@@ -146,8 +146,16 @@ void ColorBurstGenerator::generate_ntsc_burst(uint16_t* line_buffer, int32_t lin
     int32_t fall_start = burst_end - static_cast<int32_t>(fall_samples / 3.0);
     int32_t fall_end = burst_end + static_cast<int32_t>(fall_samples * 2.0 / 3.0);
     
-    // Fill line with center level first
-    std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(center_level));
+    // Fill blanking region (excluding sync pulse area and before burst) with center level
+    int32_t fill_start = std::max(0, rise_start);
+    if (fill_start > 0) {
+        std::fill_n(line_buffer + fill_start, std::max(0, params_.colour_burst_start - fill_start), static_cast<uint16_t>(center_level));
+    }
+    // Fill region after burst with center level
+    int32_t fill_end = std::min(static_cast<int32_t>(params_.field_width), fall_end);
+    if (fill_end < static_cast<int32_t>(params_.field_width)) {
+        std::fill(line_buffer + fill_end, line_buffer + params_.field_width, static_cast<uint16_t>(center_level));
+    }
     
     // Generate burst with envelope and write with center offset
     for (int32_t sample = std::max(0, rise_start); sample < std::min(static_cast<int32_t>(params_.field_width), fall_end); ++sample) {
@@ -211,8 +219,16 @@ void ColorBurstGenerator::generate_pal_burst(uint16_t* line_buffer, int32_t line
     int32_t fall_start = burst_end - static_cast<int32_t>(fall_samples / 3.0);
     int32_t fall_end = burst_end + static_cast<int32_t>(fall_samples * 2.0 / 3.0);
     
-    // Fill line with center level first
-    std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(center_level));
+    // Fill blanking region (excluding sync pulse area and before burst) with center level
+    int32_t fill_start = std::max(0, rise_start);
+    if (fill_start > 0) {
+        std::fill_n(line_buffer + fill_start, std::max(0, params_.colour_burst_start - fill_start), static_cast<uint16_t>(center_level));
+    }
+    // Fill region after burst with center level
+    int32_t fill_end = std::min(static_cast<int32_t>(params_.field_width), fall_end);
+    if (fill_end < static_cast<int32_t>(params_.field_width)) {
+        std::fill(line_buffer + fill_end, line_buffer + params_.field_width, static_cast<uint16_t>(center_level));
+    }
     
     // Generate burst with envelope and write with center offset
     for (int32_t sample = std::max(0, rise_start); sample < std::min(static_cast<int32_t>(params_.field_width), fall_end); ++sample) {

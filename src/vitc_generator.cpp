@@ -24,7 +24,6 @@ constexpr double EDGE_TIME_S = 200.0e-9;        // 200 ns nominal rise/fall
 constexpr double LEAD_MARGIN_S = 11.2e-6;       // ≥11.2 µs after sync
 constexpr double TRAIL_MARGIN_S = 1.9e-6;       // ≤1.9 µs before next sync
 constexpr double POST_BURST_S = 1.0e-6;         // small guard after burst
-constexpr double HIGH_SCALE = 550.0 / 700.0;    // +550 mV relative to 700 mV @100 IRE
 }
 
 VITCGenerator::VITCGenerator(const VideoParameters& params)
@@ -52,9 +51,8 @@ VITCGenerator::VITCGenerator(const VideoParameters& params)
     }
 
     low_level_ = static_cast<uint16_t>(std::clamp(blanking_level_, 0, 65535));
-    double luma_span = static_cast<double>(white_level_ - blanking_level_);
-    int32_t high = static_cast<int32_t>(std::lround(static_cast<double>(blanking_level_) + (luma_span * HIGH_SCALE)));
-    high_level_ = static_cast<uint16_t>(std::clamp(high, 0, 65535));
+    // VITC peaks at 100 IRE (white level) per EBU Tech 3097 / SMPTE 12M and yaml-project-format.md
+    high_level_ = static_cast<uint16_t>(std::clamp(white_level_, 0, 65535));
 }
 
 void VITCGenerator::build_vitc_bits(VideoSystem system,
