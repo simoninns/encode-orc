@@ -95,30 +95,30 @@ Field NTSCEncoder::encode_field(const FrameBuffer& frame_buffer,
             // VITS lines (if enabled)
             else if (is_vits_enabled()) {
                 // First field VITS lines (0-indexed in field)
-                if (is_first_field && line == 18) {  // Line 19 in NTSC frame (first field)
+                if (is_first_field && line == 18) { // Line 19 - first field
                     generate_blanking_line(line_buffer);
                     generate_sync_pulse(line_buffer, line);
                     generate_color_burst(line_buffer, line, field_number);
-                    vits_generator_->generate_vir_line19(line_buffer, field_number);
+                    vits_generator_->generate_vir(line_buffer, field_number);
                 }
-                else if (is_first_field && line == 19) {  // Line 20 in NTSC frame (first field) - NTC-7 Composite
+                else if (is_first_field && line == 12) { // Line 13 - first field
                     generate_blanking_line(line_buffer);
                     generate_sync_pulse(line_buffer, line);
                     generate_color_burst(line_buffer, line, field_number);
-                    vits_generator_->generate_ntc7_composite_line17(line_buffer, field_number);
+                    vits_generator_->generate_ntc7_composite(line_buffer, field_number);
                 }
                 // Second field VITS lines (0-indexed in field)
-                else if (!is_first_field && line == 18) {  // Line 282 in NTSC frame (second field)
+                else if (!is_first_field && line == 18) { // Line 19 - second field
                     generate_blanking_line(line_buffer);
                     generate_sync_pulse(line_buffer, line);
                     generate_color_burst(line_buffer, line, field_number);
-                    vits_generator_->generate_vir_line19(line_buffer, field_number);
+                    vits_generator_->generate_vir(line_buffer, field_number);
                 }
-                else if (!is_first_field && line == 19) {  // Line 283 in NTSC frame (second field) - NTC-7 Combination
+                else if (!is_first_field && line == 12) { // Line 13 - second field
                     generate_blanking_line(line_buffer);
                     generate_sync_pulse(line_buffer, line);
                     generate_color_burst(line_buffer, line, field_number);
-                    vits_generator_->generate_ntc7_combination_line20(line_buffer, field_number);
+                    vits_generator_->generate_ntc7_combination(line_buffer, field_number);
                 }
                 else {
                     generate_blanking_line(line_buffer);
@@ -490,10 +490,10 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
             else if (vits_enabled_ && vits_generator_) {
                 // First field VITS lines (0-indexed in field)
                 if (line == 18) {  // Line 19 in NTSC frame (first field)
-                    vits_generator_->generate_vir_line19(y_line, field_number);
+                    vits_generator_->generate_vir(y_line, field_number);
                 }
                 else if (line == 19) {  // Line 20 in NTSC frame (first field) - NTC-7 Composite
-                    vits_generator_->generate_ntc7_composite_line17(y_line, field_number);
+                    vits_generator_->generate_ntc7_composite(y_line, field_number);
                 }
                 else {
                     // Other VBI lines - regular blanking
@@ -619,10 +619,10 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
             else if (vits_enabled_ && vits_generator_) {
                 // Second field VITS lines (0-indexed in field)
                 if (line == 18) {  // Line 282 in NTSC frame (second field)
-                    vits_generator_->generate_vir_line19(y_line, field_number + 1);
+                    vits_generator_->generate_vir(y_line, field_number + 1);
                 }
                 else if (line == 19) {  // Line 283 in NTSC frame (second field) - NTC-7 Combination
-                    vits_generator_->generate_ntc7_combination_line20(y_line, field_number + 1);
+                    vits_generator_->generate_ntc7_combination(y_line, field_number + 1);
                 }
                 else {
                     // Other VBI lines - regular blanking

@@ -43,7 +43,7 @@ public:
      * @param line_buffer Output buffer for one line
      * @param field_number Field number for phase calculation
      */
-    void generate_vir_line19(uint16_t* line_buffer, int32_t field_number);
+    void generate_vir(uint16_t* line_buffer, int32_t field_number);
     
     /**
      * @brief Generate NTC-7 Composite Test Signal
@@ -52,7 +52,7 @@ public:
      * @param line_buffer Output buffer for one line
      * @param field_number Field number for phase calculation
      */
-    void generate_ntc7_composite_line17(uint16_t* line_buffer, int32_t field_number);
+    void generate_ntc7_composite(uint16_t* line_buffer, int32_t field_number);
     
     /**
      * @brief Generate NTC-7 Combination Test Signal
@@ -61,7 +61,7 @@ public:
      * @param line_buffer Output buffer for one line
      * @param field_number Field number for phase calculation
      */
-    void generate_ntc7_combination_line20(uint16_t* line_buffer, int32_t field_number);
+    void generate_ntc7_combination(uint16_t* line_buffer, int32_t field_number);
 
 private:
     VideoParameters params_;

@@ -266,9 +266,9 @@ void NTSCVITSGenerator::generate_multiburst_packet(uint16_t* line_buffer, double
 // VITS Line Generators
 // ============================================================================
 
-void NTSCVITSGenerator::generate_vir_line19(uint16_t* line_buffer, int32_t field_number) {
+void NTSCVITSGenerator::generate_vir(uint16_t* line_buffer, int32_t field_number) {
     // VIR (Vertical Interval Reference) Signal for NTSC (FCC 73-699, CCIR 314-4)
-    // Line 19 (and 282): Structure as described in FCC documentation
+    // Structure as described in FCC documentation
     // Note: Encoder has already set blanking level and added sync + color burst
     // This function only adds the test signal content (pedestal references):
     // - 12-36 µs: chrominance reference with 50-90 IRE pedestal (±20 IRE about 70 IRE center, 24µs total)
@@ -286,9 +286,8 @@ void NTSCVITSGenerator::generate_vir_line19(uint16_t* line_buffer, int32_t field
     generate_flat_level(line_buffer, 48.0, 60.0, 7.5);
 }
 
-void NTSCVITSGenerator::generate_ntc7_composite_line17(uint16_t* line_buffer, int32_t field_number) {
+void NTSCVITSGenerator::generate_ntc7_composite(uint16_t* line_buffer, int32_t field_number) {
     // NTC-7 Composite Test Signal for NTSC (Figure 8.40)
-    // Line 17 (also used as line 283)
     // Components:
     // - 100 IRE white bar: 12–30 µs (with 125ns rise/fall times)
     // - 2T pulse: 100 IRE peak, centered at 34 µs, 250ns half-amplitude width
@@ -328,9 +327,8 @@ void NTSCVITSGenerator::generate_ntc7_composite_line17(uint16_t* line_buffer, in
     // 62 µs onward returns to 0 IRE blanking (already set by initialization)
 }
 
-void NTSCVITSGenerator::generate_ntc7_combination_line20(uint16_t* line_buffer, int32_t field_number) {
+void NTSCVITSGenerator::generate_ntc7_combination(uint16_t* line_buffer, int32_t field_number) {
     // NTC-7 Combination Test Signal for NTSC (Figure 8.43)
-    // Line 20 (also used as line 280)
     // Components:
     // - White flag: 100 IRE, 12-16 µs (4 µs width)
     // - 50 IRE pedestal: 16-18 µs (before multiburst)
