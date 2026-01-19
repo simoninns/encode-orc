@@ -193,17 +193,17 @@ void PALVITSGenerator::generate_modulated_staircase(uint16_t* line_buffer, doubl
         int32_t chroma_amp = static_cast<int32_t>((chroma_amplitude / 100.0) * (white_level_ - blanking_level_) / 2.0);
         
         for (int32_t sample = start_sample; sample < end_sample && sample < params_.field_width; ++sample) {
-            // Apply envelope at step edges (~400ns rise/fall time)
+            // Apply envelope at step edges (~1µs rise/fall time per Test-Signals.md)
             double t_from_start = (sample - start_sample) / samples_per_us_;
             double t_from_end = (end_sample - sample) / samples_per_us_;
             double envelope = 1.0;
             
-            if (t_from_start < 0.0004) {
-                // 400ns rise envelope
-                envelope = 0.5 * (1.0 - std::cos(PI * t_from_start / 0.0004));
-            } else if (t_from_end < 0.0004) {
-                // 400ns fall envelope
-                envelope = 0.5 * (1.0 - std::cos(PI * t_from_end / 0.0004));
+            if (t_from_start < 1.0) {
+                // 1µs rise envelope
+                envelope = 0.5 * (1.0 - std::cos(PI * t_from_start / 1.0));
+            } else if (t_from_end < 1.0) {
+                // 1µs fall envelope
+                envelope = 0.5 * (1.0 - std::cos(PI * t_from_end / 1.0));
             }
             
             // Calculate chroma with V-switch and phase offset
@@ -234,17 +234,17 @@ void PALVITSGenerator::generate_modulated_pedestal(uint16_t* line_buffer, double
     int32_t chroma_amp = static_cast<int32_t>((chroma_pp / 100.0) * (white_level_ - blanking_level_) / 2.0);
     
     for (int32_t sample = start_sample; sample < end_sample && sample < params_.field_width; ++sample) {
-        // Apply envelope at edges (~400ns rise/fall time)
+        // Apply envelope at edges (~1µs rise/fall time per Test-Signals.md)
         double t_from_start = (sample - start_sample) / samples_per_us_;
         double t_from_end = (end_sample - sample) / samples_per_us_;
         double envelope = 1.0;
         
-        if (t_from_start < 0.0004) {
-            // 400ns rise envelope
-            envelope = 0.5 * (1.0 - std::cos(PI * t_from_start / 0.0004));
-        } else if (t_from_end < 0.0004) {
-            // 400ns fall envelope
-            envelope = 0.5 * (1.0 - std::cos(PI * t_from_end / 0.0004));
+        if (t_from_start < 1.0) {
+            // 1µs rise envelope
+            envelope = 0.5 * (1.0 - std::cos(PI * t_from_start / 1.0));
+        } else if (t_from_end < 1.0) {
+            // 1µs fall envelope
+            envelope = 0.5 * (1.0 - std::cos(PI * t_from_end / 1.0));
         }
         
         double phase = calculate_phase(field_number, line_number, sample) + phase_offset;

@@ -154,13 +154,15 @@ private:
      * @param chroma_phase Chroma phase relative to burst (degrees)
      * @param field_number Field number for phase calculation
      * @param line_number Line number for phase calculation
+     * @param envelope_time_us Rise/fall envelope time in microseconds (default 0.4µs for 400ns)
      * 
      * For NTSC: NTC-7 composite test signal with specified chroma modulation
      */
     void generate_modulated_staircase(uint16_t* line_buffer, double start_time,
                                      const double* step_times, const double* step_levels,
                                      int num_steps, double chroma_amplitude, double chroma_phase,
-                                     int32_t field_number, int32_t line_number);
+                                     int32_t field_number, int32_t line_number,
+                                     double envelope_time_us = 0.4);
     
     /**
      * @brief Generate modulated pedestal
@@ -173,12 +175,14 @@ private:
      * @param chroma_phase Chroma phase relative to burst (degrees)
      * @param field_number Field number for phase calculation
      * @param line_number Line number for phase calculation
+     * @param envelope_time_us Rise/fall envelope time in microseconds (default 0.4µs for 400ns)
      * 
-     * For NTSC: NTC-7 combination test signal pedestal with specified chroma modulation
+     * For NTSC: NTC-7 combination test signal and VIRS pedestal with specified chroma modulation
      */
     void generate_modulated_pedestal(uint16_t* line_buffer, double start_time, double duration,
                                     double luma_low, double luma_high, double chroma_pp,
-                                    double chroma_phase, int32_t field_number, int32_t line_number);
+                                    double chroma_phase, int32_t field_number, int32_t line_number,
+                                    double envelope_time_us = 0.4);
     
     /**
      * @brief Generate multiburst packet

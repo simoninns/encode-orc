@@ -166,7 +166,8 @@ void NTSCVITSGenerator::generate_12_5t_pulse(uint16_t* line_buffer, double cente
 void NTSCVITSGenerator::generate_modulated_staircase(uint16_t* line_buffer, double /* start_time */,
                                                      const double* step_times, const double* step_levels,
                                                      int num_steps, double chroma_amplitude, double chroma_phase,
-                                                     int32_t field_number, int32_t line_number) {
+                                                     int32_t field_number, int32_t line_number,
+                                                     double envelope_time_us) {
     // Generate staircase with modulated chroma
     double phase_offset = chroma_phase * PI / 180.0;  // Convert degrees to radians
     
@@ -182,17 +183,17 @@ void NTSCVITSGenerator::generate_modulated_staircase(uint16_t* line_buffer, doub
         int32_t chroma_amp = static_cast<int32_t>((chroma_amplitude / 100.0) * (white_level_ - blanking_level_) / 2.0);
         
         for (int32_t sample = start_sample; sample < end_sample && sample < params_.field_width; ++sample) {
-            // Apply envelope at step edges (~400ns rise/fall time)
+            // Apply envelope at step edges (configurable rise/fall time per Test-Signals.md)
             double t_from_start = (sample - start_sample) / samples_per_us_;
             double t_from_end = (end_sample - sample) / samples_per_us_;
             double envelope = 1.0;
             
-            if (t_from_start < 0.0004) {
-                // 400ns rise envelope
-                envelope = 0.5 * (1.0 - std::cos(PI * t_from_start / 0.0004));
-            } else if (t_from_end < 0.0004) {
-                // 400ns fall envelope
-                envelope = 0.5 * (1.0 - std::cos(PI * t_from_end / 0.0004));
+            if (t_from_start < envelope_time_us) {
+                // Rise envelope
+                envelope = 0.5 * (1.0 - std::cos(PI * t_from_start / envelope_time_us));
+            } else if (t_from_end < envelope_time_us) {
+                // Fall envelope
+                envelope = 0.5 * (1.0 - std::cos(PI * t_from_end / envelope_time_us));
             }
             
             // Calculate chroma with phase offset
@@ -207,7 +208,8 @@ void NTSCVITSGenerator::generate_modulated_staircase(uint16_t* line_buffer, doub
 
 void NTSCVITSGenerator::generate_modulated_pedestal(uint16_t* line_buffer, double start_time, double duration,
                                                     double luma_low, double luma_high, double chroma_pp,
-                                                    double chroma_phase, int32_t field_number, int32_t line_number) {
+                                                    double chroma_phase, int32_t field_number, int32_t line_number,
+                                                    double envelope_time_us) {
     int32_t start_sample = static_cast<int32_t>(start_time * samples_per_us_);
     int32_t end_sample = static_cast<int32_t>((start_time + duration) * samples_per_us_);
     
@@ -220,17 +222,17 @@ void NTSCVITSGenerator::generate_modulated_pedestal(uint16_t* line_buffer, doubl
     int32_t chroma_amp = static_cast<int32_t>((chroma_pp / 100.0) * (white_level_ - blanking_level_) / 2.0);
     
     for (int32_t sample = start_sample; sample < end_sample && sample < params_.field_width; ++sample) {
-        // Apply envelope at edges (~400ns rise/fall time)
+        // Apply envelope at edges (configurable rise/fall time per Test-Signals.md)
         double t_from_start = (sample - start_sample) / samples_per_us_;
         double t_from_end = (end_sample - sample) / samples_per_us_;
         double envelope = 1.0;
         
-        if (t_from_start < 0.0004) {
-            // 400ns rise envelope
-            envelope = 0.5 * (1.0 - std::cos(PI * t_from_start / 0.0004));
-        } else if (t_from_end < 0.0004) {
-            // 400ns fall envelope
-            envelope = 0.5 * (1.0 - std::cos(PI * t_from_end / 0.0004));
+        if (t_from_start < envelope_time_us) {
+            // Rise envelope
+            envelope = 0.5 * (1.0 - std::cos(PI * t_from_start / envelope_time_us));
+        } else if (t_from_end < envelope_time_us) {
+            // Fall envelope
+            envelope = 0.5 * (1.0 - std::cos(PI * t_from_end / envelope_time_us));
         }
         
         double phase = calculate_phase(field_number, line_number, sample) + phase_offset;
@@ -272,12 +274,14 @@ void NTSCVITSGenerator::generate_vir(uint16_t* line_buffer, int32_t field_number
     // Note: Encoder has already set blanking level and added sync + color burst
     // This function only adds the test signal content (pedestal references):
     // - 12-36 µs: chrominance reference with 50-90 IRE pedestal (±20 IRE about 70 IRE center, 24µs total)
+    //   Rise/fall time: ~1µs per spec (chrominance reference modulation envelope)
     // - 36-48 µs: luminance reference (50 IRE, 12µs)
     // - 48-60 µs: black reference (7.5 IRE, 12µs)
     
     // 12-36 µs: Chrominance reference on 50-90 IRE pedestal (modulated, ±20 IRE about 70 IRE center)
     // This is a modulated pedestal with 70 IRE center and 40 IRE peak-to-peak (50-90 IRE range)
-    generate_modulated_pedestal(line_buffer, 12.0, 24.0, 50.0, 90.0, 40.0, -90.0, field_number, 19);
+    // VIRS uses ~1µs rise/fall time for the modulation envelope
+    generate_modulated_pedestal(line_buffer, 12.0, 24.0, 50.0, 90.0, 40.0, -90.0, field_number, 19, 1.0);
     
     // 36-48 µs: Luminance reference pedestal (50 IRE, 12µs)
     generate_flat_level(line_buffer, 36.0, 48.0, 50.0);
