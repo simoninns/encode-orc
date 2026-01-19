@@ -47,10 +47,11 @@ public:
      */
     void apply(std::vector<double>& samples) const {
         if (samples.empty()) return;
-        
-        std::vector<double> tmp(samples.size());
-        apply_internal(samples.data(), tmp.data(), samples.size());
-        samples = tmp;
+
+        thread_local std::vector<double> tmp;
+        tmp.resize(samples.size());
+        apply_internal(samples.data(), tmp.data(), static_cast<int>(samples.size()));
+        std::copy(tmp.begin(), tmp.end(), samples.begin());
     }
 
     /**
@@ -59,15 +60,15 @@ public:
      */
     void apply(std::vector<uint16_t>& samples) const {
         if (samples.empty()) return;
-        
-        std::vector<double> tmp_double(samples.size());
-        
-        // Convert to double
+
+        thread_local std::vector<double> tmp_double;
+        tmp_double.resize(samples.size());
+
         for (size_t i = 0; i < samples.size(); ++i) {
             tmp_double[i] = static_cast<double>(samples[i]);
         }
-        
-        apply_internal_16bit(tmp_double.data(), samples.data(), samples.size());
+
+        apply_internal_16bit(tmp_double.data(), samples.data(), static_cast<int>(samples.size()));
     }
 
     /**
@@ -96,7 +97,8 @@ private:
         const int overlap = num_taps / 2;
 
         // Create padded version with reflection at edges to avoid artifacts
-        std::vector<double> padded(num_samples + 2 * overlap);
+        thread_local std::vector<double> padded;
+        padded.resize(num_samples + 2 * overlap);
         
         // Reflect at left edge
         for (int i = 0; i < overlap; ++i) {
@@ -132,7 +134,8 @@ private:
         const int overlap = num_taps / 2;
 
         // Create padded version with reflection at edges to avoid artifacts
-        std::vector<double> padded(num_samples + 2 * overlap);
+        thread_local std::vector<double> padded;
+        padded.resize(num_samples + 2 * overlap);
         
         // Reflect at left edge
         for (int i = 0; i < overlap; ++i) {

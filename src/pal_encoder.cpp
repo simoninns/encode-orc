@@ -274,25 +274,31 @@ void PALEncoder::encode_active_line(uint16_t* line_buffer,
                                    int32_t field_number,
                                    int32_t width,
                                    bool studio_range_input) {
-    // Apply filters if enabled
-    // Note: We need to copy the line data first to apply filtering
-    std::vector<uint16_t> y_filtered(y_line, y_line + width);
-    std::vector<uint16_t> u_filtered(u_line, u_line + width);
-    std::vector<uint16_t> v_filtered(v_line, v_line + width);
-    
-    // Apply filters if configured
+    // Resolve source pointers; only allocate filtered buffers when filters are enabled.
+    const uint16_t* y_data = y_line;
+    const uint16_t* u_data = u_line;
+    const uint16_t* v_data = v_line;
+
     if (luma_filter_) {
+        thread_local std::vector<uint16_t> y_filtered;
+        y_filtered.resize(width);
+        std::copy(y_line, y_line + width, y_filtered.begin());
         luma_filter_->apply(y_filtered);
+        y_data = y_filtered.data();
     }
+
     if (chroma_filter_) {
+        thread_local std::vector<uint16_t> u_filtered;
+        thread_local std::vector<uint16_t> v_filtered;
+        u_filtered.resize(width);
+        v_filtered.resize(width);
+        std::copy(u_line, u_line + width, u_filtered.begin());
+        std::copy(v_line, v_line + width, v_filtered.begin());
         chroma_filter_->apply(u_filtered);
         chroma_filter_->apply(v_filtered);
+        u_data = u_filtered.data();
+        v_data = v_filtered.data();
     }
-    
-    // Use filtered data for encoding
-    const uint16_t* y_data = y_filtered.data();
-    const uint16_t* u_data = u_filtered.data();
-    const uint16_t* v_data = v_filtered.data();
     
     // Encode the active video portion of the line
     int32_t active_start = params_.active_video_start;
@@ -318,28 +324,60 @@ void PALEncoder::encode_active_line(uint16_t* line_buffer,
     // phase = 2π * (fSC * t + prevCycles)
     // where prevCycles accumulates by 283.7516 per line
     double prev_cycles = prev_lines * 283.7516;  // Cycles of phase advance
-    
+
+    const double phase_step = 2.0 * PI * (subcarrier_freq_ / sample_rate_);
+    double phase = (2.0 * PI * prev_cycles) + static_cast<double>(active_start) * phase_step;
+    double sin_phase = std::sin(phase);
+    double cos_phase = std::cos(phase);
+    const double sin_step = std::sin(phase_step);
+    const double cos_step = std::cos(phase_step);
+
+    const double pixel_step = static_cast<double>(width) / active_width;
+    double pixel_pos = 0.0;
+
     for (int32_t sample = active_start; sample < active_end; ++sample) {
-        // Map sample position to source pixel
-        double pixel_pos = static_cast<double>(sample - active_start) * width / active_width;
         int32_t pixel_x = static_cast<int32_t>(pixel_pos);
-        
-        // Clamp to valid range
+        pixel_pos += pixel_step;
+
         if (pixel_x >= width) pixel_x = width - 1;
-        
-        // Get YUV values from filtered source
-        uint16_t y = y_data[pixel_x];
-        uint16_t u = u_data[pixel_x];
-        uint16_t v = v_data[pixel_x];
-        
-        // Calculate subcarrier phase for this sample position
-        // phase = 2π * (fSC * t + prevCycles)
-        double t = static_cast<double>(sample) / sample_rate_;
-        double phase = 2.0 * PI * (subcarrier_freq_ * t + prev_cycles);
-        
-        // Convert YUV to composite signal
-        uint16_t composite = yuv_to_composite(y, u, v, phase, v_switch, studio_range_input);
-        line_buffer[sample] = composite;
+
+        const uint16_t y = y_data[pixel_x];
+        const uint16_t u = u_data[pixel_x];
+        const uint16_t v = v_data[pixel_x];
+
+        int32_t luma_range = white_level_ - black_level_;
+        int32_t luma_scaled;
+
+        if (studio_range_input) {
+            int32_t y_signal = black_level_ + ((static_cast<int32_t>(y) - 64) * luma_range) / 876;
+            luma_scaled = clamp_to_16bit(y_signal);
+        } else {
+            double y_norm = static_cast<double>(y) / 65535.0;
+            luma_scaled = black_level_ + static_cast<int32_t>(y_norm * luma_range);
+        }
+
+        const double U_MAX = 0.436010;
+        const double V_MAX = 0.614975;
+        double u_norm;
+        double v_norm;
+        if (studio_range_input) {
+            u_norm = ((static_cast<double>(u) / 896.0) - 0.5) * 2.0 * U_MAX;
+            v_norm = ((static_cast<double>(v) / 896.0) - 0.5) * 2.0 * V_MAX;
+        } else {
+            u_norm = ((static_cast<double>(u) / 65535.0) - 0.5) * 2.0 * U_MAX;
+            v_norm = ((static_cast<double>(v) / 65535.0) - 0.5) * 2.0 * V_MAX;
+        }
+
+        double chroma = (u_norm * sin_phase) + (v_norm * v_switch * cos_phase);
+        int32_t chroma_scaled = static_cast<int32_t>(chroma * luma_range);
+
+        int32_t composite = luma_scaled + chroma_scaled;
+        line_buffer[sample] = clamp_to_16bit(composite);
+
+        double next_sin = (sin_phase * cos_step) + (cos_phase * sin_step);
+        double next_cos = (cos_phase * cos_step) - (sin_phase * sin_step);
+        sin_phase = next_sin;
+        cos_phase = next_cos;
     }
 }
 
