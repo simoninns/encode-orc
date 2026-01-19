@@ -14,6 +14,7 @@
 #include "mov_loader.h"
 #include "mp4_loader.h"
 #include "yc_tbc_writer.h"
+#include "logging.h"
 #include <iostream>
 #include <fstream>
 #include <cstdio>
@@ -44,7 +45,6 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
                                        LaserDiscStandard ld_standard,
                                        const std::string& yuv422_file,
                                        int32_t num_frames,
-                                       bool verbose,
                                        int32_t picture_start,
                                        int32_t chapter,
                                        const std::string& timecode_start,
@@ -70,13 +70,13 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
                                                      s_black_16b_ire_override,
                                                      s_white_16b_ire_override);
         
-        if (verbose && (s_blanking_16b_ire_override.has_value() || 
-                       s_black_16b_ire_override.has_value() || 
-                       s_white_16b_ire_override.has_value())) {
-            std::cout << "Applied video level overrides to params:\n";
-            std::cout << "  blanking: " << params.blanking_16b_ire << "\n";
-            std::cout << "  black: " << params.black_16b_ire << "\n";
-            std::cout << "  white: " << params.white_16b_ire << "\n";
+        if (s_blanking_16b_ire_override.has_value() || 
+            s_black_16b_ire_override.has_value() || 
+            s_white_16b_ire_override.has_value()) {
+            ENCODE_ORC_LOG_DEBUG("Applied video level overrides to params:");
+            ENCODE_ORC_LOG_DEBUG("  blanking: {}", params.blanking_16b_ire);
+            ENCODE_ORC_LOG_DEBUG("  black: {}", params.black_16b_ire);
+            ENCODE_ORC_LOG_DEBUG("  white: {}", params.white_16b_ire);
         }
         
         // Get expected dimensions for this system
@@ -96,23 +96,16 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
             return false;
         }
         
-        if (verbose) {
-            std::cout << "Encoding " << num_frames << " frames (" 
-                      << (num_frames * 2) << " fields)\n";
-            std::cout << "System: " << (system == VideoSystem::PAL ? "PAL" : "NTSC") << "\n";
-            std::cout << "Image: " << yuv422_file << " (" << img_width << "x" << img_height << ")\n";
-            std::cout << "Field dimensions: " << params.field_width << "x" 
-                      << params.field_height << "\n";
-        }
+        ENCODE_ORC_LOG_DEBUG("Encoding {} frames ({} fields)", num_frames, num_frames * 2);
+        ENCODE_ORC_LOG_DEBUG("System: {}", (system == VideoSystem::PAL ? "PAL" : "NTSC"));
+        ENCODE_ORC_LOG_DEBUG("Image: {} ({}x{})", yuv422_file, img_width, img_height);
+        ENCODE_ORC_LOG_DEBUG("Field dimensions: {}x{}", params.field_width, params.field_height);
         yuv422_loader.close();
         
         // Open TBC file for writing
-        if (verbose) {
-            if (separate_yc) {
-                std::cout << "Writing separate Y/C TBC files: " << output_filename << ".tbcy and .tbcc\n";
-            } else {
-                std::cout << "Writing TBC file: " << output_filename << "\n";
-            }
+        ENCODE_ORC_LOG_DEBUG("Writing TBC file: {}", output_filename);
+        if (separate_yc) {
+            ENCODE_ORC_LOG_DEBUG("  Mode: Separate Y/C");
         }
         
         std::ofstream tbc_file;
@@ -189,14 +182,9 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
                               field2.data().size() * sizeof(uint16_t));
             }
             
-            if (verbose && ((frame_num + 1) % 10 == 0 || frame_num == num_frames - 1)) {
-                std::cout << "\rWriting field " << ((frame_num + 1) * 2) 
-                          << " / " << total_fields << std::flush;
+            if ((frame_num + 1) % 10 == 0 || frame_num == num_frames - 1) {
+                ENCODE_ORC_LOG_DEBUG("Writing field {} / {}", (frame_num + 1) * 2, total_fields);
             }
-        }
-        
-        if (verbose) {
-            std::cout << "\n";
         }
         
         if (separate_yc) {
@@ -210,12 +198,10 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
         metadata.initialize(system, total_fields);
         metadata.video_params = params;
         
-        if (verbose) {
-            std::cout << "Metadata video_params after assignment:\n";
-            std::cout << "  blanking: " << metadata.video_params.blanking_16b_ire << "\n";
-            std::cout << "  black: " << metadata.video_params.black_16b_ire << "\n";
-            std::cout << "  white: " << metadata.video_params.white_16b_ire << "\n";
-        }
+        ENCODE_ORC_LOG_DEBUG("Metadata video_params after assignment:");
+        ENCODE_ORC_LOG_DEBUG("  blanking: {}", metadata.video_params.blanking_16b_ire);
+        ENCODE_ORC_LOG_DEBUG("  black: {}", metadata.video_params.black_16b_ire);
+        ENCODE_ORC_LOG_DEBUG("  white: {}", metadata.video_params.white_16b_ire);
         
         metadata.git_branch = "main";
         metadata.git_commit = "v0.1.0-dev";
@@ -312,9 +298,7 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
         
         // Write metadata
         std::string metadata_filename = output_filename + ".db";
-        if (verbose) {
-            std::cout << "Writing metadata: " << metadata_filename << "\n";
-        }
+        ENCODE_ORC_LOG_DEBUG("Writing metadata: {}", metadata_filename);
         
         MetadataWriter metadata_writer;
         if (!metadata_writer.open(metadata_filename)) {
@@ -327,10 +311,8 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
             return false;
         }
         
-        if (verbose) {
-            std::cout << "  " << output_filename << "\n";
-            std::cout << "  " << output_filename << ".db\n";
-        }
+        ENCODE_ORC_LOG_DEBUG("  {}", output_filename);
+        ENCODE_ORC_LOG_DEBUG("  {}.db", output_filename);
         
         return true;
         
@@ -345,7 +327,6 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
                                     LaserDiscStandard ld_standard,
                                     const std::string& png_file,
                                     int32_t num_frames,
-                                    bool verbose,
                                     int32_t picture_start,
                                     int32_t chapter,
                                     const std::string& timecode_start,
@@ -366,13 +347,13 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
                                                      s_black_16b_ire_override,
                                                      s_white_16b_ire_override);
         
-        if (verbose && (s_blanking_16b_ire_override.has_value() || 
-                       s_black_16b_ire_override.has_value() || 
-                       s_white_16b_ire_override.has_value())) {
-            std::cout << "Applied video level overrides to params:\n";
-            std::cout << "  blanking: " << params.blanking_16b_ire << "\n";
-            std::cout << "  black: " << params.black_16b_ire << "\n";
-            std::cout << "  white: " << params.white_16b_ire << "\n";
+        if (s_blanking_16b_ire_override.has_value() || 
+            s_black_16b_ire_override.has_value() || 
+            s_white_16b_ire_override.has_value()) {
+            ENCODE_ORC_LOG_DEBUG("Applied video level overrides to params:");
+            ENCODE_ORC_LOG_DEBUG("  blanking: {}", params.blanking_16b_ire);
+            ENCODE_ORC_LOG_DEBUG("  black: {}", params.black_16b_ire);
+            ENCODE_ORC_LOG_DEBUG("  white: {}", params.white_16b_ire);
         }
 
         // Load PNG image and convert to YUV444P16
@@ -390,14 +371,10 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
             return false;
         }
 
-        if (verbose) {
-            std::cout << "Encoding " << num_frames << " frames ("
-                      << (num_frames * 2) << " fields)\n";
-            std::cout << "System: " << (system == VideoSystem::PAL ? "PAL" : "NTSC") << "\n";
-            std::cout << "Image: " << png_file << " (" << img_width << "x" << img_height << ")\n";
-            std::cout << "Field dimensions: " << params.field_width << "x" 
-                      << params.field_height << "\n";
-        }
+        ENCODE_ORC_LOG_DEBUG("Encoding {} frames ({} fields)", num_frames, num_frames * 2);
+        ENCODE_ORC_LOG_DEBUG("System: {}", (system == VideoSystem::PAL ? "PAL" : "NTSC"));
+        ENCODE_ORC_LOG_DEBUG("Image: {} ({}x{})", png_file, img_width, img_height);
+        ENCODE_ORC_LOG_DEBUG("Field dimensions: {}x{}", params.field_width, params.field_height);
 
         FrameBuffer image_frame;
         if (!png_loader.load_frame(0, img_width, img_height, params, image_frame, load_error)) {
@@ -469,14 +446,9 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
                                field2.data().size() * sizeof(uint16_t));
             }
 
-            if (verbose && ((frame_num + 1) % 10 == 0 || frame_num == num_frames - 1)) {
-                std::cout << "\rWriting field " << ((frame_num + 1) * 2)
-                          << " / " << total_fields << std::flush;
+            if ((frame_num + 1) % 10 == 0 || frame_num == num_frames - 1) {
+                ENCODE_ORC_LOG_DEBUG("Writing field {} / {}", (frame_num + 1) * 2, total_fields);
             }
-        }
-
-        if (verbose) {
-            std::cout << "\n";
         }
 
         if (separate_yc) {
@@ -594,7 +566,6 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
                                    const std::string& mov_file,
                                    int32_t num_frames,
                                    int32_t start_frame,
-                                   bool verbose,
                                    int32_t picture_start,
                                    int32_t chapter,
                                    const std::string& timecode_start,
@@ -637,10 +608,8 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
         // Verify dimensions match expected video system
         int32_t expected_width = 720, expected_height = (system == VideoSystem::PAL) ? 576 : 480;
         
-        if (verbose) {
-            std::cout << "MOV file: " << mov_width << "x" << mov_height << "\n";
-            std::cout << "Expected: " << expected_width << "x" << expected_height << "\n";
-        }
+        ENCODE_ORC_LOG_DEBUG("MOV file: {}x{}", mov_width, mov_height);
+        ENCODE_ORC_LOG_DEBUG("Expected: {}x{}", expected_width, expected_height);
         
         // Load frames from MOV file
         std::vector<FrameBuffer> frames;
@@ -661,10 +630,8 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
             return false;
         }
         
-        if (verbose) {
-            std::cout << "Loaded " << actual_num_frames << " frames from MOV file\n";
-            std::cout << "Encoding " << num_frames << " frames (" << (num_frames * 2) << " fields)\n";
-        }
+        ENCODE_ORC_LOG_DEBUG("Loaded {} frames from MOV file", actual_num_frames);
+        ENCODE_ORC_LOG_DEBUG("Encoding {} frames ({} fields)", num_frames, num_frames * 2);
         
         // Open TBC file for writing
         std::ofstream tbc_file;
@@ -687,8 +654,8 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
         for (int32_t frame_num = 0; frame_num < num_frames; ++frame_num) {
             int32_t field_number = frame_num * 2;
             
-            if (verbose && (frame_num % 10 == 0 || frame_num == num_frames - 1)) {
-                std::cout << "Encoding frame " << (frame_num + 1) << "/" << num_frames << "\r" << std::flush;
+            if (frame_num % 10 == 0 || frame_num == num_frames - 1) {
+                ENCODE_ORC_LOG_DEBUG("Encoding MOV frame {}/{}", frame_num + 1, num_frames);
             }
             
             if (separate_yc) {
@@ -738,16 +705,6 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
                 tbc_file.write(reinterpret_cast<const char*>(field2.data().data()),
                               field2.data().size() * sizeof(uint16_t));
             }
-        }
-        
-        if (verbose) {
-            std::cout << "\n";
-        }
-        
-        // Close files
-        if (separate_yc) {
-            yc_writer.close();
-        } else if (tbc_file.is_open()) {
             tbc_file.close();
         }
         
@@ -871,7 +828,6 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
                                    const std::string& mp4_file,
                                    int32_t num_frames,
                                    int32_t start_frame,
-                                   bool verbose,
                                    int32_t picture_start,
                                    int32_t chapter,
                                    const std::string& timecode_start,
@@ -914,10 +870,8 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
         // Verify dimensions match expected video system
         int32_t expected_width = 720, expected_height = (system == VideoSystem::PAL) ? 576 : 480;
         
-        if (verbose) {
-            std::cout << "MP4 file: " << mp4_width << "x" << mp4_height << "\n";
-            std::cout << "Expected: " << expected_width << "x" << expected_height << "\n";
-        }
+        ENCODE_ORC_LOG_DEBUG("MP4 file: {}x{}", mp4_width, mp4_height);
+        ENCODE_ORC_LOG_DEBUG("Expected: {}x{}", expected_width, expected_height);
         
         // Load frames from MP4 file
         std::vector<FrameBuffer> frames;
@@ -938,10 +892,8 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
             return false;
         }
         
-        if (verbose) {
-            std::cout << "Loaded " << actual_num_frames << " frames from MP4 file\n";
-            std::cout << "Encoding " << num_frames << " frames (" << (num_frames * 2) << " fields)\n";
-        }
+        ENCODE_ORC_LOG_DEBUG("Loaded {} frames from MP4 file", actual_num_frames);
+        ENCODE_ORC_LOG_DEBUG("Encoding {} frames ({} fields)", num_frames, num_frames * 2);
         
         // Open TBC file for writing
         std::ofstream tbc_file;
@@ -964,8 +916,8 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
         for (int32_t frame_num = 0; frame_num < num_frames; ++frame_num) {
             int32_t field_number = frame_num * 2;
             
-            if (verbose && (frame_num % 10 == 0 || frame_num == num_frames - 1)) {
-                std::cout << "Encoding frame " << (frame_num + 1) << "/" << num_frames << "\r" << std::flush;
+            if (frame_num % 10 == 0 || frame_num == num_frames - 1) {
+                ENCODE_ORC_LOG_DEBUG("Encoding MP4 frame {}/{}", frame_num + 1, num_frames);
             }
             
             if (separate_yc) {
@@ -1015,10 +967,6 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
                 tbc_file.write(reinterpret_cast<const char*>(field2.data().data()),
                               field2.data().size() * sizeof(uint16_t));
             }
-        }
-        
-        if (verbose) {
-            std::cout << "\n";
         }
         
         // Close files

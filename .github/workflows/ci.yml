@@ -21,7 +21,7 @@ jobs:
     
     - name: Install dependencies (Fedora)
       run: |
-        dnf install -y gcc gcc-c++ make cmake sqlite-devel yaml-cpp-devel libpng-devel ffmpeg
+        dnf install -y gcc gcc-c++ make cmake sqlite-devel yaml-cpp-devel libpng-devel spdlog-devel ffmpeg
     
     - name: Configure CMake
       run: cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
@@ -52,7 +52,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake build-essential libsqlite3-dev clang-format
+        sudo apt-get install -y cmake build-essential libsqlite3-dev libspdlog-dev libyaml-cpp-dev libpng-dev clang-format
     
     - name: Check code formatting (if .clang-format exists)
       run: |

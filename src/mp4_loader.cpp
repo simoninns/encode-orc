@@ -9,6 +9,7 @@
 
 #include "mp4_loader.h"
 #include "video_loader_base.h"
+#include "logging.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -179,9 +180,7 @@ bool MP4Loader::extract_frames_to_yuv(int32_t start_frame,
     cmd << "\"" << temp_yuv_file << "\" 2>&1";
     
     std::string cmd_str = cmd.str();
-    if (false) {  // Debug: set to true to see the command
-        std::cerr << "FFmpeg command: " << cmd_str << "\n";
-    }
+    ENCODE_ORC_LOG_DEBUG("FFmpeg command: {}", cmd_str);
     
     // Execute ffmpeg command
     std::array<char, 256> buffer;

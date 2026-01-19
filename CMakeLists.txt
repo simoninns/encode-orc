@@ -13,6 +13,9 @@ else()
     add_compile_options(-Wall -Wextra -Wpedantic -Werror)
 endif()
 
+# Enable all spdlog levels at compile time (runtime filtering still applies)
+add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+
 # Enable testing
 enable_testing()
 
@@ -25,6 +28,9 @@ find_package(yaml-cpp REQUIRED)
 # Find libpng
 find_package(PNG REQUIRED)
 
+# Find spdlog
+find_package(spdlog REQUIRED)
+
 # Get git commit hash
 execute_process(
     COMMAND git rev-parse --short HEAD
@@ -34,9 +40,22 @@ execute_process(
     ERROR_QUIET
 )
 
+# Check if git repo is dirty (has uncommitted changes)
+execute_process(
+    COMMAND git diff-index --quiet HEAD --
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    RESULT_VARIABLE GIT_IS_DIRTY
+    ERROR_QUIET
+)
+
 # If git command fails, use "unknown"
 if(NOT GIT_COMMIT_HASH)
     set(GIT_COMMIT_HASH "unknown")
+else()
+    # Append "-dirty" if there are uncommitted changes
+    if(GIT_IS_DIRTY)
+        set(GIT_COMMIT_HASH "${GIT_COMMIT_HASH}-dirty")
+    endif()
 endif()
 
 # Generate version header
@@ -53,11 +72,10 @@ include_directories(${CMAKE_BINARY_DIR}/generated)
 # Source files
 set(SOURCES
     src/main.cpp
-    src/cli_parser.cpp
+    src/logging.cpp
     src/yaml_config.cpp
     src/metadata_writer.cpp
     src/metadata_generator.cpp
-    src/blanking_encoder.cpp
     src/color_burst_generator.cpp
     src/pal_encoder.cpp
     src/pal_vits_generator.cpp
@@ -77,7 +95,7 @@ set(SOURCES
 add_executable(encode-orc ${SOURCES})
 
 # Link libraries
-target_link_libraries(encode-orc PRIVATE SQLite::SQLite3 yaml-cpp PNG::PNG)
+target_link_libraries(encode-orc PRIVATE SQLite::SQLite3 yaml-cpp PNG::PNG spdlog::spdlog)
 
 # Install target
 install(TARGETS encode-orc DESTINATION bin)
