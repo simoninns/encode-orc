@@ -172,7 +172,7 @@ Field PALEncoder::encode_field(const FrameBuffer& frame_buffer,
                 generate_color_burst(line_buffer, line, field_number);
                 if (line == 18 || line == 20) {
                     int32_t total_frame = vitc_start_frame_offset_ + (frame_number_for_vbi >= 0 ? frame_number_for_vbi : field_number / 2);
-                    vitc_generator_->generate_line(VideoSystem::PAL, total_frame, line_buffer, line);
+                    vitc_generator_->generate_line(VideoSystem::PAL, total_frame, line_buffer, line, !is_first_field);
                 }
             }
             else {
@@ -601,7 +601,7 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
             else if (vitc_enabled_ && vitc_generator_) {
                 if (line == 18 || line == 20) {
                     int32_t total_frame = vitc_start_frame_offset_ + (frame_number_for_vbi >= 0 ? frame_number_for_vbi : field_number / 2);
-                    vitc_generator_->generate_line(VideoSystem::PAL, total_frame, y_line, line);
+                    vitc_generator_->generate_line(VideoSystem::PAL, total_frame, y_line, line, false);
                 }
                 std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(32768));
             }
@@ -738,7 +738,7 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
             else if (vitc_enabled_ && vitc_generator_) {
                 if (line == 18 || line == 20) {
                     int32_t total_frame = vitc_start_frame_offset_ + (frame_number_for_vbi >= 0 ? frame_number_for_vbi : (field_number + 1) / 2);
-                    vitc_generator_->generate_line(VideoSystem::PAL, total_frame, y_line, line);
+                    vitc_generator_->generate_line(VideoSystem::PAL, total_frame, y_line, line, true);
                 }
                 std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(32768));
             }
