@@ -57,6 +57,40 @@ bool PALEncoder::is_vits_enabled() const {
     return vits_enabled_ && vits_generator_ != nullptr;
 }
 
+void PALEncoder::enable_vitc(int32_t start_frame_offset) {
+    if (!vitc_generator_) {
+        vitc_generator_ = std::make_unique<VITCGenerator>(params_);
+    }
+    vitc_start_frame_offset_ = start_frame_offset;
+    vitc_enabled_ = true;
+}
+
+void PALEncoder::disable_vitc() {
+    vitc_enabled_ = false;
+}
+
+bool PALEncoder::is_vitc_enabled() const {
+    return vitc_enabled_;
+}
+
+void PALEncoder::set_laserdisc_standard(LaserDiscStandard standard) {
+    // Configure VITS and VITC based on the standard
+    bool should_have_vits = standard_supports_vits(standard, VideoSystem::PAL);
+    bool should_have_vitc = standard_supports_vitc(standard, VideoSystem::PAL);
+    
+    if (should_have_vits) {
+        enable_vits();
+    } else {
+        disable_vits();
+    }
+    
+    if (should_have_vitc) {
+        enable_vitc(0);
+    } else {
+        disable_vitc();
+    }
+}
+
 Frame PALEncoder::encode_frame(const FrameBuffer& frame_buffer, int32_t field_number, int32_t frame_number_for_vbi) {
     Frame frame(params_.field_width, params_.field_height);
     
@@ -129,6 +163,16 @@ Field PALEncoder::encode_field(const FrameBuffer& frame_buffer,
                     generate_blanking_line(line_buffer);
                     generate_sync_pulse(line_buffer, line);
                     generate_color_burst(line_buffer, line, field_number);
+                }
+            }
+            else if (is_vitc_enabled()) {
+                // Consumer tape VITC placement: lines 19 and 21 (0-indexed 18,20)
+                generate_blanking_line(line_buffer);
+                generate_sync_pulse(line_buffer, line);
+                generate_color_burst(line_buffer, line, field_number);
+                if (line == 18 || line == 20) {
+                    int32_t total_frame = vitc_start_frame_offset_ + (frame_number_for_vbi >= 0 ? frame_number_for_vbi : field_number / 2);
+                    vitc_generator_->generate_line(VideoSystem::PAL, total_frame, line_buffer, line);
                 }
             }
             else {
@@ -554,6 +598,13 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
                 // For C field during VITS lines, set to neutral (no chroma modulation)
                 std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(32768));
             }
+            else if (vitc_enabled_ && vitc_generator_) {
+                if (line == 18 || line == 20) {
+                    int32_t total_frame = vitc_start_frame_offset_ + (frame_number_for_vbi >= 0 ? frame_number_for_vbi : field_number / 2);
+                    vitc_generator_->generate_line(VideoSystem::PAL, total_frame, y_line, line);
+                }
+                std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(32768));
+            }
 
             // Ensure no color burst appears in luma during VITS/VBI lines
             const int32_t burst_start = params_.colour_burst_start;
@@ -682,6 +733,13 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
                 }
                 
                 // For C field during VITS lines, set to neutral (no chroma modulation)
+                std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(32768));
+            }
+            else if (vitc_enabled_ && vitc_generator_) {
+                if (line == 18 || line == 20) {
+                    int32_t total_frame = vitc_start_frame_offset_ + (frame_number_for_vbi >= 0 ? frame_number_for_vbi : (field_number + 1) / 2);
+                    vitc_generator_->generate_line(VideoSystem::PAL, total_frame, y_line, line);
+                }
                 std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(32768));
             }
 

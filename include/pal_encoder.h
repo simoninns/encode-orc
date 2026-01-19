@@ -13,7 +13,9 @@
 #include "field.h"
 #include "frame_buffer.h"
 #include "video_parameters.h"
+#include "laserdisc_standard.h"
 #include "pal_vits_generator.h"
+#include "vitc_generator.h"
 #include "fir_filter.h"
 #include <cstdint>
 #include <cmath>
@@ -76,6 +78,33 @@ public:
      * @brief Check if VITS is enabled
      */
     bool is_vits_enabled() const;
+
+    /**
+     * @brief Set the LaserDisc standard (determines VBI/VITS/VITC behavior)
+     * @param standard The LaserDisc standard to use
+     * 
+     * This method enables/disables VITS and VITC automatically based on the standard:
+     * - LaserDisc standards (CAV/CLV) enable VITS and VBI
+     * - Consumer tape enables VITC (no VBI)
+     * - None disables both VITS and VITC
+     */
+    void set_laserdisc_standard(LaserDiscStandard standard);
+
+    /**
+     * @brief Enable VITC generation (tape formats)
+     * @param start_frame_offset Frame offset added to encoded timecode
+     */
+    void enable_vitc(int32_t start_frame_offset = 0);
+
+    /**
+     * @brief Disable VITC
+     */
+    void disable_vitc();
+    
+    /**
+     * @brief Check if VITC is enabled
+     */
+    bool is_vitc_enabled() const;
     
     /**
      * @brief Encode frame to separate Y and C fields (for separate Y/C TBC output)
@@ -98,6 +127,11 @@ private:
     // VITS generator (optional)
     std::unique_ptr<PALVITSGenerator> vits_generator_;
     bool vits_enabled_;
+
+    // VITC generator (optional)
+    std::unique_ptr<VITCGenerator> vitc_generator_;
+    bool vitc_enabled_ = false;
+    int32_t vitc_start_frame_offset_ = 0;
     
     // Filters (optional)
     std::optional<FIRFilter> chroma_filter_;  // 1.3 MHz low-pass for U/V

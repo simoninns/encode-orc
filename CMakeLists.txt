@@ -82,6 +82,8 @@ set(SOURCES
     src/ntsc_encoder.cpp
     src/ntsc_vits_generator.cpp
     src/biphase_encoder.cpp
+    src/manchester_encoder.cpp
+    src/vitc_generator.cpp
     src/color_conversion.cpp
     src/video_loader_base.cpp
     src/yuv422_loader.cpp

@@ -53,14 +53,15 @@ output:
   
 # LaserDisc / IEC project settings (applies to all sections)
 laserdisc:
-  standard: "iec60857-1986"  # iec60857-1986 (PAL), iec60856-1986 (NTSC), or "none"
+  standard: "iec60857-1986"  # iec60857-1986 (PAL), iec60856-1986 (NTSC), consumer-tape, or "none"
   mode: "cav"                # cav, clv, picture-numbers, or none (must be consistent for all sections)
 
   # Implementation note:
-  # - The project-level standard alone decides whether VBI and VITS are generated.
-  #   * iec60857-1986 (PAL) → VBI+VITS for PAL
-  #   * iec60856-1986 (NTSC) → VBI+VITS for NTSC
-  #   * none → VBI and VITS are disabled
+  # - The project-level standard alone decides whether VBI, VITS, and VITC are generated.
+  #   * iec60857-1986 (PAL) → LaserDisc VBI+VITS for PAL, no VITC
+  #   * iec60856-1986 (NTSC) → LaserDisc VBI+VITS for NTSC, no VITC
+  #   * consumer-tape → VITC enabled, LaserDisc VBI and VITS disabled
+  #   * none → VBI, VITS, and VITC all disabled
   # - This applies to both composite and separate Y/C outputs.
   # - Section-level vbi.enabled / vits.enabled flags are currently ignored (reserved for future use).
 
@@ -119,11 +120,26 @@ LaserDisc settings are split into:
 - **Project-level (once)**: IEC standard and timecode mode
 - **Section-level**: Disc area and per-section start points plus VBI/VITS controls
 
+### Supported Standards
+
+The `standard` field supports the following values:
+
+- **`iec60857-1986`** (PAL LaserDisc): Generates LaserDisc VBI data and VITS test signals for PAL. Disables VITC.
+- **`iec60856-1986`** (NTSC LaserDisc): Generates LaserDisc VBI data and VITS test signals for NTSC. Disables VITC.
+- **`consumer-tape`**: Generates VITC (Vertical Interval Time Code) on designated VBI lines. Disables LaserDisc VBI and VITS. Use this for consumer video tape formats (VHS, Betamax, Video8, etc.) where VITC is standard but LaserDisc-specific signals are not needed.
+- **`none`**: Disables all VBI, VITS, and VITC generation. Use for clean test signals without any vertical interval data.
+
+**VITC Placement:**
+- NTSC: Lines 14 and 16 (0-indexed as 13, 15) in each field
+- PAL: Lines 19 and 21 (0-indexed as 18, 20) in each field
+
+VITC encodes timecode using Manchester (biphase) encoding with sine-squared edge shaping (50 ns 10–90% rise/fall time) and 0–100 IRE amplitude (blanking to white).
+
 ### Project-level LaserDisc Settings (single definition per YAML)
 
 ```yaml
 laserdisc:
-  standard: "iec60857-1986"  # PAL (iec60857-1986), NTSC (iec60856-1986), or "none"
+  standard: "iec60857-1986"  # PAL (iec60857-1986), NTSC (iec60856-1986), consumer-tape, or "none"
   mode: "cav"                # cav, clv, picture-numbers, or none (must be consistent for all sections)
 ```
 
@@ -320,7 +336,7 @@ laserdisc:
 
 ### VBI (Vertical Blanking Interval)
 
-- VBI is generated only when the project standard is IEC 60856-1986 (NTSC) or IEC 60857-1986 (PAL). Standard `none` disables VBI.
+- LaserDisc VBI is generated only when the project standard is IEC 60856-1986 (NTSC) or IEC 60857-1986 (PAL). Standards `consumer-tape` and `none` disable LaserDisc VBI.
 - Section-level `vbi.enabled` flag is **parsed but not applied** (reserved for future use).
 - VBI line-level configuration (line16, line17, line18 with auto modes, bytes, status codes) is **not parsed or implemented**.
 - Encoding is automatic and standard-driven:
@@ -329,15 +345,43 @@ laserdisc:
   - Programme/lead-in/lead-out status follows the IEC defaults.
 - The examples showing detailed VBI line configuration are **for future reference only** and do not work in the current version.
 
+**Note:** When using `consumer-tape` standard, LaserDisc VBI is disabled and VITC is used instead for timecode.
+
 ---
 
 ### VITS (Vertical Interval Test Signals)
 
-- VITS is generated only when the project standard is IEC 60856-1986 (NTSC) or IEC 60857-1986 (PAL). Standard `none` disables VITS entirely.
+- VITS is generated only when the project standard is IEC 60856-1986 (NTSC) or IEC 60857-1986 (PAL). Standards `consumer-tape` and `none` disable VITS entirely.
 - VITS is included for both composite and separate Y/C outputs when the standard allows it.
 - Section-level `vits.enabled` flag is **parsed but not applied** (reserved for future use).
 - Only the built-in IEC waveforms/line assignments are emitted (PAL: lines 19/20/332/333 per parity; NTSC: lines 19/20/282/283).
 - Custom VITS line overrides are **not implemented**.
+
+---
+
+### VITC (Vertical Interval Time Code)
+
+- VITC is generated only when the project standard is `consumer-tape`. Other standards disable VITC.
+- VITC encodes frame-accurate timecode using Manchester (biphase) encoding on specific VBI lines:
+  - **NTSC**: Lines 14 and 16 (field indices 13, 15) in each field
+  - **PAL**: Lines 19 and 21 (field indices 18, 20) in each field
+- Each frame generates 4 VITC lines (2 lines per field × 2 fields)
+- Waveform characteristics:
+  - Amplitude: 0–100 IRE (blanking to white)
+  - Rise/fall time: ~50 ns (10–90%) with sine-squared edge shaping
+  - 90 bits per line (8 timecode bytes + CRC)
+  - 115 bit cells per line
+- VITC is included in both composite and separate Y/C outputs (luma channel only for Y/C; chroma neutral on VITC lines)
+- Timecode format: HH:MM:SS:FF (hours:minutes:seconds:frames)
+- User bits currently set to zero
+
+**Example consumer-tape configuration:**
+
+```yaml
+laserdisc:
+  standard: "consumer-tape"
+  mode: "cav"  # or "clv" for CLV timecode
+```
 
 ---
 
@@ -672,7 +716,7 @@ The YAML parser enforces the following:
 6. **Section source**: Each section must specify a source type (only `yuv422-image` and `png-image` are supported)
 7. **Section duration**: Duration must be specified and be a positive integer for all sections
 8. **Picture numbers**: If specified, `picture_start` and `start` must be greater than 0
-9. **LaserDisc standard**: If specified, must be `iec60856-1986`, `iec60857-1986`, or `none`
+9. **LaserDisc standard**: If specified, must be `iec60856-1986`, `iec60857-1986`, `consumer-tape`, or `none`
 
 **Note**: The following are NOT currently validated:
 - Matching of video system (PAL/NTSC) between format and LaserDisc standard
@@ -714,7 +758,7 @@ Section 3: chapter=2, timecode omitted, duration=1500 → continues timecode but
 
 The application automatically:
 - Generates TBC metadata in JSON and SQLite formats
-- Encodes VBI data in biphase format (when LaserDisc standard is enabled)
+- Encodes VBI data in biphase format (when a LaserDisc standard is enabled; `consumer-tape` disables LaserDisc VBI)
 - Inserts VITS signals on correct lines (when LaserDisc standard is enabled)
 - Calculates field phase IDs correctly
 - Writes the decoder identifier to the metadata (configurable via `metadata_decoder`)

@@ -9,6 +9,7 @@
 
 #include "pal_vits_generator.h"
 #include "color_burst_generator.h"
+#include "logging.h"
 #include <algorithm>
 #include <cstring>
 
@@ -290,6 +291,8 @@ void PALVITSGenerator::generate_itu_composite(uint16_t* line_buffer, int32_t fie
     // - 5-step modulated staircase: 42.86 IRE subcarrier at 60° phase
     //   Steps at 0, 20, 40, 60, 80, 100 IRE (30-60 µs)
     
+    ENCODE_ORC_LOG_DEBUG("VITS field {}: ITU Composite test signal (white flag, 2T/5-step)", field_number);
+    
     // Start with blanking
     std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(blanking_level_));
     
@@ -322,6 +325,8 @@ void PALVITSGenerator::generate_uk_national(uint16_t* line_buffer, int32_t field
     // - 10T chrominance pulse: centered at 30 µs
     // - 5-step modulated staircase: 21.43 IRE subcarrier at 60° phase (34-60 µs)
     
+    ENCODE_ORC_LOG_DEBUG("VITS field {}: UK National test signal (white flag, 2T/10T/5-step)", field_number);
+    
     std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(blanking_level_));
     
     generate_sync_pulse(line_buffer);
@@ -350,6 +355,8 @@ void PALVITSGenerator::generate_itu_its(uint16_t* line_buffer, int32_t field_num
     // - 3-step modulated pedestal: 20, 60, 100 IRE peak-to-peak (14-28 µs)
     // - Extended subcarrier packet: 60 IRE peak-to-peak (34-60 µs)
     // Phase: 60° relative to U axis
+    
+    ENCODE_ORC_LOG_DEBUG("VITS field {}: ITU Insertion test signal (3-step pedestal, extended subcarrier)", field_number);
     
     std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(blanking_level_));
     
@@ -383,6 +390,8 @@ void PALVITSGenerator::generate_multiburst(uint16_t* line_buffer, int32_t field_
     // - Six frequency packets: 0.5, 1.0, 2.0, 4.0, 4.8, 5.8 MHz
     //   Each on 50 IRE pedestal with 60 IRE peak-to-peak
     //   Timing: 24, 30, 36, 42, 48, 54 µs
+    
+    ENCODE_ORC_LOG_DEBUG("VITS field {}: Multiburst test signal (0.5/1.0/2.0/4.0/4.8/5.8 MHz)", field_number);
     
     std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(blanking_level_));
     

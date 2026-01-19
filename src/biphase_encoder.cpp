@@ -8,6 +8,7 @@
  */
 
 #include "biphase_encoder.h"
+#include "manchester_encoder.h"
 #include <cmath>
 
 namespace encode_orc {
@@ -16,23 +17,6 @@ namespace encode_orc {
 static constexpr double BIT_DURATION_US = 2.0;  // 2.0 µs per bit
 static constexpr int32_t TOTAL_BITS = 24;       // 24 bits total
 static constexpr double RISE_FALL_TIME_NS = 225.0;  // 225 ns rise/fall time
-
-// Helper function to add a transition (ramp) to the signal
-static void add_transition(std::vector<uint16_t>& signal, int32_t start_pos, int32_t rise_fall_samples,
-                          uint16_t start_level, uint16_t end_level) {
-    for (int32_t i = 0; i < rise_fall_samples && (start_pos + i) < static_cast<int32_t>(signal.size()); ++i) {
-        double position = static_cast<double>(i) / rise_fall_samples;
-        double level = start_level + position * (end_level - start_level);
-        signal[start_pos + i] = static_cast<uint16_t>(level);
-    }
-}
-
-// Helper function to fill a range with a constant level
-static void fill_level(std::vector<uint16_t>& signal, int32_t start_pos, int32_t end_pos, uint16_t level) {
-    for (int32_t i = start_pos; i < end_pos && i < static_cast<int32_t>(signal.size()); ++i) {
-        signal[i] = level;
-    }
-}
 
 std::vector<uint16_t> BiphaseEncoder::encode(uint8_t byte0,
                                              uint8_t byte1,
@@ -53,57 +37,15 @@ std::vector<uint16_t> BiphaseEncoder::encode(uint8_t byte0,
     
     std::vector<uint16_t> signal(total_samples);
     
-    // Manchester encoding: each bit has a transition at its center
-    // Bit 1: low->high at center (starts low, ends high)
-    // Bit 0: high->low at center (starts high, ends low)
-    
-    // Track current state (level at end of previous bit)
-    bool current_state_high = false;  // Start low
-    
-    // Encode each bit, MSB first
+    // Convert 24-bit value to bit vector (MSB first)
+    std::vector<uint8_t> bits;
     for (int32_t bit_index = TOTAL_BITS - 1; bit_index >= 0; --bit_index) {
-        bool bit_value = (value >> bit_index) & 1;
-        int32_t bit_start = (TOTAL_BITS - 1 - bit_index) * samples_per_bit;
-        int32_t bit_center = bit_start + samples_per_bit / 2;
-        
-        if (bit_value) {
-            // Bit 1: must have low->high transition at center
-            // First half: low, second half: high
-            
-            // If we're starting high, transition to low at bit boundary
-            if (current_state_high) {
-                add_transition(signal, bit_start, rise_fall_samples, high_level, low_level);
-                fill_level(signal, bit_start + rise_fall_samples, bit_center - rise_fall_samples / 2, low_level);
-            } else {
-                // Already low, stay low
-                fill_level(signal, bit_start, bit_center - rise_fall_samples / 2, low_level);
-            }
-            
-            // Transition to high at center
-            add_transition(signal, bit_center - rise_fall_samples / 2, rise_fall_samples, low_level, high_level);
-            fill_level(signal, bit_center + rise_fall_samples / 2, bit_start + samples_per_bit, high_level);
-            
-            current_state_high = true;  // End high
-        } else {
-            // Bit 0: must have high->low transition at center
-            // First half: high, second half: low
-            
-            // If we're starting low, transition to high at bit boundary
-            if (!current_state_high) {
-                add_transition(signal, bit_start, rise_fall_samples, low_level, high_level);
-                fill_level(signal, bit_start + rise_fall_samples, bit_center - rise_fall_samples / 2, high_level);
-            } else {
-                // Already high, stay high
-                fill_level(signal, bit_start, bit_center - rise_fall_samples / 2, high_level);
-            }
-            
-            // Transition to low at center
-            add_transition(signal, bit_center - rise_fall_samples / 2, rise_fall_samples, high_level, low_level);
-            fill_level(signal, bit_center + rise_fall_samples / 2, bit_start + samples_per_bit, low_level);
-            
-            current_state_high = false;  // End low
-        }
+        bits.push_back((value >> bit_index) & 1);
     }
+    
+    // Use shared Manchester encoder to render the bits
+    ManchesterEncoder::render_bits(bits, 0, samples_per_bit, low_level, high_level,
+                                   rise_fall_samples, signal.data(), total_samples);
     
     return signal;
 }

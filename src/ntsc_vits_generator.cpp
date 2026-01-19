@@ -9,6 +9,7 @@
 
 #include "ntsc_vits_generator.h"
 #include "color_burst_generator.h"
+#include "logging.h"
 #include <algorithm>
 #include <cstring>
 
@@ -278,6 +279,8 @@ void NTSCVITSGenerator::generate_vir(uint16_t* line_buffer, int32_t field_number
     // - 36-48 µs: luminance reference (50 IRE, 12µs)
     // - 48-60 µs: black reference (7.5 IRE, 12µs)
     
+    ENCODE_ORC_LOG_DEBUG("VITS field {}: VIR (Vertical Interval Reference) signal", field_number);
+    
     // 12-36 µs: Chrominance reference on 50-90 IRE pedestal (modulated, ±20 IRE about 70 IRE center)
     // This is a modulated pedestal with 70 IRE center and 40 IRE peak-to-peak (50-90 IRE range)
     // VIRS uses ~1µs rise/fall time for the modulation envelope
@@ -300,6 +303,8 @@ void NTSCVITSGenerator::generate_ntc7_composite(uint16_t* line_buffer, int32_t f
     //   Steps at: 42, 46, 49, 52, 55, 58, 61 µs (levels: 0, 20, 40, 60, 80, 90 IRE)
     // - 61–62 µs: 90 IRE
     // - 62 µs+: returns to 0 IRE blanking
+    
+    ENCODE_ORC_LOG_DEBUG("VITS field {}: NTC-7 Composite test signal", field_number);
     
     // Initialize line buffer with blanking level
     std::fill_n(line_buffer, params_.field_width, static_cast<uint16_t>(blanking_level_));

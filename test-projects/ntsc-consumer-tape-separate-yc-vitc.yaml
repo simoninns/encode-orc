@@ -1,0 +1,18 @@
+name: "NTSC Consumer Tape Separate Y/C VITC Test"
+description: "NTSC with consumer-tape standard (VITC enabled, no LaserDisc VBI) - separate Y/C output"
+
+output:
+  filename: "test-output/ntsc-consumer-tape-separate-yc-vitc.tbc"
+  format: "ntsc-composite"
+  mode: "separate-yc"
+
+laserdisc:
+  standard: "consumer-tape"
+  mode: "none"
+
+sections:
+  - name: "Test Pattern"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-75.raw"
