@@ -15,7 +15,7 @@ sections:
     duration: 40
     source:
       type: "yuv422-image"
-      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
     laserdisc:
       picture_start: 1
     filters:

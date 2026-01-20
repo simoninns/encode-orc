@@ -1,0 +1,255 @@
+name: "PAL Test Cards Composite"
+description: "PAL composite encoding with all 19 test card files - 4 frames each in PAL laserdisc standard"
+
+output:
+  filename: "test-output/pal-testcards-composite.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  standard: "iec60857-1986"
+  mode: "cav"
+
+sections:
+  - name: "Lead-in"
+    duration: 5
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_100_BARS.raw"
+    laserdisc:
+      leadin: true
+
+  - name: "100 BARS"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_100_BARS.raw"
+    laserdisc:
+      picture_start: 1
+      chapter: 1
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "75 BARS"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    laserdisc:
+      picture_start: 5
+      chapter: 2
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "75 BARS RED"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS_RED.raw"
+    laserdisc:
+      picture_start: 9
+      chapter: 3
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "CHROMA RAMP"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_CHROMA_RAMP.raw"
+    laserdisc:
+      picture_start: 13
+      chapter: 4
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "FULL RAMP"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_FULL_RAMP.raw"
+    laserdisc:
+      picture_start: 17
+      chapter: 5
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "GREY 10H STEP"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_GREY_10H_STEP.raw"
+    laserdisc:
+      picture_start: 21
+      chapter: 6
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "GREY 10V STEP"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_GREY_10V_STEP.raw"
+    laserdisc:
+      picture_start: 25
+      chapter: 7
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "GREY 5H STEP"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_GREY_5H_STEP.raw"
+    laserdisc:
+      picture_start: 29
+      chapter: 8
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "GREY 5V STEP"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_GREY_5V_STEP.raw"
+    laserdisc:
+      picture_start: 33
+      chapter: 9
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "LEGAL RAMP"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_LEGAL_RAMP.raw"
+    laserdisc:
+      picture_start: 37
+      chapter: 10
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "LUMA RAMP DOWN"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_LUMA_RAMP_DOWN.raw"
+    laserdisc:
+      picture_start: 41
+      chapter: 11
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "LUMA RAMP"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_LUMA_RAMP.raw"
+    laserdisc:
+      picture_start: 45
+      chapter: 12
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "MULTIBURST"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_MULTIBURST.raw"
+    laserdisc:
+      picture_start: 49
+      chapter: 13
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "PLUGE"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_PLUGE.raw"
+    laserdisc:
+      picture_start: 53
+      chapter: 14
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "SMPTE BARS"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_SMPTE_BARS.raw"
+    laserdisc:
+      picture_start: 57
+      chapter: 15
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "TARTAN"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_TARTAN.raw"
+    laserdisc:
+      picture_start: 61
+      chapter: 16
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "VALID RAMPS"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_VALID_RAMPS.raw"
+    laserdisc:
+      picture_start: 65
+      chapter: 17
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "VERT LUMA RAMP"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_VERT_LUMA_RAMP.raw"
+    laserdisc:
+      picture_start: 69
+      chapter: 18
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "Y CB CR RAMPS"
+    duration: 4
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_Y_CB_CR_RAMPS.raw"
+    laserdisc:
+      picture_start: 73
+      chapter: 19
+    vbi:
+      vits:
+        enabled: true
+
+  - name: "Lead-out"
+    duration: 5
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_100_BARS.raw"
+    laserdisc:
+      leadout: true

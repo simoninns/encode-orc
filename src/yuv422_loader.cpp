@@ -138,12 +138,8 @@ bool YUV422Loader::load_frames(int32_t start_frame, int32_t end_frame,
         
         // Convert studio range to normalized range
         auto to_luma = [](uint16_t studio_value) {
-            // Map 10-bit studio range (64-940) to normalized range
-            if (studio_value < 64) return VideoLoaderUtils::NORMALIZED_LUMA_MIN_10BIT;
-            if (studio_value > 940) return VideoLoaderUtils::NORMALIZED_LUMA_MAX_10BIT;
-            
-            // Map 64-940 to 64-940 (preserve exact values)
-            return studio_value;
+            // Preserve full 10-bit studio code range including sub-black and overshoot
+            return static_cast<uint16_t>(studio_value & 0x3FF);
         };
 
         auto to_chroma = [](uint16_t studio_value) {

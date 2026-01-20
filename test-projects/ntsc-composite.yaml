@@ -14,7 +14,7 @@ sections:
     duration: 5
     source:
       type: "yuv422-image"
-      file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-75.raw"
+      file: "testcard-images/ntsc-raw/525_5994_75_BARS.raw"
     laserdisc:
       leadin: true
 
@@ -22,7 +22,7 @@ sections:
     duration: 15
     source:
       type: "yuv422-image"
-      file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-75.raw"
+      file: "testcard-images/ntsc-raw/525_5994_75_BARS.raw"
     laserdisc:
       picture_start: 1
       chapter: 1
@@ -37,7 +37,7 @@ sections:
     duration: 15
     source:
       type: "yuv422-image"
-      file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-100.raw"
+      file: "testcard-images/ntsc-raw/525_5994_75_BARS.raw"
     laserdisc:
       picture_start: 16
       chapter: 2
@@ -52,6 +52,6 @@ sections:
     duration: 5
     source:
       type: "yuv422-image"
-      file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-75.raw"
+      file: "testcard-images/ntsc-raw/525_5994_75_BARS.raw"
     laserdisc:
       leadout: true

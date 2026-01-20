@@ -227,6 +227,11 @@ void MOVLoader::convert_yuv422p10le_to_frame(const std::vector<uint8_t>& yuv_dat
     auto extract_10bit = [](uint16_t value) {
         return static_cast<uint16_t>(value & 0x3FF);
     };
+
+    auto normalize_luma = [](uint16_t studio_value) {
+        // Preserve sub-black (undershoot) while capping super-white at studio max
+        return std::min<uint16_t>(studio_value, VideoLoaderUtils::STUDIO_LUMA_MAX_10BIT);
+    };
     
     // Create temporary full-resolution plane arrays with extracted 10-bit values
     std::vector<uint16_t> y_full(actual_width * height);
@@ -234,7 +239,7 @@ void MOVLoader::convert_yuv422p10le_to_frame(const std::vector<uint8_t>& yuv_dat
     std::vector<uint16_t> v_half(actual_width / 2 * height);
     
     for (size_t i = 0; i < y_full.size(); ++i) {
-        y_full[i] = extract_10bit(y_plane_src[i]);
+        y_full[i] = normalize_luma(extract_10bit(y_plane_src[i]));
     }
     for (size_t i = 0; i < u_half.size(); ++i) {
         u_half[i] = VideoLoaderUtils::chroma_10bit_to_normalized(extract_10bit(u_plane_src[i]));

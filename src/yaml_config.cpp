@@ -243,6 +243,27 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
         return false;
     }
     
+    // Validate that LaserDisc standard matches video system format
+    if (config.laserdisc.standard != SourceVideoStandard::None &&
+        config.laserdisc.standard != SourceVideoStandard::ConsumerTape) {
+        bool is_pal_format = (config.output.format == "pal-composite" || config.output.format == "pal-yc");
+        bool is_ntsc_format = (config.output.format == "ntsc-composite" || config.output.format == "ntsc-yc");
+        
+        if (config.laserdisc.standard == SourceVideoStandard::IEC60857_1986) {
+            // PAL standard
+            if (!is_pal_format) {
+                error_message = "LaserDisc standard 'iec60857-1986' (PAL) can only be used with PAL output formats (pal-composite or pal-yc), but got '" + config.output.format + "'";
+                return false;
+            }
+        } else if (config.laserdisc.standard == SourceVideoStandard::IEC60856_1986) {
+            // NTSC standard
+            if (!is_ntsc_format) {
+                error_message = "LaserDisc standard 'iec60856-1986' (NTSC) can only be used with NTSC output formats (ntsc-composite or ntsc-yc), but got '" + config.output.format + "'";
+                return false;
+            }
+        }
+    }
+    
     if (config.output.mode != "combined" && 
         config.output.mode != "separate-yc" &&
         config.output.mode != "separate-yc-legacy") {

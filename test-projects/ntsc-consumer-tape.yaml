@@ -14,7 +14,7 @@ sections:
     duration: 40
     source:
       type: "yuv422-image"
-      file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-75.raw"
+      file: "testcard-images/ntsc-raw/525_5994_75_BARS.raw"
     vbi:
       vitc:
         enabled: true

@@ -393,8 +393,8 @@ void PALEncoder::encode_active_line(uint16_t* line_buffer,
         int32_t luma_scaled;
 
         if (studio_range_input) {
-            int32_t y_signal = black_level_ + ((static_cast<int32_t>(y) - 64) * luma_range) / 876;
-            luma_scaled = clamp_to_16bit(y_signal);
+            // Preserve sub-black: don't clamp luma_scaled, allow negative values
+            luma_scaled = black_level_ + ((static_cast<int32_t>(y) - 64) * luma_range) / 876;
         } else {
             double y_norm = static_cast<double>(y) / 65535.0;
             luma_scaled = black_level_ + static_cast<int32_t>(y_norm * luma_range);
@@ -439,9 +439,8 @@ uint16_t PALEncoder::yuv_to_composite(uint16_t y, uint16_t u, uint16_t v,
     int32_t luma_scaled;
     
     if (studio_range_input) {
-        // Studio codes: 64→black_level, 940→white_level, preserve sub-black
-        int32_t y_signal = black_level_ + ((static_cast<int32_t>(y) - 64) * luma_range) / 876;
-        luma_scaled = clamp_to_16bit(y_signal);
+        // Studio codes: 64→black_level, 940→white_level, preserve sub-black (allows negative)
+        luma_scaled = black_level_ + ((static_cast<int32_t>(y) - 64) * luma_range) / 876;
     } else {
         // Full-range: 0-65535 → normalized to black-white range
         double y_norm = static_cast<double>(y) / 65535.0;
@@ -666,7 +665,6 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
                     double y_norm = static_cast<double>(y_val) / 65535.0;
                     y_signal = black_level_ + static_cast<int32_t>(y_norm * luma_range);
                 }
-                y_signal = clamp_to_16bit(y_signal);
 
                 // Convert U/V to chroma signal
                 const double U_MAX = 0.436010;
@@ -687,7 +685,7 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
                 int32_t chroma_signal = static_cast<int32_t>(chroma * luma_range);
                 
                 // Y field: luma only (no chroma)
-                y_line[sample] = static_cast<uint16_t>(y_signal);
+                y_line[sample] = clamp_to_16bit(y_signal);
                 
                 // C field: chroma only (centered at 16-bit midpoint, no luma)
                 c_line[sample] = clamp_to_16bit(32768 + chroma_signal);
@@ -794,7 +792,6 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
                     double y_norm = static_cast<double>(y_val) / 65535.0;
                     y_signal = black_level_ + static_cast<int32_t>(y_norm * luma_range);
                 }
-                y_signal = clamp_to_16bit(y_signal);
 
                 const double U_MAX = 0.436010;
                 const double V_MAX = 0.614975;
@@ -811,7 +808,7 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
                 double chroma = (u_norm * std::sin(phase)) + (v_norm * v_switch * std::cos(phase));
                 int32_t chroma_signal = static_cast<int32_t>(chroma * luma_range);
                 
-                y_line[sample] = static_cast<uint16_t>(y_signal);
+                y_line[sample] = clamp_to_16bit(y_signal);
                 c_line[sample] = clamp_to_16bit(32768 + chroma_signal);
             }
             

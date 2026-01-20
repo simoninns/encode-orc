@@ -347,8 +347,8 @@ void NTSCEncoder::encode_active_line(uint16_t* line_buffer,
         int32_t luma_scaled;
 
         if (studio_range_input) {
-            int32_t y_signal = black_level_ + ((static_cast<int32_t>(y) - 64) * luma_range) / 876;
-            luma_scaled = clamp_signal(y_signal);
+            // Preserve sub-black: don't clamp luma_scaled, allow negative values
+            luma_scaled = black_level_ + ((static_cast<int32_t>(y) - 64) * luma_range) / 876;
         } else {
             double y_norm = static_cast<double>(y) / 65535.0;
             luma_scaled = black_level_ + static_cast<int32_t>(y_norm * luma_range);
