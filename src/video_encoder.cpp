@@ -126,83 +126,11 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
             }
         }
         
-        // Encode and write fields (same image for all frames)
+        // Create and initialize metadata BEFORE encoding so we can pass VBI data to encoders
         int32_t total_fields = num_frames * 2;
-        for (int32_t frame_num = 0; frame_num < num_frames; ++frame_num) {
-            int32_t field_number = frame_num * 2;
-            
-            if (separate_yc) {
-                // Encode with separate Y/C output
-                Field y_field1, c_field1, y_field2, c_field2;
-                
-                if (system == VideoSystem::PAL) {
-                    PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    pal_encoder.set_source_video_standard(source_standard);
-                    pal_encoder.encode_frame_yc(image_frame, field_number,
-                                                standard_supports_vbi(source_standard, system) ? frame_num : -1,
-                                                y_field1, c_field1, y_field2, c_field2);
-                } else {
-                    NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    ntsc_encoder.set_source_video_standard(source_standard);
-                    ntsc_encoder.encode_frame_yc(image_frame, field_number,
-                                                 standard_supports_vbi(source_standard, system) ? frame_num : -1,
-                                                 y_field1, c_field1, y_field2, c_field2);
-                }
-                
-                // Write Y and C fields
-                yc_writer.write_y_field(y_field1);
-                yc_writer.write_c_field(c_field1);
-                yc_writer.write_y_field(y_field2);
-                yc_writer.write_c_field(c_field2);
-                
-            } else {
-                // Standard composite output
-                Frame encoded_frame;
-                
-                if (system == VideoSystem::PAL) {
-                    PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    pal_encoder.set_source_video_standard(source_standard);
-                    encoded_frame = pal_encoder.encode_frame(image_frame, field_number,
-                                                             standard_supports_vbi(source_standard, system) ? frame_num : -1);
-                } else {
-                    NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
-                    ntsc_encoder.set_source_video_standard(source_standard);
-                    encoded_frame = ntsc_encoder.encode_frame(image_frame, field_number,
-                                                             standard_supports_vbi(source_standard, system) ? frame_num : -1);
-                }
-                
-                // Write field 1
-                const Field& field1 = encoded_frame.field1();
-                tbc_file.write(reinterpret_cast<const char*>(field1.data().data()),
-                              field1.data().size() * sizeof(uint16_t));
-                
-                // Write field 2
-                const Field& field2 = encoded_frame.field2();
-                tbc_file.write(reinterpret_cast<const char*>(field2.data().data()),
-                              field2.data().size() * sizeof(uint16_t));
-            }
-            
-            if ((frame_num + 1) % 10 == 0 || frame_num == num_frames - 1) {
-                ENCODE_ORC_LOG_DEBUG("Writing field {} / {}", (frame_num + 1) * 2, total_fields);
-            }
-        }
-        
-        if (separate_yc) {
-            yc_writer.close();
-        } else {
-            tbc_file.close();
-        }
-        
-        // Create and initialize metadata
         CaptureMetadata metadata;
         metadata.initialize(system, total_fields);
         metadata.video_params = params;
-        
-        ENCODE_ORC_LOG_DEBUG("Metadata video_params after assignment:");
-        ENCODE_ORC_LOG_DEBUG("  blanking: {}", metadata.video_params.blanking_16b_ire);
-        ENCODE_ORC_LOG_DEBUG("  black: {}", metadata.video_params.black_16b_ire);
-        ENCODE_ORC_LOG_DEBUG("  white: {}", metadata.video_params.white_16b_ire);
-        
         metadata.git_branch = "main";
         metadata.git_commit = "v0.1.0-dev";
         metadata.capture_notes = "YUV422 raw image from " + yuv422_file;
@@ -294,6 +222,78 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
                 metadata.vbi_data[frame_num * 2] = vbi;
                 metadata.vbi_data[frame_num * 2 + 1] = vbi;
             }
+        }
+        
+        for (int32_t frame_num = 0; frame_num < num_frames; ++frame_num) {
+            int32_t field_number = frame_num * 2;
+            
+            // Get VBI data for this frame if available
+            const VBIData* vbi_data = nullptr;
+            if (include_vbi && frame_num * 2 < static_cast<int32_t>(metadata.vbi_data.size()) && 
+                metadata.vbi_data[frame_num * 2].has_value()) {
+                vbi_data = &metadata.vbi_data[frame_num * 2].value();
+            }
+            
+            if (separate_yc) {
+                // Encode with separate Y/C output
+                Field y_field1, c_field1, y_field2, c_field2;
+                
+                if (system == VideoSystem::PAL) {
+                    PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
+                    pal_encoder.set_source_video_standard(source_standard);
+                    pal_encoder.encode_frame_yc(image_frame, field_number,
+                                                y_field1, c_field1, y_field2, c_field2,
+                                                vbi_data);
+                } else {
+                    NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
+                    ntsc_encoder.set_source_video_standard(source_standard);
+                    ntsc_encoder.encode_frame_yc(image_frame, field_number,
+                                                 y_field1, c_field1, y_field2, c_field2,
+                                                 vbi_data);
+                }
+                
+                // Write Y and C fields
+                yc_writer.write_y_field(y_field1);
+                yc_writer.write_c_field(c_field1);
+                yc_writer.write_y_field(y_field2);
+                yc_writer.write_c_field(c_field2);
+                
+            } else {
+                // Standard composite output
+                Frame encoded_frame;
+                
+                if (system == VideoSystem::PAL) {
+                    PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
+                    pal_encoder.set_source_video_standard(source_standard);
+                    encoded_frame = pal_encoder.encode_frame(image_frame, field_number,
+                                                             vbi_data);
+                } else {
+                    NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
+                    ntsc_encoder.set_source_video_standard(source_standard);
+                    encoded_frame = ntsc_encoder.encode_frame(image_frame, field_number,
+                                                             vbi_data);
+                }
+                
+                // Write field 1
+                const Field& field1 = encoded_frame.field1();
+                tbc_file.write(reinterpret_cast<const char*>(field1.data().data()),
+                              field1.data().size() * sizeof(uint16_t));
+                
+                // Write field 2
+                const Field& field2 = encoded_frame.field2();
+                tbc_file.write(reinterpret_cast<const char*>(field2.data().data()),
+                              field2.data().size() * sizeof(uint16_t));
+            }
+            
+            if ((frame_num + 1) % 10 == 0 || frame_num == num_frames - 1) {
+                ENCODE_ORC_LOG_DEBUG("Writing field {} / {}", (frame_num + 1) * 2, total_fields);
+            }
+        }
+        
+        if (separate_yc) {
+            yc_writer.close();
+        } else {
+            tbc_file.close();
         }
         
         // Write metadata
@@ -408,13 +408,11 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
                     PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
                     pal_encoder.set_source_video_standard(source_standard);
                     pal_encoder.encode_frame_yc(image_frame, field_number,
-                                                standard_supports_vbi(source_standard, system) ? frame_num : -1,
                                                 y_field1, c_field1, y_field2, c_field2);
                 } else {
                     NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
                     ntsc_encoder.set_source_video_standard(source_standard);
                     ntsc_encoder.encode_frame_yc(image_frame, field_number,
-                                                 standard_supports_vbi(source_standard, system) ? frame_num : -1,
                                                  y_field1, c_field1, y_field2, c_field2);
                 }
 
@@ -427,13 +425,11 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
                 if (system == VideoSystem::PAL) {
                     PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
                     pal_encoder.set_source_video_standard(source_standard);
-                    encoded_frame = pal_encoder.encode_frame(image_frame, field_number,
-                                                             standard_supports_vbi(source_standard, system) ? frame_num : -1);
+                    encoded_frame = pal_encoder.encode_frame(image_frame, field_number);
                 } else {
                     NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
                     ntsc_encoder.set_source_video_standard(source_standard);
-                    encoded_frame = ntsc_encoder.encode_frame(image_frame, field_number,
-                                                             standard_supports_vbi(source_standard, system) ? frame_num : -1);
+                    encoded_frame = ntsc_encoder.encode_frame(image_frame, field_number);
                 }
 
                 const Field& field1 = encoded_frame.field1();
@@ -663,14 +659,12 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
                     PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
                     pal_encoder.set_source_video_standard(source_standard);
                     pal_encoder.encode_frame_yc(frames[frame_num], field_number,
-                                                standard_supports_vbi(source_standard, system) ? frame_num : -1,
-                                                y_field1, c_field1, y_field2, c_field2);
+                                                y_field1, c_field1, y_field2, c_field2, nullptr);
                 } else {
                     NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
                     ntsc_encoder.set_source_video_standard(source_standard);
                     ntsc_encoder.encode_frame_yc(frames[frame_num], field_number,
-                                                 standard_supports_vbi(source_standard, system) ? frame_num : -1,
-                                                 y_field1, c_field1, y_field2, c_field2);
+                                                 y_field1, c_field1, y_field2, c_field2, nullptr);
                 }
                 
                 // Write Y and C fields
@@ -684,13 +678,11 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
                 if (system == VideoSystem::PAL) {
                     PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
                     pal_encoder.set_source_video_standard(source_standard);
-                    frame = pal_encoder.encode_frame(frames[frame_num], field_number,
-                                                    standard_supports_vbi(source_standard, system) ? frame_num : -1);
+                    frame = pal_encoder.encode_frame(frames[frame_num], field_number, nullptr);
                 } else {
                     NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
                     ntsc_encoder.set_source_video_standard(source_standard);
-                    frame = ntsc_encoder.encode_frame(frames[frame_num], field_number,
-                                                     standard_supports_vbi(source_standard, system) ? frame_num : -1);
+                    frame = ntsc_encoder.encode_frame(frames[frame_num], field_number, nullptr);
                 }
                 
                 // Write fields to TBC file
@@ -930,14 +922,12 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
                     PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
                     pal_encoder.set_source_video_standard(source_standard);
                     pal_encoder.encode_frame_yc(frames[frame_num], field_number,
-                                                standard_supports_vbi(source_standard, system) ? frame_num : -1,
-                                                y_field1, c_field1, y_field2, c_field2);
+                                                y_field1, c_field1, y_field2, c_field2, nullptr);
                 } else {
                     NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
                     ntsc_encoder.set_source_video_standard(source_standard);
                     ntsc_encoder.encode_frame_yc(frames[frame_num], field_number,
-                                                 standard_supports_vbi(source_standard, system) ? frame_num : -1,
-                                                 y_field1, c_field1, y_field2, c_field2);
+                                                 y_field1, c_field1, y_field2, c_field2, nullptr);
                 }
                 
                 // Write Y and C fields
@@ -951,13 +941,11 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
                 if (system == VideoSystem::PAL) {
                     PALEncoder pal_encoder(params, enable_chroma_filter, enable_luma_filter);
                     pal_encoder.set_source_video_standard(source_standard);
-                    frame = pal_encoder.encode_frame(frames[frame_num], field_number,
-                                                    standard_supports_vbi(source_standard, system) ? frame_num : -1);
+                    frame = pal_encoder.encode_frame(frames[frame_num], field_number, nullptr);
                 } else {
                     NTSCEncoder ntsc_encoder(params, enable_chroma_filter, enable_luma_filter);
                     ntsc_encoder.set_source_video_standard(source_standard);
-                    frame = ntsc_encoder.encode_frame(frames[frame_num], field_number,
-                                                     standard_supports_vbi(source_standard, system) ? frame_num : -1);
+                    frame = ntsc_encoder.encode_frame(frames[frame_num], field_number, nullptr);
                 }
                 
                 // Write fields to TBC file

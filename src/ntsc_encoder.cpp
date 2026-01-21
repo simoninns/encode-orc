@@ -40,14 +40,15 @@ NTSCEncoder::NTSCEncoder(const VideoParameters& params,
     }
 }
 
-Frame NTSCEncoder::encode_frame(const FrameBuffer& frame_buffer, int32_t field_number, int32_t frame_number_for_vbi) {
+Frame NTSCEncoder::encode_frame(const FrameBuffer& frame_buffer, int32_t field_number,
+                               const VBIData* vbi_data) {
     Frame frame(params_.field_width, params_.field_height);
     
     // Encode first field (even lines: 0, 2, 4, ...)
-    frame.field1() = encode_field(frame_buffer, field_number, true, frame_number_for_vbi);
+    frame.field1() = encode_field(frame_buffer, field_number, true, vbi_data);
     
     // Encode second field (odd lines: 1, 3, 5, ...)
-    frame.field2() = encode_field(frame_buffer, field_number + 1, false, frame_number_for_vbi);
+    frame.field2() = encode_field(frame_buffer, field_number + 1, false, vbi_data);
     
     return frame;
 }
@@ -55,7 +56,7 @@ Frame NTSCEncoder::encode_frame(const FrameBuffer& frame_buffer, int32_t field_n
 Field NTSCEncoder::encode_field(const FrameBuffer& frame_buffer, 
                                 int32_t field_number, 
                                 bool is_first_field,
-                                int32_t frame_number_for_vbi) {
+                                const VBIData* vbi_data) {
     Field field(params_.field_width, params_.field_height);
     
     // Verify input format
@@ -88,9 +89,13 @@ Field NTSCEncoder::encode_field(const FrameBuffer& frame_buffer,
         }
         // Lines 4-20: VBI (Vertical Blanking Interval)
         else if (line < ACTIVE_LINES_START) {
-            // Lines 15, 16, 17 (0-indexed) = field lines 16, 17, 18 contain biphase frame numbers
-            if (frame_number_for_vbi >= 0 && (line == 15 || line == 16 || line == 17)) {
-                generate_biphase_vbi_line(line_buffer, line, field_number, frame_number_for_vbi);
+            // Lines 15, 16, 17 (0-indexed) = field lines 16, 17, 18 contain biphase data
+            if (vbi_data != nullptr && (line == 15 || line == 16 || line == 17)) {
+                int32_t vbi_value = 0;
+                if (line == 15) vbi_value = vbi_data->vbi0;
+                else if (line == 16) vbi_value = vbi_data->vbi1;
+                else if (line == 17) vbi_value = vbi_data->vbi2;
+                generate_biphase_vbi_line(line_buffer, line, field_number, vbi_value);
             }
             // VITS lines (if enabled)
             else if (is_vits_enabled()) {
@@ -132,7 +137,7 @@ Field NTSCEncoder::encode_field(const FrameBuffer& frame_buffer,
                 generate_sync_pulse(line_buffer, line);
                 generate_color_burst(line_buffer, line, field_number);
                 if (line == 13 || line == 15) {
-                    int32_t total_frame = vitc_start_frame_offset_ + (frame_number_for_vbi >= 0 ? frame_number_for_vbi : field_number / 2);
+                    int32_t total_frame = vitc_start_frame_offset_ + (field_number / 2);
                     vitc_generator_->generate_line(VideoSystem::NTSC, total_frame, line_buffer, line, !is_first_field);
                 }
             }
@@ -436,7 +441,7 @@ void NTSCEncoder::set_source_video_standard(SourceVideoStandard standard) {
 }
 
 void NTSCEncoder::generate_biphase_vbi_line(uint16_t* line_buffer, int32_t line_number, 
-                                           int32_t field_number, int32_t frame_number) {
+                                           int32_t field_number, int32_t vbi_value) {
     // Start with a standard blanking line with sync and color burst
     generate_blanking_line(line_buffer);
     generate_sync_pulse(line_buffer, line_number);
@@ -448,14 +453,15 @@ void NTSCEncoder::generate_biphase_vbi_line(uint16_t* line_buffer, int32_t line_
     // Get biphase signal position
     int32_t biphase_start = BiphaseEncoder::get_signal_start_position(sample_rate_, line_period_h);
     
-    // Encode frame number as LaserDisc CAV picture number (3 bytes in BCD format)
-    uint8_t vbi_byte0, vbi_byte1, vbi_byte2;
-    BiphaseEncoder::encode_cav_picture_number(frame_number, vbi_byte0, vbi_byte1, vbi_byte2);
+    // Extract 24-bit VBI value into three bytes (MSB first)
+    uint8_t byte0 = static_cast<uint8_t>((vbi_value >> 16) & 0xFF);
+    uint8_t byte1 = static_cast<uint8_t>((vbi_value >> 8) & 0xFF);
+    uint8_t byte2 = static_cast<uint8_t>(vbi_value & 0xFF);
     
     // Generate biphase signal from the three bytes
     // High level: white level, Low level: black level
     std::vector<uint16_t> biphase_signal = BiphaseEncoder::encode(
-        vbi_byte0, vbi_byte1, vbi_byte2,
+        byte0, byte1, byte2,
         sample_rate_,
         static_cast<uint16_t>(white_level_),
         static_cast<uint16_t>(black_level_)
@@ -476,9 +482,9 @@ void NTSCEncoder::generate_biphase_vbi_line(uint16_t* line_buffer, int32_t line_
 }
 
 void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_number,
-                                  int32_t frame_number_for_vbi,
                                   Field& y_field1, Field& c_field1,
-                                  Field& y_field2, Field& c_field2) {
+                                  Field& y_field2, Field& c_field2,
+                                  const VBIData* vbi_data) {
     // Initialize fields
     y_field1.resize(params_.field_width, params_.field_height);
     c_field1.resize(params_.field_width, params_.field_height);
@@ -527,8 +533,12 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
             generate_color_burst_chroma(c_line, line, field_number);
             
             // Handle VBI lines if enabled
-            if (frame_number_for_vbi >= 0 && (line == 14 || line == 15 || line == 16)) {
-                generate_biphase_vbi_line(y_line, line, field_number, frame_number_for_vbi);
+            if (vbi_data != nullptr && (line == 14 || line == 15 || line == 16)) {
+                int32_t vbi_value = 0;
+                if (line == 14) vbi_value = vbi_data->vbi0;
+                else if (line == 15) vbi_value = vbi_data->vbi1;
+                else if (line == 16) vbi_value = vbi_data->vbi2;
+                generate_biphase_vbi_line(y_line, line, field_number, vbi_value);
             }
             // VITS lines for field 1 (if enabled)
             else if (vits_enabled_ && vits_generator_) {
@@ -549,7 +559,7 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
             else if (vitc_enabled_ && vitc_generator_) {
                 // VITC placement on luma only (consumer tape)
                 if (line == 13 || line == 15) {
-                    int32_t total_frame = vitc_start_frame_offset_ + (frame_number_for_vbi >= 0 ? frame_number_for_vbi : field_number / 2);
+                    int32_t total_frame = vitc_start_frame_offset_ + (field_number / 2);
                     vitc_generator_->generate_line(VideoSystem::NTSC, total_frame, y_line, line, false);
                 }
                 // Keep chroma neutral on VITC lines
@@ -665,8 +675,12 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
             generate_sync_pulse(y_line, line);
             generate_color_burst_chroma(c_line, line, field_number + 1);
             
-            if (frame_number_for_vbi >= 0 && (line == 14 || line == 15 || line == 16)) {
-                generate_biphase_vbi_line(y_line, line, field_number + 1, frame_number_for_vbi);
+            if (vbi_data != nullptr && (line == 14 || line == 15 || line == 16)) {
+                int32_t vbi_value = 0;
+                if (line == 14) vbi_value = vbi_data->vbi0;
+                else if (line == 15) vbi_value = vbi_data->vbi1;
+                else if (line == 16) vbi_value = vbi_data->vbi2;
+                generate_biphase_vbi_line(y_line, line, field_number + 1, vbi_value);
             }
             // VITS lines for field 2 (if enabled)
             else if (vits_enabled_ && vits_generator_) {
@@ -686,7 +700,7 @@ void NTSCEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field
             }
             else if (vitc_enabled_ && vitc_generator_) {
                 if (line == 13 || line == 15) {
-                    int32_t total_frame = vitc_start_frame_offset_ + (frame_number_for_vbi >= 0 ? frame_number_for_vbi : (field_number + 1) / 2);
+                    int32_t total_frame = vitc_start_frame_offset_ + ((field_number + 1) / 2);
                     vitc_generator_->generate_line(VideoSystem::NTSC, total_frame, y_line, line, true);
                 }
                 std::fill_n(c_line, params_.field_width, static_cast<uint16_t>(32768));

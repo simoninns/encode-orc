@@ -14,6 +14,7 @@
 #include "frame_buffer.h"
 #include "video_parameters.h"
 #include "source_video_standard.h"
+#include "metadata.h"
 #include "ntsc_vits_generator.h"
 #include "vitc_generator.h"
 #include "fir_filter.h"
@@ -49,20 +50,22 @@ public:
      * @brief Encode a progressive frame to two interlaced NTSC fields
      * @param frame_buffer Input frame in YUV444P16 format (actually YIQ for NTSC)
      * @param field_number Starting field number
-     * @param frame_number_for_vbi Frame number to encode in VBI (optional, -1 to disable)
+     * @param vbi_data Optional VBI data (vbi0, vbi1, vbi2) to encode in VBI lines (nullptr to skip VBI)
      * @return Frame containing two encoded NTSC composite fields
      */
-    Frame encode_frame(const FrameBuffer& frame_buffer, int32_t field_number, int32_t frame_number_for_vbi = -1);
+    Frame encode_frame(const FrameBuffer& frame_buffer, int32_t field_number,
+                      const class VBIData* vbi_data = nullptr);
     
     /**
      * @brief Encode a single field from half of a progressive frame
      * @param frame_buffer Input frame in YUV444P16 format (actually YIQ for NTSC)
      * @param field_number Field number
      * @param is_first_field true for first field (even lines), false for second (odd lines)
-     * @param frame_number_for_vbi Frame number to encode in VBI (optional, -1 to disable)
+     * @param vbi_data Optional VBI data (vbi0, vbi1, vbi2) to encode in VBI lines (nullptr to skip VBI)
      * @return Encoded NTSC composite field
      */
-    Field encode_field(const FrameBuffer& frame_buffer, int32_t field_number, bool is_first_field, int32_t frame_number_for_vbi = -1);
+    Field encode_field(const FrameBuffer& frame_buffer, int32_t field_number, bool is_first_field,
+                      const class VBIData* vbi_data = nullptr);
 
     /**
      * @brief Enable VITS (Vertical Interval Test Signals)
@@ -110,16 +113,16 @@ public:
      * @brief Encode frame to separate Y and C fields (for separate Y/C TBC output)
      * @param frame_buffer Input frame in YUV444P16 format (actually YIQ for NTSC)
      * @param field_number Starting field number
-     * @param frame_number_for_vbi Frame number to encode in VBI (optional, -1 to disable)
      * @param y_field1 Output Y field 1
      * @param c_field1 Output C field 1
      * @param y_field2 Output Y field 2
      * @param c_field2 Output C field 2
+     * @param vbi_data Optional VBI data (vbi0, vbi1, vbi2) to encode in VBI lines (nullptr to skip VBI)
      */
-    void encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_number, 
-                         int32_t frame_number_for_vbi,
+    void encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_number,
                          Field& y_field1, Field& c_field1,
-                         Field& y_field2, Field& c_field2);
+                         Field& y_field2, Field& c_field2,
+                         const class VBIData* vbi_data = nullptr);
 
 private:
     VideoParameters params_;
@@ -222,14 +225,14 @@ private:
     void generate_blanking_line(uint16_t* line_buffer);
     
     /**
-     * @brief Generate VBI line with biphase frame number
+     * @brief Generate VBI line with biphase-encoded data
      * @param line_buffer Pointer to line data
      * @param line_number Line number within field (0-indexed)
      * @param field_number Field number in sequence
-     * @param frame_number Frame number to encode
+     * @param vbi_value 24-bit VBI value to encode (vbi0, vbi1, or vbi2)
      */
-    void generate_biphase_vbi_line(uint16_t* line_buffer, int32_t line_number, 
-                                   int32_t field_number, int32_t frame_number);
+    void generate_biphase_vbi_line(uint16_t* line_buffer, int32_t line_number,
+                                   int32_t field_number, int32_t vbi_value);
     
     /**
      * @brief Clamp a value to the valid signal range
