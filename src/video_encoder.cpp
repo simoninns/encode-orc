@@ -45,6 +45,14 @@ void VideoEncoder::clear_video_level_overrides() {
     s_white_16b_ire_override = std::nullopt;
 }
 
+void VideoEncoder::set_metadata_generators(std::vector<std::unique_ptr<MetadataGenerator>> generators) {
+    metadata_generators_ = std::move(generators);
+}
+
+void VideoEncoder::clear_metadata_generators() {
+    metadata_generators_.clear();
+}
+
 /**
  * @brief Helper function to create the appropriate writer for composite video output
  * @param standard_mode If true, use StandardWriter; otherwise use TBCWriter
@@ -244,6 +252,15 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
                 vbi_data = &metadata.vbi_data[frame_num * 2].value();
             }
             
+            // Create metadata context for generators
+            MetadataContext ctx;
+            ctx.field_number = field_number;
+            ctx.total_frame = frame_num;
+            ctx.is_first_field = true;
+            ctx.system = system;
+            ctx.vbi_data = vbi_data;
+            ctx.source_standard = source_standard;
+            
             if (separate_yc) {
                 // Encode with separate Y/C output
                 Field y_field1, c_field1, y_field2, c_field2;
@@ -260,6 +277,29 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
                     ntsc_encoder.encode_frame_yc(image_frame, field_number,
                                                  y_field1, c_field1, y_field2, c_field2,
                                                  vbi_data);
+                }
+                
+                // Apply pipeline generators to field1 (if configured)
+                if (!metadata_generators_.empty()) {
+                    ctx.is_first_field = true;
+                    ctx.field_number = field_number;
+                    for (const auto& generator : metadata_generators_) {
+                        if (generator->is_applicable(ctx)) {
+                            generator->apply(y_field1, ctx);
+                            // Note: generators for separate Y/C would need separate handling
+                        }
+                    }
+                }
+                
+                // Apply pipeline generators to field2
+                if (!metadata_generators_.empty()) {
+                    ctx.is_first_field = false;
+                    ctx.field_number = field_number + 1;
+                    for (const auto& generator : metadata_generators_) {
+                        if (generator->is_applicable(ctx)) {
+                            generator->apply(y_field2, ctx);
+                        }
+                    }
                 }
                 
                 // Write Y and C fields with padding for field 1
@@ -288,6 +328,28 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
                     ntsc_encoder.set_source_video_standard(source_standard);
                     encoded_frame = ntsc_encoder.encode_frame(image_frame, field_number,
                                                              vbi_data);
+                }
+                
+                // Apply pipeline generators to field1 (if configured)
+                if (!metadata_generators_.empty()) {
+                    ctx.is_first_field = true;
+                    ctx.field_number = field_number;
+                    for (const auto& generator : metadata_generators_) {
+                        if (generator->is_applicable(ctx)) {
+                            generator->apply(encoded_frame.field1(), ctx);
+                        }
+                    }
+                }
+                
+                // Apply pipeline generators to field2
+                if (!metadata_generators_.empty()) {
+                    ctx.is_first_field = false;
+                    ctx.field_number = field_number + 1;
+                    for (const auto& generator : metadata_generators_) {
+                        if (generator->is_applicable(ctx)) {
+                            generator->apply(encoded_frame.field2(), ctx);
+                        }
+                    }
                 }
                 
                 // Write fields using the Writer interface

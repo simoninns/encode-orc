@@ -10,6 +10,7 @@
 #include "yaml_config.h"
 #include "video_encoder.h"
 #include "metadata_generator.h"
+#include "pipeline_generators.h"
 #include "video_parameters.h"
 #include "logging.h"
 #include "mov_loader.h"
@@ -362,7 +363,7 @@ int main(int argc, char* argv[]) {
             }
             
             // Determine source video standard from pipeline configuration
-            // TODO: This is temporary until VideoEncoder is refactored in Phase 8
+            // TODO: This is temporary until VideoEncoder is refactored in Phase 5
             SourceVideoStandard source_standard = SourceVideoStandard::None;
             if (config.pipeline.metadata.has_value()) {
                 for (const auto& gen : config.pipeline.metadata->generators) {
@@ -379,7 +380,64 @@ int main(int argc, char* argv[]) {
                 }
             }
             
+            // Create encoder and configure pipeline generators (Phase 4+)
             VideoEncoder encoder;
+            
+            // Instantiate metadata generators from YAML configuration
+            if (config.pipeline.metadata.has_value()) {
+                std::vector<std::unique_ptr<MetadataGenerator>> generators;
+                
+                // Get video parameters for generator construction
+                VideoParameters gen_params = (system == VideoSystem::PAL) ?
+                    VideoParameters::create_pal_composite() :
+                    VideoParameters::create_ntsc_composite();
+                
+                for (const auto& gen_config : config.pipeline.metadata->generators) {
+                    if (!gen_config.enabled) {
+                        continue;  // Skip disabled generators
+                    }
+                    
+                    if (gen_config.type == "color-burst") {
+                        generators.push_back(std::make_unique<ColorBurstMetadataGenerator>(gen_params));
+                        ENCODE_ORC_LOG_DEBUG("Added ColorBurst generator to pipeline");
+                    }
+                    else if (gen_config.type == "vitc") {
+                        // Parse lines if provided, otherwise use defaults
+                        std::vector<int32_t> lines;
+                        if (!gen_config.lines.empty()) {
+                            // Convert from 1-indexed (YAML) to 0-indexed (internal)
+                            for (int32_t line_1indexed : gen_config.lines) {
+                                lines.push_back(line_1indexed - 1);
+                            }
+                        }
+                        generators.push_back(std::make_unique<VITCMetadataGenerator>(gen_params, lines));
+                        ENCODE_ORC_LOG_DEBUG("Added VITC generator to pipeline");
+                    }
+                    else if (gen_config.type == "vits") {
+                        generators.push_back(std::make_unique<VITSMetadataGenerator>(gen_params));
+                        ENCODE_ORC_LOG_DEBUG("Added VITS generator to pipeline");
+                    }
+                    else if (gen_config.type == "biphase-vbi") {
+                        // Parse lines if provided, otherwise use defaults
+                        std::vector<int32_t> lines;
+                        if (!gen_config.lines.empty()) {
+                            // Convert from 1-indexed (YAML) to 0-indexed (internal)
+                            for (int32_t line_1indexed : gen_config.lines) {
+                                lines.push_back(line_1indexed - 1);
+                            }
+                        }
+                        generators.push_back(std::make_unique<BiphaseVBIMetadataGenerator>(gen_params, lines));
+                        ENCODE_ORC_LOG_DEBUG("Added BiphaseVBI generator to pipeline");
+                    }
+                    else {
+                        ENCODE_ORC_LOG_WARN("Unknown generator type '{}' in pipeline configuration", gen_config.type);
+                    }
+                }
+                
+                // Set generators on encoder
+                encoder.set_metadata_generators(std::move(generators));
+            }
+            
             bool ok = false;
             if (section.yuv422_image_source) {
                 std::string yuv422_file = section.yuv422_image_source->file;

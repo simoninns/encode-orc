@@ -12,6 +12,7 @@
 
 #include "video_parameters.h"
 #include "source_video_standard.h"
+#include "metadata_generator_base.h"
 #include "pal_encoder.h"
 #include "ntsc_encoder.h"
 #include "tbc_writer.h"
@@ -19,6 +20,8 @@
 #include <string>
 #include <cstdint>
 #include <optional>
+#include <vector>
+#include <memory>
 
 namespace encode_orc {
 
@@ -29,6 +32,17 @@ namespace encode_orc {
  */
 class VideoEncoder {
 public:
+    /**
+     * @brief Set metadata generators for the pipeline
+     * @param generators Vector of metadata generators to apply to each field
+     */
+    void set_metadata_generators(std::vector<std::unique_ptr<MetadataGenerator>> generators);
+    
+    /**
+     * @brief Clear all metadata generators
+     */
+    void clear_metadata_generators();
+    
     /**
      * @brief Set video level overrides for subsequent encoding operations
      * @param blanking_16b_ire Optional blanking level override
@@ -183,6 +197,9 @@ public:
     
 private:
     std::string error_message_;
+    
+    // Pipeline metadata generators (Phase 4+)
+    std::vector<std::unique_ptr<MetadataGenerator>> metadata_generators_;
     
     // Static video level overrides for all encoding operations
     static std::optional<int32_t> s_blanking_16b_ire_override;

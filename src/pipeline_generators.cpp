@@ -30,8 +30,13 @@ void ColorBurstMetadataGenerator::apply(Field& field, const MetadataContext& con
     int32_t first_burst_line = (system_ == VideoSystem::PAL) ? 6 : 10;
     int32_t last_line = field.height() - 1;
     
-    // Color burst amplitude: 300mV (approximately 4300 in 16-bit scale)
-    int32_t burst_amplitude = 4300;
+    // Calculate burst amplitude based on video system and luma range
+    // PAL: 300mV peak-to-peak = 150mV amplitude = 3/14 of luma range
+    // NTSC: 20% of luma range per standard
+    int32_t luma_range = params_.white_16b_ire - params_.black_16b_ire;
+    int32_t burst_amplitude = (system_ == VideoSystem::PAL) ? 
+        static_cast<int32_t>((3.0 / 14.0) * luma_range) :
+        static_cast<int32_t>((20.0 / 100.0) * luma_range);
     
     for (int32_t line = first_burst_line; line <= last_line; line++) {
         uint16_t* line_buffer = field.line_data(line);
@@ -82,13 +87,11 @@ VITCMetadataGenerator::VITCMetadataGenerator(const VideoParameters& params,
 }
 
 void VITCMetadataGenerator::apply(Field& field, const MetadataContext& context) {
-    if (!context.vitc_data) {
-        LOG_WARNING("VITC generator called but no VITC data provided");
-        return;
-    }
+    // VITC doesn't use VBI data - it generates timecode from frame number
+    // No check needed
     
     // VITC uses frame number, not field number
-    int32_t frame_number = context.frame_number;
+    int32_t frame_number = context.total_frame;
     bool is_second_field = !context.is_first_field;
     
     for (int32_t line : lines_) {
@@ -128,15 +131,15 @@ void VITSMetadataGenerator::apply(Field& field, const MetadataContext& context) 
             uint16_t* line19 = field.line_data(18);
             uint16_t* line20 = field.line_data(19);
             // Generate standard IEC 60857 VITS: multiburst on line 19, UK national on line 20
-            pal_generator_->generate_multiburst(line19, field_number, is_first_field);
-            pal_generator_->generate_uk_national(line20, field_number, is_first_field);
+            pal_generator_->generate_multiburst(line19, field_number);
+            pal_generator_->generate_uk_national(line20, field_number);
         } else {
             // Field 2: lines 332 and 333 (field line 0-indexed: 18, 19)
             uint16_t* line332 = field.line_data(18);
             uint16_t* line333 = field.line_data(19);
             // Generate ITU composite on line 332, ITU ITS on line 333
-            pal_generator_->generate_itu_composite(line332, field_number, is_first_field);
-            pal_generator_->generate_itu_its(line333, field_number, is_first_field);
+            pal_generator_->generate_itu_composite(line332, field_number);
+            pal_generator_->generate_itu_its(line333, field_number);
         }
     } else {
         // NTSC VITS on lines 19, 20 for field 1; lines 282, 283 for field 2
@@ -144,15 +147,15 @@ void VITSMetadataGenerator::apply(Field& field, const MetadataContext& context) 
             // Field 1: lines 19 and 20 (0-indexed: 18, 19)
             uint16_t* line19 = field.line_data(18);
             uint16_t* line20 = field.line_data(19);
-            // Generate standard IEC 60856 VITS
-            ntsc_generator_->generate_multiburst(line19, field_number, is_first_field);
-            ntsc_generator_->generate_combination(line20, field_number, is_first_field);
+            // Generate standard IEC 60856 VITS - Use composite and combination signals
+            ntsc_generator_->generate_ntc7_composite(line19, field_number);
+            ntsc_generator_->generate_ntc7_combination(line20, field_number);
         } else {
             // Field 2: lines 282 and 283 (field line 0-indexed: 18, 19)
             uint16_t* line282 = field.line_data(18);
             uint16_t* line283 = field.line_data(19);
-            ntsc_generator_->generate_combination(line282, field_number, is_first_field);
-            ntsc_generator_->generate_multiburst(line283, field_number, is_first_field);
+            ntsc_generator_->generate_ntc7_combination(line282, field_number);
+            ntsc_generator_->generate_ntc7_composite(line283, field_number);
         }
     }
 }
@@ -174,7 +177,7 @@ BiphaseVBIMetadataGenerator::BiphaseVBIMetadataGenerator(const VideoParameters& 
 
 void BiphaseVBIMetadataGenerator::apply(Field& field, const MetadataContext& context) {
     if (!context.vbi_data) {
-        LOG_WARNING("Biphase VBI generator called but no VBI data provided");
+        ENCODE_ORC_LOG_WARN("Biphase VBI generator called but no VBI data provided");
         return;
     }
     
@@ -199,7 +202,7 @@ void BiphaseVBIMetadataGenerator::apply(Field& field, const MetadataContext& con
         int32_t start_pos = BiphaseEncoder::get_signal_start_position(params_.sample_rate, line_period_h);
         
         // Copy biphase samples into line buffer
-        for (size_t j = 0; j < samples.size() && (start_pos + j) < static_cast<size_t>(context.field_width); j++) {
+        for (size_t j = 0; j < samples.size() && (start_pos + j) < static_cast<size_t>(field.width()); j++) {
             line_buffer[start_pos + j] = samples[j];
         }
     }

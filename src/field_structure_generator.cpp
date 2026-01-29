@@ -248,7 +248,12 @@ void FieldStructureGenerator::add_color_burst(uint16_t* line_buffer, int32_t lin
     // Use ColorBurstGenerator for proper envelope shaping
     ColorBurstGenerator burst_gen(params_);
     int32_t luma_range = white_level_ - blanking_level_;
-    int32_t burst_amplitude = static_cast<int32_t>((20.0 / 100.0) * luma_range);
+    // Calculate burst amplitude based on video system
+    // PAL: 300mV peak-to-peak = 150mV amplitude = 3/14 of luma range
+    // NTSC: 20% of luma range per standard
+    int32_t burst_amplitude = (system == VideoSystem::PAL) ? 
+        static_cast<int32_t>((3.0 / 14.0) * luma_range) :
+        static_cast<int32_t>((20.0 / 100.0) * luma_range);
     
     if (system == VideoSystem::NTSC) {
         burst_gen.generate_ntsc_burst(line_buffer, line_number, field_number, center_level, burst_amplitude);

@@ -269,6 +269,7 @@ void PALEncoder::generate_sync_pulse(uint16_t* line_buffer, int32_t /* line_numb
 
 void PALEncoder::generate_color_burst(uint16_t* line_buffer, int32_t line_number, int32_t field_number) {
     // Delegate to shared color burst generator
+    // PAL: 300mV peak-to-peak = 150mV amplitude = 3/14 of luma range
     ColorBurstGenerator burst_gen(params_);
     int32_t luma_range = white_level_ - blanking_level_;
     int32_t burst_amplitude = static_cast<int32_t>((3.0 / 14.0) * luma_range);
@@ -279,7 +280,7 @@ void PALEncoder::generate_color_burst_chroma(uint16_t* line_buffer, int32_t line
     // Generate color burst on chroma channel (centered at 32768)
     ColorBurstGenerator burst_gen(params_);
     
-    // Calculate burst amplitude: 3/14 of luma range (same as composite mode)
+    // Calculate burst amplitude: PAL 300mV p-p = 3/14 of luma range (same as composite mode)
     int32_t luma_range = white_level_ - blanking_level_;
     int32_t burst_amplitude = static_cast<int32_t>((3.0 / 14.0) * luma_range);
     
@@ -292,7 +293,7 @@ void PALEncoder::generate_color_burst_chroma_line(uint16_t* line_buffer, int32_t
     // Generate color burst on chroma for the portion before active video
     ColorBurstGenerator burst_gen(params_);
     
-    // Calculate burst amplitude: 3/14 of luma range (same as composite mode for PAL)
+    // Calculate burst amplitude: PAL 300mV p-p = 3/14 of luma range (same as composite mode)
     int32_t luma_range = white_level_ - blanking_level_;
     int32_t burst_amplitude = static_cast<int32_t>((3.0 / 14.0) * luma_range);
     
