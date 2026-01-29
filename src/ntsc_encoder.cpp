@@ -8,6 +8,7 @@
  */
 
 #include "ntsc_encoder.h"
+#include "field_splitter.h"
 #include "color_burst_generator.h"
 #include "biphase_encoder.h"
 #include <cstring>
@@ -44,11 +45,15 @@ Frame NTSCEncoder::encode_frame(const FrameBuffer& frame_buffer, int32_t field_n
                                const VBIData* vbi_data) {
     Frame frame(params_.field_width, params_.field_height);
     
+    // Use FieldSplitter to extract YUV data for both fields
+    FieldSplitter splitter;
+    auto field_pair = splitter.split_frame(frame_buffer, field_number, params_);
+    
     // Encode first field (even lines: 0, 2, 4, ...)
-    frame.field1() = encode_field(frame_buffer, field_number, true, vbi_data);
+    frame.field1() = encode_field_from_yuv(field_pair.field1, field_number, true, vbi_data);
     
     // Encode second field (odd lines: 1, 3, 5, ...)
-    frame.field2() = encode_field(frame_buffer, field_number + 1, false, vbi_data);
+    frame.field2() = encode_field_from_yuv(field_pair.field2, field_number + 1, false, vbi_data);
     
     return frame;
 }
@@ -57,29 +62,43 @@ Field NTSCEncoder::encode_field(const FrameBuffer& frame_buffer,
                                 int32_t field_number, 
                                 bool is_first_field,
                                 const VBIData* vbi_data) {
+    // Use FieldSplitter to extract the appropriate field
+    FieldSplitter splitter;
+    auto field_pair = splitter.split_frame(frame_buffer, field_number, params_);
+    
+    // Select the appropriate field from the pair
+    const Field& field_yuv = is_first_field ? field_pair.field1 : field_pair.field2;
+    
+    // Encode the field using the new method
+    return encode_field_from_yuv(field_yuv, field_number, is_first_field, vbi_data);
+}
+
+Field NTSCEncoder::encode_field_from_yuv(const Field& field_yuv,
+                                         int32_t field_number, 
+                                         bool is_first_field,
+                                         const VBIData* vbi_data) {
     // Use correct field height: field1 has 262 lines, field2 has 263 lines
     int32_t field_height = is_first_field ? params_.field1_height : params_.field2_height;
     Field field(params_.field_width, field_height);
     
-    // Verify input format
-    if (frame_buffer.format() != FrameBuffer::Format::YUV444P16) {
-        // For now, just create a blanking field if wrong format
-        field.fill(static_cast<uint16_t>(blanking_level_));
-        return field;
-    }
+    // Get field YUV dimensions
+    // Note: field_yuv has height * 3 to accommodate Y, U, V planes
+    int32_t field_width = field_yuv.width();
+    int32_t source_field_height = field_yuv.height() / 3;  // Actual image height (divided by 3 for YUV planes)
     
     // Detect if source is in studio code space (≤1023) to preserve sub-black
-    const uint16_t* y_plane_all = frame_buffer.data().data();
-    const int32_t total_pixels = frame_buffer.width() * frame_buffer.height();
+    const uint16_t* yuv_data = field_yuv.data().data();
+    const int32_t total_pixels = field_width * source_field_height;
     uint16_t y_max = 0;
     for (int32_t i = 0; i < total_pixels; ++i) {
-        if (y_plane_all[i] > y_max) y_max = y_plane_all[i];
+        if (yuv_data[i] > y_max) y_max = yuv_data[i];
     }
     const bool studio_range_input = (y_max <= 1023);
     
-    // Get frame dimensions
-    int32_t frame_width = frame_buffer.width();
-    int32_t frame_height = frame_buffer.height();
+    // Get YUV plane pointers from field (planar layout: Y, U, V)
+    const uint16_t* y_plane = yuv_data;
+    const uint16_t* u_plane = yuv_data + total_pixels;
+    const uint16_t* v_plane = yuv_data + (total_pixels * 2);
     
     // NTSC has field1: 262 lines, field2: 263 lines (correct standard format)
     for (int32_t line = 0; line < field_height; ++line) {
@@ -151,22 +170,15 @@ Field NTSCEncoder::encode_field(const FrameBuffer& frame_buffer,
         }
         // Lines 21-263: Active video
         else if (line < ACTIVE_LINES_END) {
-            // Calculate which line in the source frame to use
+            // Calculate which line in the source field to use
             int32_t line_in_field = line - ACTIVE_LINES_START;
-            int32_t line_in_frame = is_first_field ? (line_in_field * 2) : (line_in_field * 2 + 1);
             
-            // Check if line is within source frame
-            if (line_in_frame < frame_height) {
-                // Get pointers to YIQ data
-                const uint16_t* frame_data = frame_buffer.data().data();
-                int32_t pixel_count = frame_width * frame_height;
-                const uint16_t* y_plane = frame_data;
-                const uint16_t* i_plane = frame_data + pixel_count;
-                const uint16_t* q_plane = frame_data + pixel_count * 2;
-                
-                const uint16_t* y_line = y_plane + (line_in_frame * frame_width);
-                const uint16_t* i_line = i_plane + (line_in_frame * frame_width);
-                const uint16_t* q_line = q_plane + (line_in_frame * frame_width);
+            // Check if line is within source field
+            if (line_in_field < source_field_height) {
+                // Get pointers to YIQ line data (already split into field)
+                const uint16_t* y_line = y_plane + (line_in_field * field_width);
+                const uint16_t* i_line = u_plane + (line_in_field * field_width);
+                const uint16_t* q_line = v_plane + (line_in_field * field_width);
                 
                 // Initialize line with blanking level, then add sync and color burst
                 generate_blanking_line(line_buffer);
@@ -175,9 +187,9 @@ Field NTSCEncoder::encode_field(const FrameBuffer& frame_buffer,
                 
                 // Encode active video portion
                 encode_active_line(line_buffer, y_line, i_line, q_line, 
-                                 line, field_number, frame_width, studio_range_input);
+                                 line, field_number, field_width, studio_range_input);
             } else {
-                // Beyond source frame - use blanking
+                // Beyond source field - use blanking
                 generate_blanking_line(line_buffer);
                 generate_sync_pulse(line_buffer, line);
                 generate_color_burst(line_buffer, line, field_number);

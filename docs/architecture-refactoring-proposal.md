@@ -676,7 +676,7 @@ auto encoder = VideoEncoderPipeline::Builder()
 **Benefits**: Composable metadata pipeline, easy to add/remove metadata, explicit configuration, cleaner YAML structure
 
 **YAML Migration**:
-- Provide `encode-orc-migrate` tool to convert old projects to new format
+- Convert projects in test-projects/ to new format
 - Old format no longer supported - clean break
 - Updated documentation with new YAML examples
 

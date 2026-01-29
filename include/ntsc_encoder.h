@@ -11,6 +11,7 @@
 #define ENCODE_ORC_NTSC_ENCODER_H
 
 #include "field.h"
+#include "field_splitter.h"
 #include "frame_buffer.h"
 #include "video_parameters.h"
 #include "source_video_standard.h"
@@ -58,6 +59,9 @@ public:
     
     /**
      * @brief Encode a single field from half of a progressive frame
+     * 
+     * This method uses FieldSplitter internally to extract the appropriate field data.
+     * 
      * @param frame_buffer Input frame in YUV444P16 format (actually YIQ for NTSC)
      * @param field_number Field number
      * @param is_first_field true for first field (even lines), false for second (odd lines)
@@ -66,6 +70,21 @@ public:
      */
     Field encode_field(const FrameBuffer& frame_buffer, int32_t field_number, bool is_first_field,
                       const class VBIData* vbi_data = nullptr);
+
+    /**
+     * @brief Encode a single field from pre-split YUV field data
+     * 
+     * This method works directly with pre-split YUV data (from FieldSplitter).
+     * The field_yuv parameter contains YUV444P16 data in planar format.
+     * 
+     * @param field_yuv Pre-split field containing YUV data (planar: Y, U, V)
+     * @param field_number Field number
+     * @param is_first_field true for first field, false for second field
+     * @param vbi_data Optional VBI data (vbi0, vbi1, vbi2) to encode in VBI lines (nullptr to skip VBI)
+     * @return Encoded NTSC composite field
+     */
+    Field encode_field_from_yuv(const Field& field_yuv, int32_t field_number, bool is_first_field,
+                               const class VBIData* vbi_data = nullptr);
 
     /**
      * @brief Enable VITS (Vertical Interval Test Signals)

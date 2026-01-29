@@ -77,6 +77,7 @@ set(SOURCES
     src/metadata_writer.cpp
     src/metadata_generator.cpp
     src/color_burst_generator.cpp
+    src/field_splitter.cpp
     src/pal_encoder.cpp
     src/pal_vits_generator.cpp
     src/ntsc_encoder.cpp
