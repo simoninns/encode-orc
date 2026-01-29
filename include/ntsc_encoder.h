@@ -12,6 +12,7 @@
 
 #include "field.h"
 #include "field_splitter.h"
+#include "field_structure_generator.h"
 #include "frame_buffer.h"
 #include "video_parameters.h"
 #include "source_video_standard.h"
@@ -191,6 +192,16 @@ private:
      * @param field_number Field number in sequence (for absolute line calculation)
      */
     void generate_color_burst(uint16_t* line_buffer, int32_t line_number, int32_t field_number);
+    
+    /**
+     * @brief Generate color burst with specified center level
+     * @param line_buffer Pointer to line data
+     * @param line_number Line number
+     * @param field_number Field number
+     * @param center_level Center level for burst (sync_level for BR_BR lines, blanking_level for others)
+     */
+    void generate_color_burst_with_center(uint16_t* line_buffer, int32_t line_number, 
+                                          int32_t field_number, int32_t center_level);
     
     /**
      * @brief Generate color burst on chroma channel (centered at 32768)

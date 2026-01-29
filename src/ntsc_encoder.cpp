@@ -9,6 +9,7 @@
 
 #include "ntsc_encoder.h"
 #include "field_splitter.h"
+#include "field_structure_generator.h"
 #include "color_burst_generator.h"
 #include "biphase_encoder.h"
 #include <cstring>
@@ -79,7 +80,20 @@ Field NTSCEncoder::encode_field_from_yuv(const Field& field_yuv,
                                          const VBIData* vbi_data) {
     // Use correct field height: field1 has 262 lines, field2 has 263 lines
     int32_t field_height = is_first_field ? params_.field1_height : params_.field2_height;
-    Field field(params_.field_width, field_height);
+    
+    // Create field structure generator
+    FieldStructureGenerator structure_gen(params_);
+    
+    // Generate basic field structure (sync, blanking, vsync)
+    StructuredField structured = structure_gen.create_field_structure(
+        Field(),  // Empty source field - we'll fill it ourselves
+        is_first_field,
+        field_number,
+        VideoSystem::NTSC
+    );
+    
+    // Get the field with structure already created
+    Field field = std::move(structured.field_data);
     
     // Get field YUV dimensions
     // Note: field_yuv has height * 3 to accommodate Y, U, V planes
@@ -104,12 +118,16 @@ Field NTSCEncoder::encode_field_from_yuv(const Field& field_yuv,
     for (int32_t line = 0; line < field_height; ++line) {
         uint16_t* line_buffer = field.line_data(line);
         
-        // Lines 1-3: Vertical sync (field sync)
-        if (line < VSYNC_LINES) {
-            generate_vsync_line(line_buffer, line);
+        // Check line type from structure generator
+        LineType line_type = structured.get_line_type(line);
+        
+        // VSYNC lines: already have proper sync pattern and color burst from structure generator
+        if (line_type == LineType::VSYNC) {
+            // Nothing to do - sync and burst already generated
+            continue;
         }
-        // Lines 4-20: VBI (Vertical Blanking Interval)
-        else if (line < ACTIVE_LINES_START) {
+        // VBI and blanking lines: already have normal sync and color burst
+        else if (line_type == LineType::VBI || line_type == LineType::BLANKING) {
             // Lines 15, 16, 17 (0-indexed) = field lines 16, 17, 18 contain biphase data
             if (vbi_data != nullptr && (line == 15 || line == 16 || line == 17)) {
                 int32_t vbi_value = 0;
@@ -122,84 +140,44 @@ Field NTSCEncoder::encode_field_from_yuv(const Field& field_yuv,
             else if (is_vits_enabled()) {
                 // First field VITS lines (0-indexed in field)
                 if (is_first_field && line == 18) { // Line 19 - first field
-                    generate_blanking_line(line_buffer);
-                    generate_sync_pulse(line_buffer, line);
-                    generate_color_burst(line_buffer, line, field_number);
                     vits_generator_->generate_vir(line_buffer, field_number);
                 }
                 else if (is_first_field && line == 12) { // Line 13 - first field
-                    generate_blanking_line(line_buffer);
-                    generate_sync_pulse(line_buffer, line);
-                    generate_color_burst(line_buffer, line, field_number);
                     vits_generator_->generate_ntc7_composite(line_buffer, field_number);
                 }
                 // Second field VITS lines (0-indexed in field)
                 else if (!is_first_field && line == 18) { // Line 19 - second field
-                    generate_blanking_line(line_buffer);
-                    generate_sync_pulse(line_buffer, line);
-                    generate_color_burst(line_buffer, line, field_number);
                     vits_generator_->generate_vir(line_buffer, field_number);
                 }
                 else if (!is_first_field && line == 12) { // Line 13 - second field
-                    generate_blanking_line(line_buffer);
-                    generate_sync_pulse(line_buffer, line);
-                    generate_color_burst(line_buffer, line, field_number);
                     vits_generator_->generate_ntc7_combination(line_buffer, field_number);
-                }
-                else {
-                    generate_blanking_line(line_buffer);
-                    generate_sync_pulse(line_buffer, line);
-                    generate_color_burst(line_buffer, line, field_number);
                 }
             }
             else if (is_vitc_enabled()) {
                 // Consumer tape VITC placement: lines 14 and 16 (0-indexed 13,15)
-                generate_blanking_line(line_buffer);
-                generate_sync_pulse(line_buffer, line);
-                generate_color_burst(line_buffer, line, field_number);
                 if (line == 13 || line == 15) {
                     int32_t total_frame = vitc_start_frame_offset_ + (field_number / 2);
                     vitc_generator_->generate_line(VideoSystem::NTSC, total_frame, line_buffer, line, !is_first_field);
                 }
             }
-            else {
-                generate_blanking_line(line_buffer);
-                generate_sync_pulse(line_buffer, line);
-                generate_color_burst(line_buffer, line, field_number);
-            }
         }
-        // Lines 21-263: Active video
-        else if (line < ACTIVE_LINES_END) {
+        // Active video lines
+        else if (line_type == LineType::ACTIVE_VIDEO) {
             // Calculate which line in the source field to use
             int32_t line_in_field = line - ACTIVE_LINES_START;
             
             // Check if line is within source field
-            if (line_in_field < source_field_height) {
+            if (line_in_field >= 0 && line_in_field < source_field_height) {
                 // Get pointers to YIQ line data (already split into field)
                 const uint16_t* y_line = y_plane + (line_in_field * field_width);
                 const uint16_t* i_line = u_plane + (line_in_field * field_width);
                 const uint16_t* q_line = v_plane + (line_in_field * field_width);
                 
-                // Initialize line with blanking level, then add sync and color burst
-                generate_blanking_line(line_buffer);
-                generate_sync_pulse(line_buffer, line);
-                generate_color_burst(line_buffer, line, field_number);
-                
-                // Encode active video portion
+                // Sync and burst already generated by structure generator
+                // Just encode active video portion
                 encode_active_line(line_buffer, y_line, i_line, q_line, 
                                  line, field_number, field_width, studio_range_input);
-            } else {
-                // Beyond source field - use blanking
-                generate_blanking_line(line_buffer);
-                generate_sync_pulse(line_buffer, line);
-                generate_color_burst(line_buffer, line, field_number);
             }
-        }
-        // Lines beyond active video: Post-video blanking
-        else {
-            generate_blanking_line(line_buffer);
-            generate_sync_pulse(line_buffer, line);
-            generate_color_burst(line_buffer, line, field_number);
         }
     }
     
@@ -227,6 +205,15 @@ void NTSCEncoder::generate_color_burst(uint16_t* line_buffer, int32_t line_numbe
     int32_t luma_range = white_level_ - blanking_level_;
     int32_t burst_amplitude = static_cast<int32_t>((20.0 / 100.0) * luma_range);
     burst_gen.generate_ntsc_burst(line_buffer, line_number, field_number, blanking_level_, burst_amplitude);
+}
+
+void NTSCEncoder::generate_color_burst_with_center(uint16_t* line_buffer, int32_t line_number, 
+                                                     int32_t field_number, int32_t center_level) {
+    // Generate color burst with specified center level (for BR_BR lines, center is sync_level)
+    ColorBurstGenerator burst_gen(params_);
+    int32_t luma_range = white_level_ - blanking_level_;
+    int32_t burst_amplitude = static_cast<int32_t>((20.0 / 100.0) * luma_range);
+    burst_gen.generate_ntsc_burst(line_buffer, line_number, field_number, center_level, burst_amplitude);
 }
 
 void NTSCEncoder::generate_color_burst_chroma(uint16_t* line_buffer, int32_t line_number, int32_t field_number) {

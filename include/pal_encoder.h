@@ -12,6 +12,7 @@
 
 #include "field.h"
 #include "field_splitter.h"
+#include "field_structure_generator.h"
 #include "frame_buffer.h"
 #include "video_parameters.h"
 #include "source_video_standard.h"

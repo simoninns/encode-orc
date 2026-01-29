@@ -655,13 +655,21 @@ auto encoder = VideoEncoderPipeline::Builder()
 
 ---
 
-### Phase 3: **Extract Structure Generation** (Medium Risk)
-1. Create `FieldStructureGenerator` class
-2. Move sync pulse, blanking, vsync generation from encoders
-3. Update encoders to work with `StructuredField`
-4. Remove old sync/blanking generation code
+### Phase 3: **Extract Structure Generation** (Medium Risk) ✅ **COMPLETED**
+1. Create `FieldStructureGenerator` class ✅
+2. Move sync pulse, blanking, vsync generation from encoders ✅
+3. Update encoders to work with `StructuredField` ✅
+4. Remove old sync/blanking generation code ✅
+5. **Implement standards-compliant sync patterns (EQ, BR, N pulses)** ✅
 
-**Benefits**: Sync generation testable independently, clearer field structure, reduced encoder complexity
+**Benefits**: Sync generation testable independently, clearer field structure, reduced encoder complexity, standards-compliant sync pulses
+
+**Implementation Details**:
+- Created `FieldStructureGenerator` class with proper sync pulse types (NORMAL, EQUALIZING, BROAD)
+- Implemented line-by-line sync patterns according to PAL and NTSC standards per issue #16
+- PAL patterns: Lines use BR_BR, BR_EQ, EQ_EQ, N_EQ sequences as per standard
+- NTSC patterns: Lines use EQ_EQ, BR_BR, N_EQ, EQ_BR sequences as per standard
+- All 13 tests pass with standards-compliant implementation
 
 ---
 
@@ -671,7 +679,8 @@ auto encoder = VideoEncoderPipeline::Builder()
 3. Update pipeline to apply generators sequentially
 4. **YAML Changes**: Implement new `pipeline.metadata.generators` configuration
 5. Remove old `laserdisc.standard` format entirely
-6. Provide migration script to convert old YAML files to new format
+
+**Note** It should be possible to apply the same generator to multiple lines
 
 **Benefits**: Composable metadata pipeline, easy to add/remove metadata, explicit configuration, cleaner YAML structure
 
