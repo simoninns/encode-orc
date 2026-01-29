@@ -8,6 +8,7 @@
  */
 
 #include "video_encoder.h"
+#include "vbi_metadata_generator.h"
 #include "biphase_encoder.h"
 #include "yuv422_loader.h"
 #include "png_loader.h"
@@ -65,11 +66,13 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
                                        int32_t picture_start,
                                        int32_t chapter,
                                        const std::string& timecode_start,
+                                       const std::string& disc_area,
                                        bool enable_chroma_filter,
                                        bool enable_luma_filter,
                                        bool separate_yc,
                                        bool yc_legacy,
-                                       bool standard_mode) {
+                                       bool standard_mode,
+                                       const CaptureMetadata* pre_generated_metadata) {
     try {
         // Get video parameters for the system
         VideoParameters params;
@@ -162,13 +165,21 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
         // Create and initialize metadata BEFORE encoding so we can pass VBI data to encoders
         int32_t total_fields = num_frames * 2;
         CaptureMetadata metadata;
-        metadata.initialize(system, total_fields);
-        metadata.video_params = params;
-        metadata.git_branch = "main";
-        metadata.git_commit = "v0.1.0-dev";
-        metadata.capture_notes = "YUV422 raw image from " + yuv422_file;
+        
+        // Use pre-generated metadata if provided (Phase 4+), otherwise generate inline
+        if (pre_generated_metadata != nullptr) {
+            metadata = *pre_generated_metadata;
+            ENCODE_ORC_LOG_DEBUG("Using pre-generated metadata with VBI data");
+        } else {
+            // Legacy inline metadata generation
+            metadata.initialize(system, total_fields);
+            metadata.video_params = params;
+            metadata.git_branch = "main";
+            metadata.git_commit = "v0.1.0-dev";
+            metadata.capture_notes = "YUV422 raw image from " + yuv422_file;
         
         // Add VBI data for each field (frame numbers on lines 16, 17, 18) when the standard allows it
+        const bool include_vbi = standard_supports_vbi(source_standard, system);
         if (include_vbi) {
             metadata.vbi_data.resize(total_fields);
         }
@@ -195,66 +206,32 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
             }
         }
         
-        if (include_vbi) {
+        // Determine VBI generation mode
+        VBIMetadataGenerator::Mode vbi_mode = VBIMetadataGenerator::Mode::None;
+        if (use_cav) {
+            vbi_mode = VBIMetadataGenerator::Mode::CAV;
+        } else if (use_clv_timecode) {
+            vbi_mode = VBIMetadataGenerator::Mode::CLVTimecode;
+        } else if (use_clv_chapter) {
+            vbi_mode = VBIMetadataGenerator::Mode::CLVChapter;
+        }
+        
+        if (include_vbi && pre_generated_metadata == nullptr) {
+            // Only generate VBI if not using pre-generated metadata
             for (int32_t frame_num = 0; frame_num < num_frames; ++frame_num) {
-                VBIData vbi;
+                VBIData field1_vbi, field2_vbi;
                 
-                if (use_cav) {
-                    vbi.vbi0 = 0x8BA000;
-                    
-                    int32_t picture_number = picture_start + frame_num;
-                    uint8_t vbi_byte0, vbi_byte1, vbi_byte2;
-                    BiphaseEncoder::encode_cav_picture_number(picture_number, vbi_byte0, vbi_byte1, vbi_byte2);
-                    
-                    int32_t cav_picture_number = (static_cast<int32_t>(vbi_byte0) << 16) |
-                                                 (static_cast<int32_t>(vbi_byte1) << 8) |
-                                                 static_cast<int32_t>(vbi_byte2);
-                    
-                    vbi.vbi1 = cav_picture_number;
-                    vbi.vbi2 = cav_picture_number;
-                } else if (use_clv_chapter) {
-                    int32_t chapter_bcd = ((chapter / 10) << 4) | (chapter % 10);
-                    int32_t chapter_code = 0x800DDD | ((chapter_bcd & 0x7F) << 12);
-                    
-                    vbi.vbi1 = chapter_code;
-                    vbi.vbi2 = chapter_code;
-                } else if (use_clv_timecode) {
-                    int32_t total_frame = timecode_start_frame + frame_num;
-                    int32_t total_seconds = total_frame / fps;
-                    int32_t frame_in_second = total_frame % fps;
-                    
-                    int32_t total_minutes = total_seconds / 60;
-                    int32_t total_hours = total_minutes / 60;
-                    
-                    int32_t hh = total_hours % 10;
-                    int32_t mm = total_minutes % 60;
-                    int32_t ss = total_seconds % 60;
-                    
-                    int32_t sec_tens = ss / 10;
-                    int32_t sec_units = ss % 10;
-                    int32_t x1 = 0x0A + sec_tens;
-                    
-                    int32_t pic_tens = frame_in_second / 10;
-                    int32_t pic_units = frame_in_second % 10;
-                    int32_t pic_bcd = (pic_tens << 4) | pic_units;
-                    
-                    vbi.vbi0 = (0x8 << 20) | (x1 << 16) | (0xE << 12) | (sec_units << 8) | pic_bcd;
-                    
-                    int32_t hh_bcd = ((hh / 10) << 4) | (hh % 10);
-                    int32_t mm_bcd = ((mm / 10) << 4) | (mm % 10);
-                    
-                    int32_t timecode = 0xF0DD00 | (hh_bcd << 16) | mm_bcd;
-                    
-                    vbi.vbi1 = timecode;
-                    vbi.vbi2 = timecode;
-                } else {
-                    vbi.vbi1 = 0x88FFFF;
-                    vbi.vbi2 = 0x88FFFF;
-                }
+                // Generate VBI data using the metadata generator
+                VBIMetadataGenerator::generate_frame_vbi(
+                    frame_num, vbi_mode, picture_start, timecode_start_frame,
+                    chapter, fps, disc_area, field1_vbi, field2_vbi
+                );
                 
-                metadata.vbi_data[frame_num * 2] = vbi;
-                metadata.vbi_data[frame_num * 2 + 1] = vbi;
+                // Store VBI data for both fields
+                metadata.vbi_data[frame_num * 2] = field1_vbi;
+                metadata.vbi_data[frame_num * 2 + 1] = field2_vbi;
             }
+        }
         }
         
         for (int32_t frame_num = 0; frame_num < num_frames; ++frame_num) {
@@ -366,6 +343,7 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
                                     int32_t picture_start,
                                     int32_t chapter,
                                     const std::string& timecode_start,
+                                    const std::string& disc_area,
                                     bool enable_chroma_filter,
                                     bool enable_luma_filter,
                                     bool separate_yc,
@@ -530,52 +508,29 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
             }
         }
 
+        // Determine VBI generation mode
+        VBIMetadataGenerator::Mode vbi_mode = VBIMetadataGenerator::Mode::None;
+        if (use_cav) {
+            vbi_mode = VBIMetadataGenerator::Mode::CAV;
+        } else if (use_clv_timecode) {
+            vbi_mode = VBIMetadataGenerator::Mode::CLVTimecode;
+        } else if (use_clv_chapter) {
+            vbi_mode = VBIMetadataGenerator::Mode::CLVChapter;
+        }
+
         if (include_vbi_png) {
             for (int32_t frame_num = 0; frame_num < num_frames; ++frame_num) {
-                VBIData vbi;
+                VBIData field1_vbi, field2_vbi;
                 
-                if (use_cav) {
-                    vbi.vbi0 = 0x8BA000;
-                    int32_t picture_number = picture_start + frame_num;
-                    uint8_t vbi_byte0, vbi_byte1, vbi_byte2;
-                    BiphaseEncoder::encode_cav_picture_number(picture_number, vbi_byte0, vbi_byte1, vbi_byte2);
-                    int32_t cav_picture_number = (static_cast<int32_t>(vbi_byte0) << 16) |
-                                                 (static_cast<int32_t>(vbi_byte1) << 8) |
-                                                 static_cast<int32_t>(vbi_byte2);
-                    vbi.vbi1 = cav_picture_number;
-                    vbi.vbi2 = cav_picture_number;
-                } else if (use_clv_chapter) {
-                    int32_t chapter_bcd = ((chapter / 10) << 4) | (chapter % 10);
-                    int32_t chapter_code = 0x800DDD | ((chapter_bcd & 0x7F) << 12);
-                    vbi.vbi1 = chapter_code;
-                    vbi.vbi2 = chapter_code;
-                } else if (use_clv_timecode) {
-                    int32_t total_frame = timecode_start_frame + frame_num;
-                    int32_t total_seconds = total_frame / fps;
-                    int32_t frame_in_second = total_frame % fps;
-                    int32_t total_minutes = total_seconds / 60;
-                    int32_t total_hours = total_minutes / 60;
-                    int32_t hh = total_hours % 10;
-                    int32_t mm = total_minutes % 60;
-                    int32_t ss = total_seconds % 60;
-                    int32_t sec_tens = ss / 10;
-                    int32_t sec_units = ss % 10;
-                    int32_t x1 = 0x0A + sec_tens;
-                    int32_t pic_tens = frame_in_second / 10;
-                    int32_t pic_units = frame_in_second % 10;
-                    int32_t pic_bcd = (pic_tens << 4) | pic_units;
-                    vbi.vbi0 = (0x8 << 20) | (x1 << 16) | (0xE << 12) | (sec_units << 8) | pic_bcd;
-                    int32_t hh_bcd = ((hh / 10) << 4) | (hh % 10);
-                    int32_t mm_bcd = ((mm / 10) << 4) | (mm % 10);
-                    int32_t timecode = 0xF0DD00 | (hh_bcd << 16) | mm_bcd;
-                    vbi.vbi1 = timecode;
-                    vbi.vbi2 = timecode;
-                } else {
-                    vbi.vbi1 = 0x88FFFF;
-                    vbi.vbi2 = 0x88FFFF;
-                }
-                metadata.vbi_data[frame_num * 2] = vbi;
-                metadata.vbi_data[frame_num * 2 + 1] = vbi;
+                // Generate VBI data using the metadata generator
+                VBIMetadataGenerator::generate_frame_vbi(
+                    frame_num, vbi_mode, picture_start, timecode_start_frame,
+                    chapter, fps, disc_area, field1_vbi, field2_vbi
+                );
+                
+                // Store VBI data for both fields
+                metadata.vbi_data[frame_num * 2] = field1_vbi;
+                metadata.vbi_data[frame_num * 2 + 1] = field2_vbi;
             }
         }
 
@@ -607,6 +562,7 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
                                    int32_t picture_start,
                                    int32_t chapter,
                                    const std::string& timecode_start,
+                                   const std::string& disc_area,
                                    bool enable_chroma_filter,
                                    bool enable_luma_filter,
                                    bool separate_yc,
@@ -788,64 +744,28 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
                 }
             }
             
+            // Determine VBI generation mode
+            VBIMetadataGenerator::Mode vbi_mode = VBIMetadataGenerator::Mode::None;
+            if (use_cav) {
+                vbi_mode = VBIMetadataGenerator::Mode::CAV;
+            } else if (use_clv_timecode) {
+                vbi_mode = VBIMetadataGenerator::Mode::CLVTimecode;
+            } else if (use_clv_chapter) {
+                vbi_mode = VBIMetadataGenerator::Mode::CLVChapter;
+            }
+            
             for (int32_t frame_num = 0; frame_num < num_frames; ++frame_num) {
-                VBIData vbi;
+                VBIData field1_vbi, field2_vbi;
                 
-                if (use_cav) {
-                    vbi.vbi0 = 0x8BA000;
-                    
-                    int32_t picture_number = picture_start + frame_num;
-                    uint8_t vbi_byte0, vbi_byte1, vbi_byte2;
-                    BiphaseEncoder::encode_cav_picture_number(picture_number, vbi_byte0, vbi_byte1, vbi_byte2);
-                    
-                    int32_t cav_picture_number = (static_cast<int32_t>(vbi_byte0) << 16) |
-                                                 (static_cast<int32_t>(vbi_byte1) << 8) |
-                                                 static_cast<int32_t>(vbi_byte2);
-                    
-                    vbi.vbi1 = cav_picture_number;
-                    vbi.vbi2 = cav_picture_number;
-                } else if (use_clv_chapter) {
-                    int32_t chapter_bcd = ((chapter / 10) << 4) | (chapter % 10);
-                    int32_t chapter_code = 0x800DDD | ((chapter_bcd & 0x7F) << 12);
-                    
-                    vbi.vbi1 = chapter_code;
-                    vbi.vbi2 = chapter_code;
-                } else if (use_clv_timecode) {
-                    int32_t total_frame = timecode_start_frame + frame_num;
-                    int32_t total_seconds = total_frame / fps;
-                    int32_t frame_in_second = total_frame % fps;
-                    
-                    int32_t total_minutes = total_seconds / 60;
-                    int32_t total_hours = total_minutes / 60;
-                    
-                    int32_t hh = total_hours % 10;
-                    int32_t mm = total_minutes % 60;
-                    int32_t ss = total_seconds % 60;
-                    
-                    int32_t sec_tens = ss / 10;
-                    int32_t sec_units = ss % 10;
-                    int32_t x1 = 0x0A + sec_tens;
-                    
-                    int32_t pic_tens = frame_in_second / 10;
-                    int32_t pic_units = frame_in_second % 10;
-                    int32_t pic_bcd = (pic_tens << 4) | pic_units;
-                    
-                    vbi.vbi0 = (0x8 << 20) | (x1 << 16) | (0xE << 12) | (sec_units << 8) | pic_bcd;
-                    
-                    int32_t hh_bcd = ((hh / 10) << 4) | (hh % 10);
-                    int32_t mm_bcd = ((mm / 10) << 4) | (mm % 10);
-                    
-                    int32_t timecode = 0xF0DD00 | (hh_bcd << 16) | mm_bcd;
-                    
-                    vbi.vbi1 = timecode;
-                    vbi.vbi2 = timecode;
-                } else {
-                    vbi.vbi1 = 0x88FFFF;
-                    vbi.vbi2 = 0x88FFFF;
-                }
+                // Generate VBI data using the metadata generator
+                VBIMetadataGenerator::generate_frame_vbi(
+                    frame_num, vbi_mode, picture_start, timecode_start_frame,
+                    chapter, fps, disc_area, field1_vbi, field2_vbi
+                );
                 
-                metadata.vbi_data[frame_num * 2] = vbi;
-                metadata.vbi_data[frame_num * 2 + 1] = vbi;
+                // Store VBI data for both fields
+                metadata.vbi_data[frame_num * 2] = field1_vbi;
+                metadata.vbi_data[frame_num * 2 + 1] = field2_vbi;
             }
         }
         
@@ -878,6 +798,7 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
                                    int32_t picture_start,
                                    int32_t chapter,
                                    const std::string& timecode_start,
+                                   const std::string& disc_area,
                                    bool enable_chroma_filter,
                                    bool enable_luma_filter,
                                    bool separate_yc,
@@ -1061,64 +982,28 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
                 }
             }
             
+            // Determine VBI generation mode
+            VBIMetadataGenerator::Mode vbi_mode = VBIMetadataGenerator::Mode::None;
+            if (use_cav) {
+                vbi_mode = VBIMetadataGenerator::Mode::CAV;
+            } else if (use_clv_timecode) {
+                vbi_mode = VBIMetadataGenerator::Mode::CLVTimecode;
+            } else if (use_clv_chapter) {
+                vbi_mode = VBIMetadataGenerator::Mode::CLVChapter;
+            }
+            
             for (int32_t frame_num = 0; frame_num < num_frames; ++frame_num) {
-                VBIData vbi;
+                VBIData field1_vbi, field2_vbi;
                 
-                if (use_cav) {
-                    vbi.vbi0 = 0x8BA000;
-                    
-                    int32_t picture_number = picture_start + frame_num;
-                    uint8_t vbi_byte0, vbi_byte1, vbi_byte2;
-                    BiphaseEncoder::encode_cav_picture_number(picture_number, vbi_byte0, vbi_byte1, vbi_byte2);
-                    
-                    int32_t cav_picture_number = (static_cast<int32_t>(vbi_byte0) << 16) |
-                                                 (static_cast<int32_t>(vbi_byte1) << 8) |
-                                                 static_cast<int32_t>(vbi_byte2);
-                    
-                    vbi.vbi1 = cav_picture_number;
-                    vbi.vbi2 = cav_picture_number;
-                } else if (use_clv_chapter) {
-                    int32_t chapter_bcd = ((chapter / 10) << 4) | (chapter % 10);
-                    int32_t chapter_code = 0x800DDD | ((chapter_bcd & 0x7F) << 12);
-                    
-                    vbi.vbi1 = chapter_code;
-                    vbi.vbi2 = chapter_code;
-                } else if (use_clv_timecode) {
-                    int32_t total_frame = timecode_start_frame + frame_num;
-                    int32_t total_seconds = total_frame / fps;
-                    int32_t frame_in_second = total_frame % fps;
-                    
-                    int32_t total_minutes = total_seconds / 60;
-                    int32_t total_hours = total_minutes / 60;
-                    
-                    int32_t hh = total_hours % 10;
-                    int32_t mm = total_minutes % 60;
-                    int32_t ss = total_seconds % 60;
-                    
-                    int32_t sec_tens = ss / 10;
-                    int32_t sec_units = ss % 10;
-                    int32_t x1 = 0x0A + sec_tens;
-                    
-                    int32_t pic_tens = frame_in_second / 10;
-                    int32_t pic_units = frame_in_second % 10;
-                    int32_t pic_bcd = (pic_tens << 4) | pic_units;
-                    
-                    vbi.vbi0 = (0x8 << 20) | (x1 << 16) | (0xE << 12) | (sec_units << 8) | pic_bcd;
-                    
-                    int32_t hh_bcd = ((hh / 10) << 4) | (hh % 10);
-                    int32_t mm_bcd = ((mm / 10) << 4) | (mm % 10);
-                    
-                    int32_t timecode = 0xF0DD00 | (hh_bcd << 16) | mm_bcd;
-                    
-                    vbi.vbi1 = timecode;
-                    vbi.vbi2 = timecode;
-                } else {
-                    vbi.vbi1 = 0x88FFFF;
-                    vbi.vbi2 = 0x88FFFF;
-                }
+                // Generate VBI data using the metadata generator
+                VBIMetadataGenerator::generate_frame_vbi(
+                    frame_num, vbi_mode, picture_start, timecode_start_frame,
+                    chapter, fps, disc_area, field1_vbi, field2_vbi
+                );
                 
-                metadata.vbi_data[frame_num * 2] = vbi;
-                metadata.vbi_data[frame_num * 2 + 1] = vbi;
+                // Store VBI data for both fields
+                metadata.vbi_data[frame_num * 2] = field1_vbi;
+                metadata.vbi_data[frame_num * 2 + 1] = field2_vbi;
             }
         }
         

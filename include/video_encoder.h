@@ -51,13 +51,14 @@ public:
      * @param yuv422_file Path to Y'CbCr 4:2:2 raw image file (YUYV packed, 10-bit studio range)
      * @param num_frames Number of frames to encode (image repeated each frame)
      * @param verbose Enable verbose output
-     * @param picture_start Starting CAV picture number (0 = not used)
-     * @param chapter CLV chapter number (0 = not used)
-     * @param timecode_start CLV timecode HH:MM:SS:FF (empty = not used)
+     * @param picture_start Starting CAV picture number (0 = not used, ignored if pre_generated_metadata provided)
+     * @param chapter CLV chapter number (0 = not used, ignored if pre_generated_metadata provided)
+     * @param timecode_start CLV timecode HH:MM:SS:FF (empty = not used, ignored if pre_generated_metadata provided)
      * @param enable_chroma_filter Enable 1.3 MHz chroma low-pass filter (default: true)
      * @param enable_luma_filter Enable luma low-pass filter (default: false)
      * @param separate_yc Enable separate Y/C TBC output (default: false)
      * @param yc_legacy Use legacy naming (.tbc/.tbc_chroma) instead of modern (.tbcy/.tbcc) (default: false)
+     * @param pre_generated_metadata Optional pre-generated metadata with VBI data (Phase 4+)
      * @return true on success, false on error
      */
     bool encode_yuv422_image(const std::string& output_filename,
@@ -68,11 +69,13 @@ public:
                             int32_t picture_start = 0,
                             int32_t chapter = 0,
                             const std::string& timecode_start = "",
+                            const std::string& disc_area = "programme-area",
                             bool enable_chroma_filter = true,
                             bool enable_luma_filter = false,
                             bool separate_yc = false,
                             bool yc_legacy = false,
-                            bool standard_mode = false);
+                            bool standard_mode = false,
+                            const CaptureMetadata* pre_generated_metadata = nullptr);
     
     /**
      * @brief Encode video with PNG image repeated for multiple frames
@@ -98,6 +101,7 @@ public:
                           int32_t picture_start = 0,
                           int32_t chapter = 0,
                           const std::string& timecode_start = "",
+                          const std::string& disc_area = "programme-area",
                           bool enable_chroma_filter = true,
                           bool enable_luma_filter = false,
                           bool separate_yc = false,
@@ -131,6 +135,7 @@ public:
                          int32_t picture_start = 0,
                          int32_t chapter = 0,
                          const std::string& timecode_start = "",
+                           const std::string& disc_area = "programme-area",
                          bool enable_chroma_filter = true,
                          bool enable_luma_filter = false,
                          bool separate_yc = false,
@@ -164,6 +169,7 @@ public:
                          int32_t picture_start = 0,
                          int32_t chapter = 0,
                          const std::string& timecode_start = "",
+                           const std::string& disc_area = "programme-area",
                          bool enable_chroma_filter = true,
                          bool enable_luma_filter = false,
                          bool separate_yc = false,

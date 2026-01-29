@@ -12,6 +12,7 @@
 
 #include "video_parameters.h"
 #include "yaml_config.h"
+#include "metadata.h"
 #include <string>
 #include <cstdint>
 
@@ -26,15 +27,17 @@ namespace encode_orc {
  * @param config YAML project configuration with all sections
  * @param system Video system (PAL or NTSC)
  * @param total_frames Total number of frames in output file
- * @param output_db Path to output metadata database file
+ * @param output_db Path to output metadata database file (empty string to skip writing)
  * @param error_message Output parameter for error description
- * @return true on success, false on error
+ * @param output_metadata Optional output parameter to receive the generated metadata
+ * @return True if successful, false otherwise
  */
 bool generate_metadata(const YAMLProjectConfig& config,
-                      VideoSystem system,
-                      int32_t total_frames,
-                      const std::string& output_db,
-                      std::string& error_message);
+                       VideoSystem system,
+                       int32_t total_frames,
+                       const std::string& output_db,
+                       std::string& error_message,
+                       CaptureMetadata* output_metadata = nullptr);
 
 } // namespace encode_orc
 

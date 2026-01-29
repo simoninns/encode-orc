@@ -1,0 +1,58 @@
+name: "PAL LaserDisc CLV Timecode (Auto)"
+description: "PAL composite with automatic timecode generation starting from 00:00:00:00"
+
+output:
+  filename: "test-output/pal-timecode-auto.tbc"
+  format: "pal-composite"
+
+pipeline:
+  metadata:
+    generators:
+      - type: "biphase-vbi"
+        enabled: true
+        format: "timecode"
+        lines: [15, 16, 17]
+      - type: "vits-pal"
+        enabled: true
+        signals:
+          - { line: 12, field: 1, signal: "multiburst" }
+          - { line: 18, field: 1, signal: "uk-national" }
+      - type: "color-burst"
+        enabled: true
+
+sections:
+  - name: "Lead-in"
+    duration: 5
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_100_BARS.raw"
+    biphase-vbi:
+      disc_area: "lead-in"
+
+  - name: "Color Bars"
+    duration: 20
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_100_BARS.raw"
+    biphase-vbi:
+      timecode_start: "00:00:00:00"
+
+  - name: "Multiburst"
+    duration: 10
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_MULTIBURST.raw"
+
+  - name: "PLUGE"
+    duration: 10
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_PLUGE.raw"
+
+  - name: "Lead-out"
+    duration: 5
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_100_BARS.raw"
+    biphase-vbi:
+      disc_area: "lead-out"

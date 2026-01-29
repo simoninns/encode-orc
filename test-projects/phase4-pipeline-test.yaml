@@ -1,0 +1,38 @@
+name: "Phase 4 Pipeline Test"
+description: "Test project using new pipeline.metadata.generators format"
+
+output:
+  filename: "test-output/phase4-test.tbc"
+  format: "pal-composite"
+
+# NEW: Pipeline configuration
+pipeline:
+  metadata:
+    generators:
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [15, 16, 17]  # 0-indexed: lines 16, 17, 18
+      
+      - type: "vits"
+        enabled: true
+      
+      - type: "color-burst"
+        enabled: true
+
+sections:
+  - name: "Test Section"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
+    
+    filters:
+      chroma:
+        enabled: true
+      luma:
+        enabled: false
+    
+    # Section-level VBI data (what values to encode)
+    biphase-vbi:
+      disc_area: "programme-area"
+      picture_start: 1

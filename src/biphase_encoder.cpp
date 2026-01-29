@@ -101,4 +101,7 @@ void BiphaseEncoder::encode_cav_picture_number(uint32_t frame_number,
     byte2 = result & 0xFF;          // Lower 2 BCD digits
 }
 
+
+
+
 } // namespace encode_orc

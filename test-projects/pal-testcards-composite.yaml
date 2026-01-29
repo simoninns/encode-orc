@@ -5,9 +5,21 @@ output:
   filename: "test-output/pal-testcards-composite.tbc"
   format: "pal-composite"
 
-laserdisc:
-  standard: "iec60857-1986"
-  mode: "cav"
+pipeline:
+  metadata:
+    generators:
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [15, 16, 17]
+      - type: "vits-pal"
+        enabled: true
+        signals:
+          - { line: 12, field: 1, signal: "multiburst" }
+          - { line: 18, field: 1, signal: "uk-national" }
+          - { line: 12, field: 2, signal: "itu-its" }
+          - { line: 18, field: 2, signal: "itu-composite" }
+      - type: "color-burst"
+        enabled: true
 
 sections:
   - name: "Lead-in"

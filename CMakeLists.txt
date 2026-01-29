@@ -93,6 +93,9 @@ set(SOURCES
     src/mov_loader.cpp
     src/mp4_loader.cpp
     src/video_encoder.cpp
+    # Phase 4: VBI metadata generator (partially complete)
+    src/vbi_metadata_generator.cpp
+    src/color_burst_pipeline_generator.cpp
 )
 
 # Create executable

@@ -1,0 +1,62 @@
+name: "PAL LaserDisc CLV Timecode (Explicit)"
+description: "PAL composite with explicit timecode specified for each section"
+
+output:
+  filename: "test-output/pal-timecode-explicit.tbc"
+  format: "pal-composite"
+
+pipeline:
+  metadata:
+    generators:
+      - type: "biphase-vbi"
+        enabled: true
+        format: "timecode"
+        lines: [15, 16, 17]
+      - type: "vits-pal"
+        enabled: true
+        signals:
+          - { line: 12, field: 1, signal: "itu-composite" }
+          - { line: 18, field: 1, signal: "itu-its" }
+      - type: "color-burst"
+        enabled: true
+
+sections:
+  - name: "Lead-in"
+    duration: 5
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_100_BARS.raw"
+    laserdisc:
+      disc_area: "lead-in"
+
+  - name: "Section 1 - Starting at 01:00:00:00"
+    duration: 15
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_100_BARS.raw"
+    laserdisc:
+      timecode_start: "01:00:00:00"
+
+  - name: "Section 2 - Starting at 01:05:30:10"
+    duration: 10
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_MULTIBURST.raw"
+    laserdisc:
+      timecode_start: "01:05:30:10"
+
+  - name: "Section 3 - Starting at 02:15:45:20"
+    duration: 10
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_PLUGE.raw"
+    laserdisc:
+      timecode_start: "02:15:45:20"
+
+  - name: "Lead-out"
+    duration: 5
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_100_BARS.raw"
+    laserdisc:
+      disc_area: "lead-out"

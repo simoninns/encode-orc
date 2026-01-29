@@ -20,7 +20,8 @@ bool generate_metadata(const YAMLProjectConfig& config,
                       VideoSystem system,
                       int32_t total_frames,
                       const std::string& output_db,
-                      std::string& error_message) {
+                       std::string& error_message,
+                       CaptureMetadata* output_metadata) {
     try {
         int32_t total_fields = total_frames * 2;
         int32_t fps = (system == VideoSystem::PAL) ? 25 : 30;
@@ -50,39 +51,55 @@ bool generate_metadata(const YAMLProjectConfig& config,
         combined.video_params = params;
         combined.video_params.number_of_sequential_fields = total_fields;
         
-        const bool include_vbi = standard_supports_vbi(config.laserdisc.standard, system);
+        // Determine if VBI data is needed from pipeline configuration
+        bool include_vbi = false;
+        if (config.pipeline.metadata.has_value()) {
+            for (const auto& gen : config.pipeline.metadata->generators) {
+                if ((gen.type == "biphase-vbi" || gen.type == "vitc") && gen.enabled) {
+                    include_vbi = true;
+                    break;
+                }
+            }
+        }
+        
         if (include_vbi) {
             combined.vbi_data.resize(total_fields);
         }
         
         // Generate VBI data for entire file, preserving timecode/chapter continuity
         int32_t frame_num = 0;
+        int32_t global_timecode_offset = 0;  // Tracks timecode across sections
+        bool has_timecode_mode = false;       // Whether we're in timecode mode at all
+        
         for (const auto& section : config.sections) {
             int32_t picture_start = 0;
             int32_t chapter = 0;
             std::string timecode_start = "";
             std::string disc_area = "programme-area";
             
-            if (section.laserdisc) {
-                disc_area = section.laserdisc->disc_area;
-                if (section.laserdisc->picture_start) {
-                    picture_start = section.laserdisc->picture_start.value();
+            if (section.biphase_vbi) {
+                disc_area = section.biphase_vbi->disc_area;
+                if (section.biphase_vbi->picture_start) {
+                    picture_start = section.biphase_vbi->picture_start.value();
                 }
-                if (section.laserdisc->timecode_start) {
-                    timecode_start = section.laserdisc->timecode_start.value();
+                if (section.biphase_vbi->timecode_start) {
+                    timecode_start = section.biphase_vbi->timecode_start.value();
                 }
-                if (section.laserdisc->chapter) {
-                    chapter = section.laserdisc->chapter.value();
+                if (section.biphase_vbi->chapter) {
+                    chapter = section.biphase_vbi->chapter.value();
                 }
             }
             
             // Parse timecode start offset for this section
-            int32_t timecode_offset = 0;
             if (!timecode_start.empty()) {
+                // Explicit timecode specified - update the global offset
                 int32_t hh = 0, mm = 0, ss = 0, ff = 0;
                 std::sscanf(timecode_start.c_str(), "%d:%d:%d:%d", &hh, &mm, &ss, &ff);
-                timecode_offset = hh * 3600 * fps + mm * 60 * fps + ss * fps + ff;
+                global_timecode_offset = hh * 3600 * fps + mm * 60 * fps + ss * fps + ff;
+                has_timecode_mode = true;
             }
+            // If no timecode_start specified but we're in timecode mode, 
+            // global_timecode_offset stays as-is (continues from previous section)
             
             // Encode VBI for all frames in this section (only when the standard supports it)
             if (!include_vbi) {
@@ -130,15 +147,15 @@ bool generate_metadata(const YAMLProjectConfig& config,
                                  static_cast<int32_t>(b2);
                     vbi_field1.vbi1 = cav;
                     vbi_field1.vbi2 = cav;
-                } else if (!timecode_start.empty()) {
+                } else if (has_timecode_mode) {
                     // CLV timecode mode - continuous timecode across entire file on field 1
-                    int32_t total_frame = timecode_offset + section_frame;
+                    int32_t total_frame = global_timecode_offset + frame_num;
                     int32_t total_seconds = total_frame / fps;
                     int32_t frame_in_second = total_frame % fps;
                     int32_t total_minutes = total_seconds / 60;
                     int32_t total_hours = total_minutes / 60;
                     
-                    int32_t hh = total_hours % 10;
+                    int32_t hh = total_hours;
                     int32_t mm = total_minutes % 60;
                     int32_t ss = total_seconds % 60;
                     
@@ -183,7 +200,16 @@ bool generate_metadata(const YAMLProjectConfig& config,
             }
         }
         
-        // Write metadata to database
+        // Return metadata if requested
+        if (output_metadata != nullptr) {
+            *output_metadata = combined;
+        }
+        
+        // Write metadata to database if path provided
+        if (output_db.empty()) {
+            return true;  // Skip writing if no output path
+        }
+        
         MetadataWriter writer;
         std::remove(output_db.c_str());
         

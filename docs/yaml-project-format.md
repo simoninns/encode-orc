@@ -103,8 +103,8 @@ sections:
       luma:
         enabled: false  # Default: false
     
-    # LaserDisc section settings
-    laserdisc:
+    # Biphase VBI section settings (for LaserDisc metadata)
+    biphase-vbi:
       disc_area: "programme-area"  # lead-in, programme-area, or lead-out
       # ... section-specific parameters: picture_start, chapter, timecode_start, vbi, vits ...
 ```
@@ -150,10 +150,10 @@ laserdisc:
 
 All sections inherit these project-level values; sections cannot change `standard` or `mode`.
 
-### Section-level LaserDisc Settings (per section)
+### Section-level Biphase VBI Settings (per section)
 
 ```yaml
-laserdisc:
+biphase-vbi:
   disc_area: "programme-area"  # lead-in, programme-area, or lead-out
   
   # Convenience boolean flags (alternative to disc_area string):
@@ -475,7 +475,7 @@ sections:
         enabled: true  # Apply 1.3 MHz filter to prevent artifacts
       luma:
         enabled: false
-    laserdisc:
+    biphase-vbi:
       disc_area: "programme-area"
       picture_start: 1
 ```
@@ -501,7 +501,7 @@ sections:
     source:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
-    laserdisc:
+    biphase-vbi:
       disc_area: "lead-in"
       chapter: 0
       timecode_start: "00:00:00:00"
@@ -512,7 +512,7 @@ sections:
     source:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/custom-content-1.raw"
-    laserdisc:
+    biphase-vbi:
       disc_area: "programme-area"
       chapter: 1
       timecode_start: "00:00:10:00"
@@ -523,7 +523,7 @@ sections:
     source:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/custom-content-2.raw"
-    laserdisc:
+    biphase-vbi:
       disc_area: "programme-area"
       chapter: 2
       timecode_start: "00:01:50:00"
@@ -550,7 +550,7 @@ sections:
     source:
       type: "yuv422-image"
       file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-100.raw"
-    laserdisc:
+    biphase-vbi:
       disc_area: "programme-area"
       picture_start: 1
         
@@ -560,7 +560,7 @@ sections:
     source:
       type: "yuv422-image"
       file: "testcard-images/ntsc-raw/ntsc-eia-colorbars-75.raw"
-    laserdisc:
+    biphase-vbi:
       disc_area: "programme-area"
       picture_start: 1801
 ```
@@ -635,7 +635,7 @@ sections:
     source:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
-    laserdisc:
+    biphase-vbi:
       picture_start: 1
 ```
 
@@ -695,7 +695,7 @@ sections:
 | `duration` | integer | Yes | Number of frames in section |
 | `source` | object | Yes | Video source configuration. Type must be "yuv422-image" for raw YUV 4:2:2 planar, or "png-image" for PNG files |
 | `filters` | object | No | Filter configuration with optional chroma/luma filter settings (default: chroma enabled, luma disabled) |
-| `laserdisc` | object | No | Section-level LaserDisc settings. Supports: disc_area (or leadin/leadout flags), picture_start, chapter, timecode_start, start. VBI/VITS enabled flags are parsed but not applied. |
+| `biphase-vbi` | object | No | Section-level Biphase VBI settings (LaserDisc metadata). Supports: disc_area (or leadin/leadout flags), picture_start, chapter, timecode_start, start. VBI/VITS enabled flags are parsed but not applied. |
 
 ### LaserDisc Modes
 
@@ -823,7 +823,7 @@ sections:
       type: "mov-file"
       file: "testcard-images/pal-mov/pt5300.mov"
       start_frame: 0
-    laserdisc:
+    biphase-vbi:
       picture_start: 1
     filters:
       chroma:
@@ -838,7 +838,7 @@ sections:
       type: "mov-file"
       file: "testcard-images/pal-mov/pt5300.mov"
       start_frame: 50
-    # LaserDisc picture numbers continue automatically (51-100)
+    # Biphase VBI picture numbers continue automatically (51-100)
 ```
 
 **MOV/MP4 File Requirements:**
@@ -874,7 +874,7 @@ sections:
       type: "mov-file"
       file: "testcard-images/pal-mov/pt5300.mov"
       # No start_frame or duration - uses all frames
-    laserdisc:
+    biphase-vbi:
       picture_start: 1
 ```
 

@@ -67,19 +67,91 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
             }
         }
         
-        // Parse project-level laserdisc configuration
-        if (root["laserdisc"]) {
-            YAML::Node laserdisc = root["laserdisc"];
-            if (laserdisc["standard"]) {
-                config.laserdisc.standard_name = laserdisc["standard"].as<std::string>();
-                if (!parse_source_video_standard(config.laserdisc.standard_name, config.laserdisc.standard)) {
-                    error_message = "Invalid source video standard: " + config.laserdisc.standard_name + " (expected iec60856-1986, iec60857-1986, consumer-tape, or none)";
-                    return false;
+        // Parse pipeline configuration (REQUIRED in Phase 4+)
+        if (root["pipeline"]) {
+            PipelineConfig pipeline_cfg;
+            YAML::Node pipeline_node = root["pipeline"];
+            
+            // Parse metadata generators
+            if (pipeline_node["metadata"]) {
+                PipelineMetadataConfig metadata_cfg;
+                YAML::Node metadata_node = pipeline_node["metadata"];
+                
+                if (metadata_node["generators"] && metadata_node["generators"].IsSequence()) {
+                    for (const auto& gen_node : metadata_node["generators"]) {
+                        PipelineGeneratorConfig gen_cfg;
+                        
+                        // Required: type
+                        if (!gen_node["type"]) {
+                            error_message = "Pipeline generator missing required 'type' field";
+                            return false;
+                        }
+                        gen_cfg.type = gen_node["type"].as<std::string>();
+                        
+                        // Optional: enabled (default true)
+                        if (gen_node["enabled"]) {
+                            gen_cfg.enabled = gen_node["enabled"].as<bool>();
+                        }
+                        
+                        // Type-specific configuration
+                        if (gen_cfg.type == "biphase-vbi") {
+                            // Parse lines array
+                            if (gen_node["lines"] && gen_node["lines"].IsSequence()) {
+                                for (const auto& line_node : gen_node["lines"]) {
+                                    gen_cfg.lines.push_back(line_node.as<int32_t>());
+                                }
+                            }
+                            // Parse format (cav or clv)
+                            if (gen_node["format"]) {
+                                gen_cfg.format = gen_node["format"].as<std::string>();
+                            }
+                        }
+                        
+                        if (gen_cfg.type == "vitc") {
+                            // Parse lines array
+                            if (gen_node["lines"] && gen_node["lines"].IsSequence()) {
+                                for (const auto& line_node : gen_node["lines"]) {
+                                    gen_cfg.lines.push_back(line_node.as<int32_t>());
+                                }
+                            }
+                            // Parse start_frame_offset
+                            if (gen_node["start_frame_offset"]) {
+                                gen_cfg.start_frame_offset = gen_node["start_frame_offset"].as<int32_t>();
+                            }
+                        }
+                        
+                        if (gen_cfg.type == "vits-pal" || gen_cfg.type == "vits-ntsc") {
+                            // Parse VITS signals array
+                            if (gen_node["signals"] && gen_node["signals"].IsSequence()) {
+                                for (const auto& sig_node : gen_node["signals"]) {
+                                    PipelineGeneratorConfig::VITSSignal signal;
+                                    
+                                    if (sig_node["line"]) {
+                                        signal.line = sig_node["line"].as<int32_t>();
+                                    }
+                                    if (sig_node["field"]) {
+                                        signal.field = sig_node["field"].as<int32_t>();
+                                    }
+                                    if (sig_node["signal"]) {
+                                        signal.signal = sig_node["signal"].as<std::string>();
+                                    }
+                                    
+                                    gen_cfg.vits_signals.push_back(signal);
+                                }
+                            }
+                        }
+                        
+                        metadata_cfg.generators.push_back(gen_cfg);
+                    }
                 }
+                
+                pipeline_cfg.metadata = metadata_cfg;
             }
-            if (laserdisc["mode"]) {
-                config.laserdisc.mode = laserdisc["mode"].as<std::string>();
-            }
+            
+            config.pipeline = pipeline_cfg;
+        } else {
+            error_message = "Missing required 'pipeline' configuration. Please use the new pipeline.metadata.generators format.";
+            return false;
         }
         
         // Parse sections
@@ -155,56 +227,63 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                     section.filters = fc;
                 }
                 
-                // Parse section-level laserdisc configuration
-                if (sec_node["laserdisc"]) {
-                    LaserDiscConfig ld;
-                    YAML::Node ld_node = sec_node["laserdisc"];
+                // Parse section-level biphase VBI configuration
+                // Support both "biphase-vbi:" (new) and "laserdisc:" (legacy)
+                YAML::Node bv_node;
+                if (sec_node["biphase-vbi"]) {
+                    bv_node = sec_node["biphase-vbi"];
+                } else if (sec_node["laserdisc"]) {
+                    bv_node = sec_node["laserdisc"];
+                }
+                
+                if (bv_node) {
+                    BiphaseVBIConfig bv;
                     
-                    if (ld_node["disc_area"]) {
-                        ld.disc_area = ld_node["disc_area"].as<std::string>();
+                    if (bv_node["disc_area"]) {
+                        bv.disc_area = bv_node["disc_area"].as<std::string>();
                     }
                     
                     // Convenience boolean flags
-                    if (ld_node["leadin"] && ld_node["leadin"].as<bool>()) {
-                        ld.disc_area = "lead-in";
+                    if (bv_node["leadin"] && bv_node["leadin"].as<bool>()) {
+                        bv.disc_area = "lead-in";
                     }
-                    if (ld_node["leadout"] && ld_node["leadout"].as<bool>()) {
-                        ld.disc_area = "lead-out";
-                    }
-                    
-                    if (ld_node["picture_start"]) {
-                        ld.picture_start = ld_node["picture_start"].as<int32_t>();
+                    if (bv_node["leadout"] && bv_node["leadout"].as<bool>()) {
+                        bv.disc_area = "lead-out";
                     }
                     
-                    if (ld_node["chapter"]) {
-                        ld.chapter = ld_node["chapter"].as<int32_t>();
+                    if (bv_node["picture_start"]) {
+                        bv.picture_start = bv_node["picture_start"].as<int32_t>();
                     }
                     
-                    if (ld_node["timecode_start"]) {
-                        ld.timecode_start = ld_node["timecode_start"].as<std::string>();
+                    if (bv_node["chapter"]) {
+                        bv.chapter = bv_node["chapter"].as<int32_t>();
                     }
                     
-                    if (ld_node["start"]) {
-                        ld.start = ld_node["start"].as<int32_t>();
+                    if (bv_node["timecode_start"]) {
+                        bv.timecode_start = bv_node["timecode_start"].as<std::string>();
+                    }
+                    
+                    if (bv_node["start"]) {
+                        bv.start = bv_node["start"].as<int32_t>();
                     }
                     
                     // Parse VBI configuration
-                    if (ld_node["vbi"]) {
-                        YAML::Node vbi = ld_node["vbi"];
+                    if (bv_node["vbi"]) {
+                        YAML::Node vbi = bv_node["vbi"];
                         if (vbi["enabled"]) {
-                            ld.vbi.enabled = vbi["enabled"].as<bool>();
+                            bv.vbi.enabled = vbi["enabled"].as<bool>();
                         }
                     }
                     
                     // Parse VITS configuration
-                    if (ld_node["vits"]) {
-                        YAML::Node vits = ld_node["vits"];
+                    if (bv_node["vits"]) {
+                        YAML::Node vits = bv_node["vits"];
                         if (vits["enabled"]) {
-                            ld.vits.enabled = vits["enabled"].as<bool>();
+                            bv.vits.enabled = vits["enabled"].as<bool>();
                         }
                     }
                     
-                    section.laserdisc = ld;
+                    section.biphase_vbi = bv;
                 }
                 
                 config.sections.push_back(section);
@@ -244,27 +323,6 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
         config.output.format != "ntsc-yc") {
         error_message = "Invalid output format: " + config.output.format;
         return false;
-    }
-    
-    // Validate that LaserDisc standard matches video system format
-    if (config.laserdisc.standard != SourceVideoStandard::None &&
-        config.laserdisc.standard != SourceVideoStandard::ConsumerTape) {
-        bool is_pal_format = (config.output.format == "pal-composite" || config.output.format == "pal-yc");
-        bool is_ntsc_format = (config.output.format == "ntsc-composite" || config.output.format == "ntsc-yc");
-        
-        if (config.laserdisc.standard == SourceVideoStandard::IEC60857_1986) {
-            // PAL standard
-            if (!is_pal_format) {
-                error_message = "LaserDisc standard 'iec60857-1986' (PAL) can only be used with PAL output formats (pal-composite or pal-yc), but got '" + config.output.format + "'";
-                return false;
-            }
-        } else if (config.laserdisc.standard == SourceVideoStandard::IEC60856_1986) {
-            // NTSC standard
-            if (!is_ntsc_format) {
-                error_message = "LaserDisc standard 'iec60856-1986' (NTSC) can only be used with NTSC output formats (ntsc-composite or ntsc-yc), but got '" + config.output.format + "'";
-                return false;
-            }
-        }
     }
     
     if (config.output.mode != "combined" && 
@@ -340,14 +398,14 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
             // However, this requires file probing at runtime
         }
         
-        // Validate LaserDisc picture numbers if specified
-        if (section.laserdisc) {
-            if (section.laserdisc->picture_start && section.laserdisc->picture_start.value() <= 0) {
-                error_message = "LaserDisc picture_start must be greater than 0 for section: " + section.name;
+        // Validate Biphase VBI picture numbers if specified
+        if (section.biphase_vbi) {
+            if (section.biphase_vbi->picture_start && section.biphase_vbi->picture_start.value() <= 0) {
+                error_message = "Biphase VBI picture_start must be greater than 0 for section: " + section.name;
                 return false;
             }
-            if (section.laserdisc->start && section.laserdisc->start.value() <= 0) {
-                error_message = "LaserDisc start picture number must be greater than 0 for section: " + section.name;
+            if (section.biphase_vbi->start && section.biphase_vbi->start.value() <= 0) {
+                error_message = "Biphase VBI start picture number must be greater than 0 for section: " + section.name;
                 return false;
             }
         }

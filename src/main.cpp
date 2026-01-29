@@ -294,6 +294,9 @@ int main(int argc, char* argv[]) {
     }
     
     int32_t frame_offset = 0;
+    int32_t running_timecode_frame = 0;  // Track continuous timecode across sections
+    bool timecode_mode_active = false;   // Whether we're in continuous timecode mode
+    
     for (const auto& section : config.sections) {
         ENCODE_ORC_LOG_INFO("Encoding section: {}", section.name);
         
@@ -304,15 +307,49 @@ int main(int argc, char* argv[]) {
             int32_t picture_start = 0;
             int32_t chapter = 0;
             std::string timecode_start = "";
+            std::string disc_area = "programme-area";  // Default to programme area
             
-            if (section.laserdisc) {
-                if (section.laserdisc->picture_start) {
-                    picture_start = section.laserdisc->picture_start.value();
-                } else if (section.laserdisc->chapter) {
-                    chapter = section.laserdisc->chapter.value();
-                } else if (section.laserdisc->timecode_start) {
-                    timecode_start = section.laserdisc->timecode_start.value();
+            if (section.biphase_vbi) {
+                // Get disc area
+                disc_area = section.biphase_vbi->disc_area;
+                
+                // Get Biphase VBI metadata parameters
+                if (section.biphase_vbi->picture_start) {
+                    picture_start = section.biphase_vbi->picture_start.value();
+                    timecode_mode_active = false;  // Switch to CAV mode
+                } else if (section.biphase_vbi->chapter) {
+                    chapter = section.biphase_vbi->chapter.value();
+                    timecode_mode_active = false;  // Chapter mode
+                } else if (section.biphase_vbi->timecode_start) {
+                    // Explicit timecode start - parse and update running offset
+                    timecode_start = section.biphase_vbi->timecode_start.value();
+                    timecode_mode_active = true;
+                    
+                    // Parse the timecode to set running_timecode_frame
+                    int32_t fps = (system == VideoSystem::PAL) ? 25 : 30;
+                    int32_t start_hh = 0, start_mm = 0, start_ss = 0, start_ff = 0;
+                    int parsed = std::sscanf(timecode_start.c_str(), "%d:%d:%d:%d", 
+                                              &start_hh, &start_mm, &start_ss, &start_ff);
+                    if (parsed >= 3) {
+                        running_timecode_frame = start_hh * 3600 * fps +
+                                               start_mm * 60 * fps +
+                                               start_ss * fps +
+                                               start_ff;
+                    }
                 }
+            } else if (timecode_mode_active && disc_area == "programme-area") {
+                // No laserdisc section, but we're in timecode mode - continue from previous
+                int32_t fps = (system == VideoSystem::PAL) ? 25 : 30;
+                int32_t hh = running_timecode_frame / (3600 * fps);
+                int32_t mm = (running_timecode_frame / (60 * fps)) % 60;
+                int32_t ss = (running_timecode_frame / fps) % 60;
+                int32_t ff = running_timecode_frame % fps;
+                
+                char timecode_buffer[32];
+                std::snprintf(timecode_buffer, sizeof(timecode_buffer), "%02d:%02d:%02d:%02d", hh, mm, ss, ff);
+                timecode_start = timecode_buffer;
+                
+                ENCODE_ORC_LOG_DEBUG("Auto-continuing timecode for section '{}': {}", section.name, timecode_start);
             }
             
             // Get filter settings (use defaults if not specified)
@@ -324,24 +361,42 @@ int main(int argc, char* argv[]) {
                 enable_luma_filter = section.filters->luma.enabled;
             }
             
+            // Determine source video standard from pipeline configuration
+            // TODO: This is temporary until VideoEncoder is refactored in Phase 8
+            SourceVideoStandard source_standard = SourceVideoStandard::None;
+            if (config.pipeline.metadata.has_value()) {
+                for (const auto& gen : config.pipeline.metadata->generators) {
+                    if (gen.type == "biphase-vbi" && gen.enabled) {
+                        // LaserDisc standard
+                        source_standard = (system == VideoSystem::PAL) ? 
+                            SourceVideoStandard::IEC60857_1986 : SourceVideoStandard::IEC60856_1986;
+                        break;
+                    } else if (gen.type == "vitc" && gen.enabled) {
+                        // Consumer tape
+                        source_standard = SourceVideoStandard::ConsumerTape;
+                        break;
+                    }
+                }
+            }
+            
             VideoEncoder encoder;
             bool ok = false;
             if (section.yuv422_image_source) {
                 std::string yuv422_file = section.yuv422_image_source->file;
                 section_frames = section.duration.value();
                 ok = encoder.encode_yuv422_image(config.output.filename + ".temp",
-                                                system, config.laserdisc.standard, yuv422_file,
+                                                system, source_standard, yuv422_file,
                                                 section_frames,
-                                                picture_start, chapter, timecode_start,
+                                                picture_start, chapter, timecode_start, disc_area,
                                                 enable_chroma_filter, enable_luma_filter,
                                                 is_separate_yc, is_yc_legacy, (config.output.writer == "standard"));
             } else if (section.png_image_source) {
                 std::string png_file = section.png_image_source->file;
                 section_frames = section.duration.value();
                 ok = encoder.encode_png_image(config.output.filename + ".temp",
-                                              system, config.laserdisc.standard, png_file,
+                                              system, source_standard, png_file,
                                               section_frames,
-                                              picture_start, chapter, timecode_start,
+                                              picture_start, chapter, timecode_start, disc_area,
                                               enable_chroma_filter, enable_luma_filter,
                                               is_separate_yc, is_yc_legacy, (config.output.writer == "standard"));
             } else if (section.mov_file_source) {
@@ -350,9 +405,9 @@ int main(int argc, char* argv[]) {
                 section_frames = section.duration.value();  // Already populated in preprocessing
                 
                 ok = encoder.encode_mov_file(config.output.filename + ".temp",
-                                            system, config.laserdisc.standard, mov_file,
+                                            system, source_standard, mov_file,
                                             section_frames, start_frame,
-                                            picture_start, chapter, timecode_start,
+                                            picture_start, chapter, timecode_start, disc_area,
                                             enable_chroma_filter, enable_luma_filter,
                                             is_separate_yc, is_yc_legacy, (config.output.writer == "standard"));
             } else if (section.mp4_file_source) {
@@ -361,9 +416,9 @@ int main(int argc, char* argv[]) {
                 section_frames = section.duration.value();  // Already populated in preprocessing
                 
                 ok = encoder.encode_mp4_file(config.output.filename + ".temp",
-                                            system, config.laserdisc.standard, mp4_file,
+                                            system, source_standard, mp4_file,
                                             section_frames, start_frame,
-                                            picture_start, chapter, timecode_start,
+                                            picture_start, chapter, timecode_start, disc_area,
                                             enable_chroma_filter, enable_luma_filter,
                                             is_separate_yc, is_yc_legacy, (config.output.writer == "standard"));
             }
@@ -459,6 +514,12 @@ int main(int argc, char* argv[]) {
             std::remove((config.output.filename + ".temp.json").c_str());
             
             frame_offset += section_frames;
+            
+            // Update running timecode if in timecode mode
+            if (timecode_mode_active && disc_area == "programme-area") {
+                running_timecode_frame += section_frames;
+            }
+            
             ENCODE_ORC_LOG_INFO("  ✓ Encoded {} frames", section_frames);
         }
     }

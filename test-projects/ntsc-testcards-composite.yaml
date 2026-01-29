@@ -5,9 +5,19 @@ output:
   filename: "test-output/ntsc-testcards-composite.tbc"
   format: "ntsc-composite"
 
-laserdisc:
-  standard: "iec60856-1986"
-  mode: "cav"
+pipeline:
+  metadata:
+    generators:
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [15, 16, 17]
+      - type: "vits-ntsc"
+        enabled: true
+        signals:
+          - { line: 17, field: 1, signal: "itu-composite" }
+          - { line: 17, field: 2, signal: "itu-its" }
+      - type: "color-burst"
+        enabled: true
 
 sections:
   - name: "Lead-in"

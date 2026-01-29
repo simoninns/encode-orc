@@ -6,9 +6,15 @@ output:
   format: "ntsc-composite"
   mode: "separate-yc"  # Output separate .tbcy and .tbcc files
 
-laserdisc:
-  standard: "none"
-  mode: "none"
+pipeline:
+  metadata:
+    generators:
+      - type: "vitc"
+        enabled: true
+        lines: [18, 20]
+        start_frame_offset: 0
+      - type: "color-burst"
+        enabled: true
 
 sections:
   - name: "Test Pattern with Filtering"

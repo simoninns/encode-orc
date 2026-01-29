@@ -21,7 +21,7 @@
 namespace encode_orc {
 
 /**
- * @brief VBI line configuration
+ * @brief VBI line configuration (DEPRECATED - use pipeline.metadata.generators)
  */
 struct VBILineConfig {
     bool enabled = false;
@@ -31,7 +31,7 @@ struct VBILineConfig {
 };
 
 /**
- * @brief VBI configuration for a section
+ * @brief VBI configuration for a section (DEPRECATED - use pipeline.metadata.generators)
  */
 struct VBIConfig {
     bool enabled = false;
@@ -41,11 +41,54 @@ struct VBIConfig {
 };
 
 /**
- * @brief VITS configuration for a section
+ * @brief VITS configuration for a section (DEPRECATED - use pipeline.metadata.generators)
  */
 struct VITSConfig {
     bool enabled = false;
     // Future: custom line overrides
+};
+
+/**
+ * @brief Pipeline metadata generator configuration (NEW)
+ */
+struct PipelineGeneratorConfig {
+    std::string type;           // "biphase-vbi", "vitc", "vits-pal", "vits-ntsc", "color-burst"
+    bool enabled = true;        // Whether this generator is active
+    
+    // Configuration specific to generator type
+    
+    // For biphase-vbi:
+    std::vector<int32_t> lines;  // Lines to encode VBI data on (0-indexed)
+    std::string format = "picture-number";  // "picture-number" or "timecode"
+    
+    // For vitc:
+    int32_t start_frame_offset = 0;  // Frame number offset for timecode
+    
+    // For vits-pal / vits-ntsc:
+    struct VITSSignal {
+        int32_t line = 0;         // Line number (0-indexed)
+        int32_t field = 1;        // Field number (1 or 2)
+        std::string signal;       // "itu-composite", "uk-national", "itu-its", "multiburst"
+    };
+    std::vector<VITSSignal> vits_signals;
+    
+    // For color-burst:
+    // No additional config needed currently
+};
+
+/**
+ * @brief Pipeline metadata configuration (NEW)
+ */
+struct PipelineMetadataConfig {
+    std::vector<PipelineGeneratorConfig> generators;
+};
+
+/**
+ * @brief Pipeline configuration (NEW)
+ */
+struct PipelineConfig {
+    std::optional<PipelineMetadataConfig> metadata;
+    // Future: preprocessing, effects, etc.
 };
 
 /**
@@ -75,9 +118,9 @@ struct FilterConfig {
 };
 
 /**
- * @brief LaserDisc configuration for a section
+ * @brief Biphase VBI configuration for a section (LaserDisc metadata)
  */
-struct LaserDiscConfig {
+struct BiphaseVBIConfig {
     std::string disc_area = "programme-area";  // lead-in, programme-area, lead-out
     
     // CAV mode
@@ -139,7 +182,9 @@ struct VideoSection {
     std::optional<MP4FileSource> mp4_file_source;
     
     std::optional<FilterConfig> filters;  // Optional filter settings
-    std::optional<LaserDiscConfig> laserdisc;
+    
+    // Generator-specific metadata (matches pipeline generator types)
+    std::optional<BiphaseVBIConfig> biphase_vbi;  // For biphase-vbi generator (LaserDisc)
 };
 
 /**
@@ -164,22 +209,16 @@ struct OutputConfig {
 };
 
 /**
- * @brief Project-level LaserDisc settings
- */
-struct ProjectLaserDiscConfig {
-    std::string standard_name = "none";  // raw value from YAML
-    SourceVideoStandard standard = SourceVideoStandard::None;
-    std::string mode = "none";  // cav, clv, picture-numbers, none
-};
-
-/**
  * @brief Complete YAML project configuration
  */
 struct YAMLProjectConfig {
     std::string name;
     std::string description;
     OutputConfig output;
-    ProjectLaserDiscConfig laserdisc;
+    
+    // Pipeline configuration (Phase 4+) - REQUIRED
+    PipelineConfig pipeline;
+    
     std::vector<VideoSection> sections;
 };
 

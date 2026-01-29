@@ -673,20 +673,34 @@ auto encoder = VideoEncoderPipeline::Builder()
 
 ---
 
-### Phase 4: **Refactor Metadata Generators + New YAML Config** (Medium Risk)
-1. Extract `VITCGenerator`, `VITSGenerator`, `ColorBurstGenerator` from encoders
-2. Make them standalone classes implementing `MetadataGenerator`
-3. Update pipeline to apply generators sequentially
-4. **YAML Changes**: Implement new `pipeline.metadata.generators` configuration
-5. Remove old `laserdisc.standard` format entirely
+### Phase 4: **Refactor Metadata Generators + New YAML Config** (Medium Risk) - **IN PROGRESS**
+
+**Completed:**
+1. ✅ Created `MetadataGenerator` base class with common interface
+2. ✅ Extracted `ColorBurstMetadataGenerator` as standalone pipeline component
+3. ✅ Extracted `VITCMetadataGenerator` as standalone pipeline component
+4. ✅ Extracted `VITSMetadataGenerator` as standalone pipeline component
+5. ✅ Created `BiphaseVBIMetadataGenerator` wrapping existing VBIMetadataGenerator
+6. ✅ YAML parser supports `pipeline.metadata.generators` configuration
+7. ✅ All generator classes compile and build successfully
+
+**Remaining Work:**
+1. ❌ Integrate generators into VideoEncoder encode methods
+2. ❌ Replace hardcoded generator calls with pipeline-based approach
+3. ❌ Update main.cpp to instantiate generators from YAML config
+4. ❌ Remove old SourceVideoStandard enum approach
+5. ❌ Migrate all test projects to new YAML format
 
 **Note** It should be possible to apply the same generator to multiple lines
+
+**Current Status:** 
+Generator infrastructure complete and functional. The generators are standalone classes that can operate on Field objects. Integration into the encoding pipeline requires refactoring VideoEncoder to accept and apply a vector of generators instead of using the SourceVideoStandard enum to determine which metadata to generate.
 
 **Benefits**: Composable metadata pipeline, easy to add/remove metadata, explicit configuration, cleaner YAML structure
 
 **YAML Migration**:
-- Convert projects in test-projects/ to new format
-- Old format no longer supported - clean break
+- Test project created: `test-projects/phase4-pipeline-test.yaml`
+- Full migration of existing projects pending integration completion
 - Updated documentation with new YAML examples
 
 ---
@@ -705,12 +719,12 @@ auto encoder = VideoEncoderPipeline::Builder()
 
 ### Phase 6: **Add Field Effects Stage** (Future)
 1. Create `FieldEffect` abstract base
-2. Implement `NoiseGenerator`, `DropoutSimulator`
+2. Implement `NoiseGenerator`
 3. Integrate into pipeline **after** active video encoding
 4. **YAML Changes**: Add `pipeline.effects` configuration section
 5. Add `pipeline.preprocessing.filters` for explicit filter control
 
-**Benefits**: Realistic noise/dropout simulation for testing decoders, fully explicit pipeline configuration, complete composable pipeline
+The noise generator should add a configurable amount of noise to the video samples.
 
 ---
 

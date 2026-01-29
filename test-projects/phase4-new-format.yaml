@@ -1,0 +1,36 @@
+name: "Phase 4 Test - New Pipeline Format"
+description: "Testing new pipeline.metadata.generators configuration"
+
+output:
+  filename: "test-output/phase4-test.tbc"
+  format: "pal-composite"
+  mode: "combined"
+
+# NEW: Pipeline configuration
+pipeline:
+  metadata:
+    generators:
+      # Biphase VBI for LaserDisc
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [15, 16, 17]  # 0-indexed: lines 16, 17, 18
+      
+      # VITS test signals  
+      - type: "vits"
+        enabled: true
+      
+      # Color burst (always needed for composite)
+      - type: "color-burst"
+        enabled: true
+
+sections:
+  - name: "Test Section"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
+    
+    # Section-level VBI data (picture numbers for CAV mode)
+    biphase-vbi:
+      disc_area: "programme-area"
+      picture_start: 1
