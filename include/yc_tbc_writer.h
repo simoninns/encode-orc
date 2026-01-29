@@ -141,6 +141,38 @@ public:
     }
     
     /**
+     * @brief Write Y field with optional blanking line insertion
+     * @param field Y field data to write
+     * @param field_width Width of each line in samples
+     * @param blanking_value Value to use for blanking line samples
+     * @param insert_blanking_line Whether to insert a blanking line at the end
+     * @return true on success, false on failure
+     */
+    bool write_y_field_with_blanking(const Field& field, int32_t field_width,
+                                     uint16_t blanking_value, bool insert_blanking_line) {
+        if (!y_writer_ || !y_writer_->is_open()) {
+            return false;
+        }
+        return y_writer_->write_field_with_blanking(field, field_width, blanking_value, insert_blanking_line);
+    }
+    
+    /**
+     * @brief Write C field with optional blanking line insertion
+     * @param field C field data to write
+     * @param field_width Width of each line in samples
+     * @param blanking_value Value to use for blanking line samples
+     * @param insert_blanking_line Whether to insert a blanking line at the end
+     * @return true on success, false on failure
+     */
+    bool write_c_field_with_blanking(const Field& field, int32_t field_width,
+                                     uint16_t blanking_value, bool insert_blanking_line) {
+        if (!c_writer_ || !c_writer_->is_open()) {
+            return false;
+        }
+        return c_writer_->write_field_with_blanking(field, field_width, blanking_value, insert_blanking_line);
+    }
+    
+    /**
      * @brief Get Y writer
      */
     TBCWriter* y_writer() { return y_writer_.get(); }

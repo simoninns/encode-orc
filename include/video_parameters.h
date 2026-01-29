@@ -54,7 +54,9 @@ struct VideoParameters {
     
     // Field/frame dimensions
     int32_t field_width = 0;    // Width of each field in samples
-    int32_t field_height = 0;   // Height of each field in lines
+    int32_t field_height = 0;   // Height of each field in lines (for backward compatibility)
+    int32_t field1_height = 0;  // Height of first field in lines (odd field, interlaced)
+    int32_t field2_height = 0;  // Height of second field in lines (even field, interlaced)
     int32_t number_of_sequential_fields = 0;
     
     // Active video region (in samples)
@@ -84,7 +86,9 @@ struct VideoParameters {
         params.fSC = 4433618.75;  // PAL subcarrier frequency
         params.sample_rate = 17734475.0;  // Exact 4×fSC for ld-decode compatibility
         params.field_width = 1135;
-        params.field_height = 313;
+        params.field_height = 313;  // Default (for backward compatibility)
+        params.field1_height = 312; // First field (odd field): 312 lines
+        params.field2_height = 313; // Second field (even field): 313 lines
         params.colour_burst_start = 98;
         params.colour_burst_end = 138;
         params.active_video_start = 185;
@@ -114,7 +118,9 @@ struct VideoParameters {
         params.fSC = 315.0e6 / 88.0;  // NTSC subcarrier frequency
         params.sample_rate = 14318181.818181818;  // Exact 4×fSC for ld-decode compatibility
         params.field_width = 910;
-        params.field_height = 263;
+        params.field_height = 263;  // Default (for backward compatibility)
+        params.field1_height = 262; // First field (even field): 262 lines
+        params.field2_height = 263; // Second field (odd field): 263 lines
         params.colour_burst_start = 74;   // Measured from real NTSC TBCs
         params.colour_burst_end = 110;    // Measured from real NTSC TBCs
         params.active_video_start = 134;  // Measured from real NTSC TBCs

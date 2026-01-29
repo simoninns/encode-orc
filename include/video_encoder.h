@@ -71,7 +71,8 @@ public:
                             bool enable_chroma_filter = true,
                             bool enable_luma_filter = false,
                             bool separate_yc = false,
-                            bool yc_legacy = false);
+                            bool yc_legacy = false,
+                            bool standard_mode = false);
     
     /**
      * @brief Encode video with PNG image repeated for multiple frames
@@ -100,7 +101,8 @@ public:
                           bool enable_chroma_filter = true,
                           bool enable_luma_filter = false,
                           bool separate_yc = false,
-                          bool yc_legacy = false);
+                          bool yc_legacy = false,
+                          bool standard_mode = false);
     
     /**
      * @brief Encode video from MOV file frames
@@ -132,7 +134,8 @@ public:
                          bool enable_chroma_filter = true,
                          bool enable_luma_filter = false,
                          bool separate_yc = false,
-                         bool yc_legacy = false);
+                         bool yc_legacy = false,
+                         bool standard_mode = false);
     
     /**
      * @brief Encode video from MP4 file frames
@@ -164,7 +167,8 @@ public:
                          bool enable_chroma_filter = true,
                          bool enable_luma_filter = false,
                          bool separate_yc = false,
-                         bool yc_legacy = false);
+                         bool yc_legacy = false,
+                         bool standard_mode = false);
     
     /**
      * @brief Get error message from last operation

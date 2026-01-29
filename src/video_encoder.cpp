@@ -13,11 +13,15 @@
 #include "png_loader.h"
 #include "mov_loader.h"
 #include "mp4_loader.h"
+#include "writer.h"
+#include "tbc_writer.h"
+#include "standard_writer.h"
 #include "yc_tbc_writer.h"
 #include "logging.h"
 #include <iostream>
 #include <fstream>
 #include <cstdio>
+#include <memory>
 
 namespace encode_orc {
 
@@ -40,6 +44,19 @@ void VideoEncoder::clear_video_level_overrides() {
     s_white_16b_ire_override = std::nullopt;
 }
 
+/**
+ * @brief Helper function to create the appropriate writer for composite video output
+ * @param standard_mode If true, use StandardWriter; otherwise use TBCWriter
+ * @return Unique pointer to the created writer
+ */
+static std::unique_ptr<Writer> create_composite_writer(bool standard_mode) {
+    if (standard_mode) {
+        return std::make_unique<StandardWriter>();
+    } else {
+        return std::make_unique<TBCWriter>();
+    }
+}
+
 bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
                                        VideoSystem system,
                                        SourceVideoStandard source_standard,
@@ -51,7 +68,8 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
                                        bool enable_chroma_filter,
                                        bool enable_luma_filter,
                                        bool separate_yc,
-                                       bool yc_legacy) {
+                                       bool yc_legacy,
+                                       bool standard_mode) {
     try {
         // Get video parameters for the system
         VideoParameters params;
@@ -102,26 +120,40 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
         const bool include_vbi = standard_supports_vbi(source_standard, system);
         yuv422_loader.close();
         
-        // Open TBC file for writing
-        ENCODE_ORC_LOG_DEBUG("Writing TBC file: {}", output_filename);
+        // Open output file for writing
+        ENCODE_ORC_LOG_DEBUG("Writing output file: {}", output_filename);
         if (separate_yc) {
             ENCODE_ORC_LOG_DEBUG("  Mode: Separate Y/C");
+        } else if (standard_mode) {
+            ENCODE_ORC_LOG_DEBUG("  Mode: Standard (no padding, no metadata)");
+        } else {
+            ENCODE_ORC_LOG_DEBUG("  Mode: TBC (with padding)");
         }
         
-        std::ofstream tbc_file;
+        std::unique_ptr<Writer> writer;
         YCTBCWriter yc_writer(yc_legacy ? YCTBCWriter::NamingMode::LEGACY : YCTBCWriter::NamingMode::MODERN);
         
-        if (separate_yc) {
+        if (!separate_yc) {
+            // Composite mode: create appropriate writer based on mode
+            writer = create_composite_writer(standard_mode);
+            if (!writer->open(output_filename)) {
+                error_message_ = "Failed to open output file: " + output_filename;
+                return false;
+            }
+            
+            // For TBC mode, configure padding for field1
+            if (!standard_mode) {
+                auto* tbc = dynamic_cast<TBCWriter*>(writer.get());
+                if (tbc) {
+                    int32_t field_height_diff = params.field2_height - params.field1_height;
+                    tbc->set_field1_padding(params.field_width, params.blanking_16b_ire, field_height_diff);
+                }
+            }
+        } else {
             // For separate Y/C mode, use output_filename as base (don't strip .tbc)
             // The YCTBCWriter will add .tbcy and .tbcc extensions (or .tbc and _chroma.tbc for legacy)
             if (!yc_writer.open(output_filename)) {
                 error_message_ = "Failed to open Y/C output files: " + output_filename;
-                return false;
-            }
-        } else {
-            tbc_file.open(output_filename, std::ios::binary);
-            if (!tbc_file) {
-                error_message_ = "Failed to open output file: " + output_filename;
                 return false;
             }
         }
@@ -252,9 +284,15 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
                                                  vbi_data);
                 }
                 
-                // Write Y and C fields
-                yc_writer.write_y_field(y_field1);
-                yc_writer.write_c_field(c_field1);
+                // Write Y and C fields with padding for field 1
+                uint16_t blanking_value = static_cast<uint16_t>(params.blanking_16b_ire);
+                
+                // Field 1 needs padding to match field 2 size
+                int32_t padding_lines = params.field2_height - params.field1_height;
+                yc_writer.write_y_field_with_blanking(y_field1, params.field_width, blanking_value, padding_lines > 0);
+                yc_writer.write_c_field_with_blanking(c_field1, params.field_width, 32768, padding_lines > 0);
+                
+                // Field 2 writes as-is (no padding needed)
                 yc_writer.write_y_field(y_field2);
                 yc_writer.write_c_field(c_field2);
                 
@@ -274,15 +312,10 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
                                                              vbi_data);
                 }
                 
-                // Write field 1
-                const Field& field1 = encoded_frame.field1();
-                tbc_file.write(reinterpret_cast<const char*>(field1.data().data()),
-                              field1.data().size() * sizeof(uint16_t));
-                
-                // Write field 2
-                const Field& field2 = encoded_frame.field2();
-                tbc_file.write(reinterpret_cast<const char*>(field2.data().data()),
-                              field2.data().size() * sizeof(uint16_t));
+                // Write fields using the Writer interface
+                // StandardWriter writes as-is, TBCWriter applies padding to field1
+                writer->write_field(encoded_frame.field1());
+                writer->write_field(encoded_frame.field2());
             }
             
             if ((frame_num + 1) % 10 == 0 || frame_num == num_frames - 1) {
@@ -292,27 +325,29 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
         
         if (separate_yc) {
             yc_writer.close();
-        } else {
-            tbc_file.close();
+        } else if (writer) {
+            writer->close();
         }
         
-        // Write metadata
-        std::string metadata_filename = output_filename + ".db";
-        ENCODE_ORC_LOG_DEBUG("Writing metadata: {}", metadata_filename);
+        // Write metadata (skip in standard mode)
+        if (!standard_mode) {
+            std::string metadata_filename = output_filename + ".db";
+            ENCODE_ORC_LOG_DEBUG("Writing metadata: {}", metadata_filename);
+            
+            MetadataWriter metadata_writer;
+            if (!metadata_writer.open(metadata_filename)) {
+                error_message_ = "Failed to open metadata database: " + metadata_writer.get_error();
+                return false;
+            }
         
-        MetadataWriter metadata_writer;
-        if (!metadata_writer.open(metadata_filename)) {
-            error_message_ = "Failed to open metadata database: " + metadata_writer.get_error();
-            return false;
+            if (!metadata_writer.write_metadata(metadata)) {
+                error_message_ = "Failed to write metadata: " + metadata_writer.get_error();
+                return false;
+            }
+            
+            ENCODE_ORC_LOG_DEBUG("  {}", output_filename);
+            ENCODE_ORC_LOG_DEBUG("  {}.db", output_filename);
         }
-        
-        if (!metadata_writer.write_metadata(metadata)) {
-            error_message_ = "Failed to write metadata: " + metadata_writer.get_error();
-            return false;
-        }
-        
-        ENCODE_ORC_LOG_DEBUG("  {}", output_filename);
-        ENCODE_ORC_LOG_DEBUG("  {}.db", output_filename);
         
         return true;
         
@@ -333,7 +368,8 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
                                     bool enable_chroma_filter,
                                     bool enable_luma_filter,
                                     bool separate_yc,
-                                    bool yc_legacy) {
+                                    bool yc_legacy,
+                                    bool standard_mode) {
     try {
         VideoParameters params = (system == VideoSystem::PAL)
                                  ? VideoParameters::create_pal_composite()
@@ -382,18 +418,28 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
         }
         png_loader.close();
 
-        std::ofstream tbc_file;
+        std::unique_ptr<Writer> writer;
         YCTBCWriter yc_writer(yc_legacy ? YCTBCWriter::NamingMode::LEGACY : YCTBCWriter::NamingMode::MODERN);
 
-        if (separate_yc) {
-            if (!yc_writer.open(output_filename)) {
-                error_message_ = "Failed to open Y/C output files: " + output_filename;
+        if (!separate_yc) {
+            // Composite mode: create appropriate writer based on mode
+            writer = create_composite_writer(standard_mode);
+            if (!writer->open(output_filename)) {
+                error_message_ = "Failed to open output file: " + output_filename;
                 return false;
             }
-        } else {
-            tbc_file.open(output_filename, std::ios::binary);
-            if (!tbc_file) {
-                error_message_ = "Failed to open output file: " + output_filename;
+            
+            // For TBC mode, configure padding for field1
+            if (!standard_mode) {
+                auto* tbc = dynamic_cast<TBCWriter*>(writer.get());
+                if (tbc) {
+                    int32_t field_height_diff = params.field2_height - params.field1_height;
+                    tbc->set_field1_padding(params.field_width, params.blanking_16b_ire, field_height_diff);
+                }
+            }
+        } else if (separate_yc) {
+            if (!yc_writer.open(output_filename)) {
+                error_message_ = "Failed to open Y/C output files: " + output_filename;
                 return false;
             }
         }
@@ -416,8 +462,10 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
                                                  y_field1, c_field1, y_field2, c_field2);
                 }
 
-                yc_writer.write_y_field(y_field1);
-                yc_writer.write_c_field(c_field1);
+                uint16_t blanking_value = static_cast<uint16_t>(params.blanking_16b_ire);
+                int32_t padding_lines = params.field2_height - params.field1_height;
+                yc_writer.write_y_field_with_blanking(y_field1, params.field_width, blanking_value, padding_lines > 0);
+                yc_writer.write_c_field_with_blanking(c_field1, params.field_width, 32768, padding_lines > 0);
                 yc_writer.write_y_field(y_field2);
                 yc_writer.write_c_field(c_field2);
             } else {
@@ -432,12 +480,9 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
                     encoded_frame = ntsc_encoder.encode_frame(image_frame, field_number);
                 }
 
-                const Field& field1 = encoded_frame.field1();
-                tbc_file.write(reinterpret_cast<const char*>(field1.data().data()),
-                               field1.data().size() * sizeof(uint16_t));
-                const Field& field2 = encoded_frame.field2();
-                tbc_file.write(reinterpret_cast<const char*>(field2.data().data()),
-                               field2.data().size() * sizeof(uint16_t));
+                // Write fields using the Writer interface
+                writer->write_field(encoded_frame.field1());
+                writer->write_field(encoded_frame.field2());
             }
 
             if ((frame_num + 1) % 10 == 0 || frame_num == num_frames - 1) {
@@ -447,10 +492,11 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
 
         if (separate_yc) {
             yc_writer.close();
-        } else {
-            tbc_file.close();
+        } else if (writer) {
+            writer->close();
         }
-
+        
+        // Create and initialize metadata
         CaptureMetadata metadata;
         metadata.initialize(system, total_fields);
         metadata.video_params = params;
@@ -566,7 +612,8 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
                                    bool enable_chroma_filter,
                                    bool enable_luma_filter,
                                    bool separate_yc,
-                                   bool yc_legacy) {
+                                   bool yc_legacy,
+                                   bool standard_mode) {
     try {
         // Get video parameters for the system
         VideoParameters params;
@@ -626,19 +673,29 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
         ENCODE_ORC_LOG_DEBUG("Loaded {} frames from MOV file", actual_num_frames);
         ENCODE_ORC_LOG_DEBUG("Encoding {} frames ({} fields)", num_frames, num_frames * 2);
         
-        // Open TBC file for writing
-        std::ofstream tbc_file;
+        // Open output file for writing
+        std::unique_ptr<Writer> writer;
         YCTBCWriter yc_writer(yc_legacy ? YCTBCWriter::NamingMode::LEGACY : YCTBCWriter::NamingMode::MODERN);
         
-        if (separate_yc) {
-            if (!yc_writer.open(output_filename)) {
-                error_message_ = "Failed to open Y/C output files: " + output_filename;
+        if (!separate_yc) {
+            // Composite mode: create appropriate writer based on mode
+            writer = create_composite_writer(standard_mode);
+            if (!writer->open(output_filename)) {
+                error_message_ = "Failed to open output file: " + output_filename;
                 return false;
             }
-        } else {
-            tbc_file.open(output_filename, std::ios::binary);
-            if (!tbc_file) {
-                error_message_ = "Failed to open output file: " + output_filename;
+            
+            // For TBC mode, configure padding for field1
+            if (!standard_mode) {
+                auto* tbc = dynamic_cast<TBCWriter*>(writer.get());
+                if (tbc) {
+                    int32_t field_height_diff = params.field2_height - params.field1_height;
+                    tbc->set_field1_padding(params.field_width, params.blanking_16b_ire, field_height_diff);
+                }
+            }
+        } else if (separate_yc) {
+            if (!yc_writer.open(output_filename)) {
+                error_message_ = "Failed to open Y/C output files: " + output_filename;
                 return false;
             }
         }
@@ -685,25 +742,24 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
                     frame = ntsc_encoder.encode_frame(frames[frame_num], field_number, nullptr);
                 }
                 
-                // Write fields to TBC file
-                const Field& field1 = frame.field1();
-                tbc_file.write(reinterpret_cast<const char*>(field1.data().data()),
-                              field1.data().size() * sizeof(uint16_t));
-                
-                const Field& field2 = frame.field2();
-                tbc_file.write(reinterpret_cast<const char*>(field2.data().data()),
-                              field2.data().size() * sizeof(uint16_t));
+                // Write fields using the Writer interface
+                writer->write_field(frame.field1());
+                writer->write_field(frame.field2());
             }
         }
         
         // Close files
         if (separate_yc) {
             yc_writer.close();
-        } else if (tbc_file.is_open()) {
-            tbc_file.close();
+        } else if (writer) {
+            writer->close();
         }
         
-        // Create and initialize metadata
+        // Create and initialize metadata (skip in standard mode)
+        if (standard_mode) {
+            return true;
+        }
+        
         int32_t total_fields = num_frames * 2;
         CaptureMetadata metadata;
         metadata.initialize(system, total_fields);
@@ -829,7 +885,8 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
                                    bool enable_chroma_filter,
                                    bool enable_luma_filter,
                                    bool separate_yc,
-                                   bool yc_legacy) {
+                                   bool yc_legacy,
+                                   bool standard_mode) {
     try {
         // Get video parameters for the system
         VideoParameters params;
@@ -889,19 +946,29 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
         ENCODE_ORC_LOG_DEBUG("Loaded {} frames from MP4 file", actual_num_frames);
         ENCODE_ORC_LOG_DEBUG("Encoding {} frames ({} fields)", num_frames, num_frames * 2);
         
-        // Open TBC file for writing
-        std::ofstream tbc_file;
+        // Open output file for writing
+        std::unique_ptr<Writer> writer;
         YCTBCWriter yc_writer(yc_legacy ? YCTBCWriter::NamingMode::LEGACY : YCTBCWriter::NamingMode::MODERN);
         
-        if (separate_yc) {
-            if (!yc_writer.open(output_filename)) {
-                error_message_ = "Failed to open Y/C output files: " + output_filename;
+        if (!separate_yc) {
+            // Composite mode: create appropriate writer based on mode
+            writer = create_composite_writer(standard_mode);
+            if (!writer->open(output_filename)) {
+                error_message_ = "Failed to open output file: " + output_filename;
                 return false;
             }
-        } else {
-            tbc_file.open(output_filename, std::ios::binary);
-            if (!tbc_file) {
-                error_message_ = "Failed to open output file: " + output_filename;
+            
+            // For TBC mode, configure padding for field1
+            if (!standard_mode) {
+                auto* tbc = dynamic_cast<TBCWriter*>(writer.get());
+                if (tbc) {
+                    int32_t field_height_diff = params.field2_height - params.field1_height;
+                    tbc->set_field1_padding(params.field_width, params.blanking_16b_ire, field_height_diff);
+                }
+            }
+        } else if (separate_yc) {
+            if (!yc_writer.open(output_filename)) {
+                error_message_ = "Failed to open Y/C output files: " + output_filename;
                 return false;
             }
         }
@@ -930,9 +997,11 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
                                                  y_field1, c_field1, y_field2, c_field2, nullptr);
                 }
                 
-                // Write Y and C fields
-                yc_writer.write_y_field(y_field1);
-                yc_writer.write_c_field(c_field1);
+                // Write Y and C fields with padding for field 1
+                uint16_t blanking_value = static_cast<uint16_t>(params.blanking_16b_ire);
+                int32_t padding_lines = params.field2_height - params.field1_height;
+                yc_writer.write_y_field_with_blanking(y_field1, params.field_width, blanking_value, padding_lines > 0);
+                yc_writer.write_c_field_with_blanking(c_field1, params.field_width, 32768, padding_lines > 0);
                 yc_writer.write_y_field(y_field2);
                 yc_writer.write_c_field(c_field2);
             } else {
@@ -948,25 +1017,24 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
                     frame = ntsc_encoder.encode_frame(frames[frame_num], field_number, nullptr);
                 }
                 
-                // Write fields to TBC file
-                const Field& field1 = frame.field1();
-                tbc_file.write(reinterpret_cast<const char*>(field1.data().data()),
-                              field1.data().size() * sizeof(uint16_t));
-                
-                const Field& field2 = frame.field2();
-                tbc_file.write(reinterpret_cast<const char*>(field2.data().data()),
-                              field2.data().size() * sizeof(uint16_t));
+                // Write fields using the Writer interface
+                writer->write_field(frame.field1());
+                writer->write_field(frame.field2());
             }
         }
         
         // Close files
         if (separate_yc) {
             yc_writer.close();
-        } else if (tbc_file.is_open()) {
-            tbc_file.close();
+        } else if (writer) {
+            writer->close();
         }
         
-        // Create and initialize metadata
+        // Create and initialize metadata (skip in standard mode)
+        if (standard_mode) {
+            return true;
+        }
+        
         int32_t total_fields = num_frames * 2;
         CaptureMetadata metadata;
         metadata.initialize(system, total_fields);

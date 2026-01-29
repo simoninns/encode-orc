@@ -35,6 +35,7 @@ output:
   filename: "output.tbc"
   format: "pal-composite"  # pal-composite, ntsc-composite, pal-yc, ntsc-yc
   mode: "combined"  # Optional: combined (default), separate-yc, separate-yc-legacy
+  writer: "tbc"  # Optional: tbc (default), standard
   metadata_decoder: "encode-orc"  # Optional: decoder string in metadata (default: "encode-orc")
   
   # Optional: Override video signal levels (16-bit IRE scale)
@@ -50,6 +51,10 @@ output:
 # - <basename>.tbcc : chroma
 # The base name comes from output.filename without extension.
 # Note: format can still be pal-composite/ntsc-composite; mode controls output splitting.
+
+# Writer modes:
+# - tbc: Standard TBC format with padding and metadata support (default)
+# - standard: Raw field data without padding or metadata (for use with external video signal tools like hackdac)
   
 # LaserDisc / IEC project settings (applies to all sections)
 laserdisc:

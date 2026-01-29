@@ -1,0 +1,27 @@
+name: "PAL Standard Writer Test"
+description: "PAL composite encoding with standard writer (no padding, no metadata)"
+
+output:
+  filename: "test-output/pal-standard-writer.hackdac"
+  format: "pal-composite"
+  writer: "standard"
+
+laserdisc:
+  standard: "iec60857-1986"
+  mode: "cav"
+
+sections:
+  - name: "Chapter 1"
+    duration: 25
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    laserdisc:
+      picture_start: 1
+      chapter: 1
+    vbi:
+      vitc:
+        enabled: true
+        start_time: "00:00:00:00"
+      vits:
+        enabled: true

@@ -41,6 +41,9 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
             if (output["mode"]) {
                 config.output.mode = output["mode"].as<std::string>();
             }
+            if (output["writer"]) {
+                config.output.writer = output["writer"].as<std::string>();
+            }
             if (output["metadata_decoder"]) {
                 config.output.metadata_decoder = output["metadata_decoder"].as<std::string>();
             }
@@ -268,6 +271,11 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
         config.output.mode != "separate-yc" &&
         config.output.mode != "separate-yc-legacy") {
         error_message = "Invalid output mode: " + config.output.mode + " (must be 'combined', 'separate-yc', or 'separate-yc-legacy')";
+        return false;
+    }
+    
+    if (config.output.writer != "tbc" && config.output.writer != "standard") {
+        error_message = "Invalid output writer: " + config.output.writer + " (must be 'tbc' or 'standard')";
         return false;
     }
     

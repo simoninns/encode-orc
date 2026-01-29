@@ -158,6 +158,7 @@ struct OutputConfig {
     std::string filename;
     std::string format;  // pal-composite, ntsc-composite, pal-yc, ntsc-yc
     std::string mode = "combined";  // combined (default), separate-yc
+    std::string writer = "tbc";  // tbc (default), standard
     std::string metadata_decoder = "encode-orc";  // decoder string in metadata (default: encode-orc)
     std::optional<VideoLevelsConfig> video_levels;  // Optional: override video signal levels
 };

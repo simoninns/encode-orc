@@ -108,7 +108,9 @@ Field PALEncoder::encode_field(const FrameBuffer& frame_buffer,
                                int32_t field_number, 
                                bool is_first_field,
                                const VBIData* vbi_data) {
-    Field field(params_.field_width, params_.field_height);
+    // Use correct field height: field1 has 312 lines, field2 has 313 lines
+    int32_t field_height = is_first_field ? params_.field1_height : params_.field2_height;
+    Field field(params_.field_width, field_height);
 
     // Verify input format
     if (frame_buffer.format() != FrameBuffer::Format::YUV444P16) {
@@ -130,8 +132,8 @@ Field PALEncoder::encode_field(const FrameBuffer& frame_buffer,
     int32_t frame_width = frame_buffer.width();
     int32_t frame_height = frame_buffer.height();
     
-    // PAL has 313 lines per field
-    for (int32_t line = 0; line < LINES_PER_FIELD; ++line) {
+    // PAL has field1: 312 lines, field2: 313 lines (correct standard format)
+    for (int32_t line = 0; line < field_height; ++line) {
         uint16_t* line_buffer = field.line_data(line);
         
         // Lines 1-5: Vertical sync (field sync)
@@ -532,11 +534,11 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
                                  Field& y_field1, Field& c_field1,
                                  Field& y_field2, Field& c_field2,
                                  const VBIData* vbi_data) {
-    // Initialize fields
-    y_field1.resize(params_.field_width, params_.field_height);
-    c_field1.resize(params_.field_width, params_.field_height);
-    y_field2.resize(params_.field_width, params_.field_height);
-    c_field2.resize(params_.field_width, params_.field_height);
+    // Initialize fields with correct heights: field1=312, field2=313 for PAL
+    y_field1.resize(params_.field_width, params_.field1_height);
+    c_field1.resize(params_.field_width, params_.field1_height);
+    y_field2.resize(params_.field_width, params_.field2_height);
+    c_field2.resize(params_.field_width, params_.field2_height);
     
     // For separate Y/C output, we encode Y and C directly from source YUV data:
     // Y field: luma component with sync + blanking (no chroma modulation)
@@ -568,7 +570,7 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
     // to avoid complexity with line-by-line processing)
     
     // Process field 1 (even lines from source)
-    for (int32_t line = 0; line < params_.field_height; ++line) {
+    for (int32_t line = 0; line < params_.field1_height; ++line) {
         uint16_t* y_line = y_field1.line_data(line);
         uint16_t* c_line = c_field1.line_data(line);
         
@@ -710,7 +712,7 @@ void PALEncoder::encode_frame_yc(const FrameBuffer& frame_buffer, int32_t field_
     }
     
     // Process field 2 (odd lines from source)
-    for (int32_t line = 0; line < params_.field_height; ++line) {
+    for (int32_t line = 0; line < params_.field2_height; ++line) {
         uint16_t* y_line = y_field2.line_data(line);
         uint16_t* c_line = c_field2.line_data(line);
         

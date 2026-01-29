@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
         }
     }
     
-    // Parse command-line arguments to extract logging options
+    // Parse command-line arguments to extract logging options and other flags
     std::string log_level = "info";
     std::string log_file = "";
     for (int i = 1; i < argc; ++i) {
@@ -334,7 +334,7 @@ int main(int argc, char* argv[]) {
                                                 section_frames,
                                                 picture_start, chapter, timecode_start,
                                                 enable_chroma_filter, enable_luma_filter,
-                                                is_separate_yc, is_yc_legacy);
+                                                is_separate_yc, is_yc_legacy, (config.output.writer == "standard"));
             } else if (section.png_image_source) {
                 std::string png_file = section.png_image_source->file;
                 section_frames = section.duration.value();
@@ -343,7 +343,7 @@ int main(int argc, char* argv[]) {
                                               section_frames,
                                               picture_start, chapter, timecode_start,
                                               enable_chroma_filter, enable_luma_filter,
-                                              is_separate_yc, is_yc_legacy);
+                                              is_separate_yc, is_yc_legacy, (config.output.writer == "standard"));
             } else if (section.mov_file_source) {
                 std::string mov_file = section.mov_file_source->file;
                 int32_t start_frame = section.mov_file_source->start_frame.value_or(0);
@@ -354,7 +354,7 @@ int main(int argc, char* argv[]) {
                                             section_frames, start_frame,
                                             picture_start, chapter, timecode_start,
                                             enable_chroma_filter, enable_luma_filter,
-                                            is_separate_yc, is_yc_legacy);
+                                            is_separate_yc, is_yc_legacy, (config.output.writer == "standard"));
             } else if (section.mp4_file_source) {
                 std::string mp4_file = section.mp4_file_source->file;
                 int32_t start_frame = section.mp4_file_source->start_frame.value_or(0);
@@ -365,7 +365,7 @@ int main(int argc, char* argv[]) {
                                             section_frames, start_frame,
                                             picture_start, chapter, timecode_start,
                                             enable_chroma_filter, enable_luma_filter,
-                                            is_separate_yc, is_yc_legacy);
+                                            is_separate_yc, is_yc_legacy, (config.output.writer == "standard"));
             }
             if (!ok) {
                 ENCODE_ORC_LOG_ERROR("Encoding error: {}", encoder.get_error());
@@ -467,13 +467,15 @@ int main(int argc, char* argv[]) {
         tbc_file.close();
     }
     
-    // Generate metadata for entire file
-    std::string meta_error;
-    std::string metadata_filename = config.output.filename + ".db";
-    
-    if (!generate_metadata(config, system, total_frames, metadata_filename, meta_error)) {
-        ENCODE_ORC_LOG_ERROR("Metadata generation error: {}", meta_error);
-        return 1;
+    // Generate metadata for entire file (only for TBC writer, not standard writer)
+    if (config.output.writer != "standard") {
+        std::string meta_error;
+        std::string metadata_filename = config.output.filename + ".db";
+        
+        if (!generate_metadata(config, system, total_frames, metadata_filename, meta_error)) {
+            ENCODE_ORC_LOG_ERROR("Metadata generation error: {}", meta_error);
+            return 1;
+        }
     }
     
     ENCODE_ORC_LOG_INFO("Successfully generated {} frames", total_frames);
