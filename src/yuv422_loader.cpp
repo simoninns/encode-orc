@@ -20,6 +20,15 @@ YUV422Loader::YUV422Loader()
     : filename_(""), frame_cached_(false) {
 }
 
+bool YUV422Loader::open(const std::string& path, std::string& error) {
+    // For YUV422, we need dimensions provided separately
+    // This simple overload is for API consistency only
+    // Users should call the 3-parameter version with width/height
+    (void)path;  // Mark as intentionally unused
+    error = "YUV422Loader requires explicit dimensions - use open(path, width, height)";
+    return false;
+}
+
 bool YUV422Loader::open(const std::string& filename, int32_t expected_width, int32_t expected_height) {
     // Validate width is even (required for 4:2:2 sampling)
     if (expected_width % 2 != 0) {
@@ -34,7 +43,6 @@ bool YUV422Loader::open(const std::string& filename, int32_t expected_width, int
     filename_ = filename;
     width_ = expected_width;
     height_ = expected_height;
-    frame_count_ = 1;  // Single frame
     
     // Validate file size
     std::ifstream file(filename, std::ios::binary);
@@ -55,61 +63,52 @@ bool YUV422Loader::open(const std::string& filename, int32_t expected_width, int
     return true;
 }
 
-bool YUV422Loader::get_dimensions(int32_t& width, int32_t& height) const {
-    if (!is_open_) {
-        return false;
-    }
-    width = width_;
-    height = height_;
-    return true;
-}
-
-int32_t YUV422Loader::get_frame_count() const {
-    return 1;
-}
-
 bool YUV422Loader::is_open() const {
     return is_open_;
 }
 
-bool YUV422Loader::validate_format(VideoSystem /* system */, std::string& error_message) {
-    // YUV422 is a single frame, no frame rate
-    error_message = "YUV422 format does not have frame rate";
-    return false;
+VideoMetadata YUV422Loader::get_metadata() const {
+    VideoMetadata metadata;
+    metadata.width = width_;
+    metadata.height = height_;
+    metadata.frame_count = 1;
+    metadata.frame_rate = 0.0;  // Single image, no frame rate
+    metadata.color_space = VideoColorSpace::YUV422;
+    metadata.bit_depth = VideoBitDepth::BIT_10;
+    return metadata;
 }
 
-bool YUV422Loader::load_frame(int32_t frame_index, FrameBuffer& frame) {
+bool YUV422Loader::load_frame(int32_t frame_index, FrameBuffer& output, std::string& error) {
     std::vector<FrameBuffer> frames;
-    std::string error_message;
-    if (!load_frames(frame_index, frame_index, frames, error_message)) {
+    if (!load_frames(frame_index, 1, frames, error)) {
         return false;
     }
     
     if (frames.empty()) {
+        error = "No frames loaded";
         return false;
     }
     
-    frame = std::move(frames[0]);
+    output = std::move(frames[0]);
     return true;
 }
 
-bool YUV422Loader::load_frames(int32_t start_frame, int32_t end_frame, 
-                                std::vector<FrameBuffer>& frames,
-                                std::string& error_message) {
+bool YUV422Loader::load_frames(int32_t start, int32_t count, 
+                                std::vector<FrameBuffer>& output, std::string& error) {
     if (!is_open_) {
-        error_message = "YUV422 loader is not open";
+        error = "YUV422 loader is not open";
         return false;
     }
     
     // Only frame 0 is valid
-    if (start_frame != 0 || end_frame != 0) {
-        error_message = "YUV422 loader only supports frame 0";
+    if (start != 0 || count != 1) {
+        error = "YUV422 loader only supports single frame 0";
         return false;
     }
     
     // Return cached frame if already loaded
     if (frame_cached_) {
-        frames.push_back(cached_frame_);
+        output.push_back(cached_frame_);
         return true;
     }
     
@@ -117,7 +116,7 @@ bool YUV422Loader::load_frames(int32_t start_frame, int32_t end_frame,
         // Open and read raw YUYV data
         std::ifstream file(filename_, std::ios::binary);
         if (!file) {
-            error_message = "Cannot open YUV422 file: " + filename_;
+            error = "Cannot open YUV422 file: " + filename_;
             return false;
         }
         
@@ -189,11 +188,11 @@ bool YUV422Loader::load_frames(int32_t start_frame, int32_t end_frame,
         }
         
         frame_cached_ = true;
-        frames.push_back(cached_frame_);
+        output.push_back(cached_frame_);
         return true;
         
     } catch (const std::exception& e) {
-        error_message = std::string("Error loading YUV422 file: ") + e.what();
+        error = std::string("Error loading YUV422 file: ") + e.what();
         return false;
     }
 }

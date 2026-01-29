@@ -41,17 +41,52 @@ bool MOVLoader::open(const std::string& filename, std::string& error_message) {
     return true;
 }
 
-bool MOVLoader::get_dimensions(int32_t& width, int32_t& height) const {
-    if (!is_open_) {
+bool MOVLoader::is_open() const {
+    return is_open_;
+}
+
+VideoMetadata MOVLoader::get_metadata() const {
+    VideoMetadata metadata;
+    metadata.width = width_;
+    metadata.height = height_;
+    metadata.frame_count = frame_count_;
+    metadata.frame_rate = frame_rate_;
+    metadata.color_space = VideoColorSpace::YUV422;
+    metadata.bit_depth = VideoBitDepth::BIT_10;
+    return metadata;
+}
+
+bool MOVLoader::load_frame(int32_t frame_index, FrameBuffer& output, std::string& error) {
+    std::vector<FrameBuffer> frames;
+    if (!load_frames(frame_index, 1, frames, error)) {
         return false;
     }
-    width = width_;
-    height = height_;
+    
+    if (frames.empty()) {
+        error = "No frames loaded";
+        return false;
+    }
+    
+    output = std::move(frames[0]);
     return true;
 }
 
-int32_t MOVLoader::get_frame_count() const {
-    return frame_count_;
+bool MOVLoader::load_frames(int32_t start, int32_t count, 
+                             std::vector<FrameBuffer>& output, std::string& error) {
+    // Use default video parameters for loading
+    VideoParameters default_params;
+    default_params.system = VideoSystem::PAL;  // Will be validated by caller if needed
+    
+    return load_frames(start, count, width_, height_, default_params, output, error);
+}
+
+void MOVLoader::close() {
+    is_open_ = false;
+    filename_ = "";
+    width_ = 0;
+    height_ = 0;
+    frame_count_ = 0;
+    frame_rate_ = 0.0;
 }
 
 bool MOVLoader::probe_video_info(std::string& error_message) {
@@ -291,23 +326,27 @@ bool MOVLoader::load_frames(int32_t start_frame,
     }
     
     // Validate dimensions
-    std::string dim_error;
-    if (!validate_dimensions(expected_width, expected_height, dim_error)) {
-        error_message = dim_error;
+    if (expected_width != width_ || expected_height != height_) {
+        error_message = "MOV dimensions (" + std::to_string(width_) + "x" + std::to_string(height_) +
+                       ") do not match expected (" + std::to_string(expected_width) + "x" + 
+                       std::to_string(expected_height) + ")";
         return false;
     }
     
     // Validate frame rate matches video system
-    std::string format_error;
-    if (!validate_format(params.system, format_error)) {
-        error_message = format_error;
+    if (!VideoLoaderUtils::validate_frame_rate(frame_rate_, params.system, 0.1)) {
+        error_message = "MOV frame rate mismatch: expected " + 
+                       std::to_string(VideoLoaderUtils::get_expected_frame_rate(params.system)) + 
+                       " fps for " + (params.system == VideoSystem::PAL ? "PAL" : "NTSC") +
+                       ", got " + std::to_string(frame_rate_) + " fps";
         return false;
     }
     
     // Validate frame range
-    std::string range_error;
-    if (!validate_frame_range(start_frame, num_frames, range_error)) {
-        error_message = range_error;
+    if (start_frame < 0 || num_frames <= 0 || start_frame + num_frames > frame_count_) {
+        error_message = "Frame range out of bounds: start=" + std::to_string(start_frame) +
+                       ", count=" + std::to_string(num_frames) +
+                       ", total=" + std::to_string(frame_count_);
         return false;
     }
     
@@ -410,27 +449,5 @@ bool MOVLoader::load_frames(int32_t start_frame,
     
     return true;
 }
-
-void MOVLoader::close() {
-    is_open_ = false;
-    filename_.clear();
-    width_ = 0;
-    height_ = 0;
-    frame_count_ = -1;
-    frame_rate_ = 0.0;
-}
-
-bool MOVLoader::validate_format(VideoSystem system, std::string& error_message) {
-    std::string format_error;
-    if (!VideoLoaderUtils::validate_frame_rate(frame_rate_, system, 0.1)) {
-        error_message = "MOV frame rate mismatch: expected " + 
-                       std::to_string(VideoLoaderUtils::get_expected_frame_rate(system)) + 
-                       " fps for " + (system == VideoSystem::PAL ? "PAL" : "NTSC") +
-                       ", got " + std::to_string(frame_rate_) + " fps";
-        return false;
-    }
-    return true;
-}
-
 
 } // namespace encode_orc

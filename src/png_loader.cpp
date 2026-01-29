@@ -66,8 +66,6 @@ bool PNGLoader::open(const std::string& filename, std::string& error_message) {
         
         width_ = static_cast<int32_t>(w);
         height_ = static_cast<int32_t>(h);
-        frame_count_ = 1;
-        frame_rate_ = 0.0;
         is_open_ = true;
         frame_loaded_ = false;
         
@@ -78,17 +76,67 @@ bool PNGLoader::open(const std::string& filename, std::string& error_message) {
     }
 }
 
-bool PNGLoader::get_dimensions(int32_t& width, int32_t& height) const {
+bool PNGLoader::is_open() const {
+    return is_open_;
+}
+
+VideoMetadata PNGLoader::get_metadata() const {
+    VideoMetadata metadata;
+    metadata.width = width_;
+    metadata.height = height_;
+    metadata.frame_count = 1;
+    metadata.frame_rate = 0.0;  // Single image, no frame rate
+    metadata.color_space = VideoColorSpace::RGB;
+    metadata.bit_depth = VideoBitDepth::BIT_8;
+    return metadata;
+}
+
+bool PNGLoader::load_frame(int32_t frame_index, FrameBuffer& output, std::string& error) {
     if (!is_open_) {
+        error = "PNG loader is not open";
         return false;
     }
-    width = width_;
-    height = height_;
+    
+    if (frame_index != 0) {
+        error = "PNG loader only supports frame 0";
+        return false;
+    }
+    
+    // Use default video parameters for loading without validation
+    VideoParameters default_params;
+    default_params.system = VideoSystem::PAL;  // Default, doesn't affect RGB loading
+    
+    return load_frame(frame_index, width_, height_, default_params, output, error);
+}
+
+bool PNGLoader::load_frames(int32_t start, int32_t count, 
+                             std::vector<FrameBuffer>& output, std::string& error) {
+    if (!is_open_) {
+        error = "PNG loader is not open";
+        return false;
+    }
+    
+    if (start != 0 || count != 1) {
+        error = "PNG loader only supports single frame 0";
+        return false;
+    }
+    
+    FrameBuffer frame;
+    if (!load_frame(start, frame, error)) {
+        return false;
+    }
+    
+    output.push_back(std::move(frame));
     return true;
 }
 
-int32_t PNGLoader::get_frame_count() const {
-    return 1;
+void PNGLoader::close() {
+    is_open_ = false;
+    filename_ = "";
+    cached_frame_ = FrameBuffer();
+    frame_loaded_ = false;
+    width_ = 0;
+    height_ = 0;
 }
 
 bool PNGLoader::load_frame(int32_t frame_number,
@@ -97,27 +145,6 @@ bool PNGLoader::load_frame(int32_t frame_number,
                            const VideoParameters& params,
                            FrameBuffer& frame,
                            std::string& error_message) {
-    std::vector<FrameBuffer> frames;
-    if (!load_frames(frame_number, 1, expected_width, expected_height, params, frames, error_message)) {
-        return false;
-    }
-    
-    if (frames.empty()) {
-        error_message = "No frame was loaded";
-        return false;
-    }
-    
-    frame = std::move(frames[0]);
-    return true;
-}
-
-bool PNGLoader::load_frames(int32_t start_frame,
-                            int32_t num_frames,
-                            int32_t expected_width,
-                            int32_t expected_height,
-                            const VideoParameters& params,
-                            std::vector<FrameBuffer>& frames,
-                            std::string& error_message) {
     (void)params; // PNG images are single frames without frame-rate constraints
     if (!is_open_) {
         error_message = "PNG file is not open";
@@ -125,19 +152,18 @@ bool PNGLoader::load_frames(int32_t start_frame,
     }
     
     // Validate dimensions
-    std::string dim_error;
-    if (!validate_dimensions(expected_width, expected_height, dim_error)) {
-        error_message = dim_error;
+    if (expected_width != width_ || expected_height != height_) {
+        error_message = "PNG dimensions (" + std::to_string(width_) + "x" + std::to_string(height_) +
+                       ") do not match expected (" + std::to_string(expected_width) + "x" + 
+                       std::to_string(expected_height) + ")";
         return false;
     }
     
     // Validate frame range (PNG only has frame 0)
-    if (start_frame != 0 || num_frames != 1) {
+    if (frame_number != 0) {
         error_message = "PNG loader only supports loading frame 0 (single frame image)";
         return false;
     }
-    
-    frames.clear();
     
     // Load PNG if not already cached
     if (!frame_loaded_) {
@@ -223,23 +249,7 @@ bool PNGLoader::load_frames(int32_t start_frame,
         }
     }
     
-    frames.push_back(cached_frame_);
-    return true;
-}
-
-void PNGLoader::close() {
-    is_open_ = false;
-    filename_.clear();
-    width_ = 0;
-    height_ = 0;
-    frame_count_ = 0;
-    frame_loaded_ = false;
-    cached_frame_ = FrameBuffer();
-}
-
-bool PNGLoader::validate_format(VideoSystem system, std::string& error_message) {
-    (void)system;
-    (void)error_message;
+    frame = cached_frame_;
     return true;
 }
 

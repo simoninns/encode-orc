@@ -165,7 +165,7 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
             
-            int32_t total_frames = probe_loader.get_frame_count();
+            int32_t total_frames = probe_loader.get_metadata().frame_count;
             int32_t start_frame = section.mov_file_source->start_frame.value_or(0);
             probe_loader.close();
             
@@ -197,7 +197,7 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
             
-            int32_t total_frames = probe_loader.get_frame_count();
+            int32_t total_frames = probe_loader.get_metadata().frame_count;
             int32_t start_frame = section.mp4_file_source->start_frame.value_or(0);
             probe_loader.close();
             

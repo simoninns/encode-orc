@@ -105,8 +105,9 @@ bool VideoEncoder::encode_yuv422_image(const std::string& output_filename,
         }
         
         FrameBuffer image_frame;
-        if (!yuv422_loader.load_frame(0, image_frame)) {
-            error_message_ = "Failed to load YUV422 frame";
+        std::string load_error;
+        if (!yuv422_loader.load_frame(0, image_frame, load_error)) {
+            error_message_ = "Failed to load YUV422 frame: " + load_error;
             yuv422_loader.close();
             return false;
         }
@@ -398,12 +399,9 @@ bool VideoEncoder::encode_png_image(const std::string& output_filename,
             return false;
         }
         
-        int32_t img_width, img_height;
-        if (!png_loader.get_dimensions(img_width, img_height)) {
-            error_message_ = "Failed to get PNG dimensions";
-            png_loader.close();
-            return false;
-        }
+        auto loader_metadata = png_loader.get_metadata();
+        int32_t img_width = loader_metadata.width;
+        int32_t img_height = loader_metadata.height;
 
         ENCODE_ORC_LOG_DEBUG("Encoding {} frames ({} fields)", num_frames, num_frames * 2);
         ENCODE_ORC_LOG_DEBUG("System: {}", (system == VideoSystem::PAL ? "PAL" : "NTSC"));
@@ -639,11 +637,9 @@ bool VideoEncoder::encode_mov_file(const std::string& output_filename,
         }
         
         // Get dimensions
-        int32_t mov_width, mov_height;
-        if (!mov_loader.get_dimensions(mov_width, mov_height)) {
-            error_message_ = "Failed to get MOV dimensions";
-            return false;
-        }
+        auto loader_metadata = mov_loader.get_metadata();
+        int32_t mov_width = loader_metadata.width;
+        int32_t mov_height = loader_metadata.height;
         
         // Verify dimensions match expected video system
         int32_t expected_width = 720, expected_height = (system == VideoSystem::PAL) ? 576 : 480;
@@ -912,11 +908,9 @@ bool VideoEncoder::encode_mp4_file(const std::string& output_filename,
         }
         
         // Get dimensions
-        int32_t mp4_width, mp4_height;
-        if (!mp4_loader.get_dimensions(mp4_width, mp4_height)) {
-            error_message_ = "Failed to get MP4 dimensions";
-            return false;
-        }
+        auto loader_metadata = mp4_loader.get_metadata();
+        int32_t mp4_width = loader_metadata.width;
+        int32_t mp4_height = loader_metadata.height;
         
         // Verify dimensions match expected video system
         int32_t expected_width = 720, expected_height = (system == VideoSystem::PAL) ? 576 : 480;

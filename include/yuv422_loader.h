@@ -12,6 +12,7 @@
 
 #include "frame_buffer.h"
 #include "video_parameters.h"
+#include "video_loader.h"
 #include "video_loader_base.h"
 #include <string>
 
@@ -22,7 +23,8 @@ namespace encode_orc {
  * 
  * Loads a Y'CbCr 4:2:2 YUYV-packed (10-bit in 16-bit little-endian containers)
  * raw image file as a single frame (frame_count = 1).
- * Inherits from VideoLoaderBase to provide consistent interface with video loaders.
+ * 
+ * Phase 1 Refactoring: Now implements the unified VideoLoader interface.
  * 
  * Format specification:
  * - ITU-R BT.601-derived component video
@@ -32,12 +34,24 @@ namespace encode_orc {
  * - Byte order: little-endian
  * - Field order: top field first
  */
-class YUV422Loader : public VideoLoaderBase {
+class YUV422Loader : public VideoLoader {
 public:
     YUV422Loader();
     
+    // VideoLoader interface implementation
+    bool open(const std::string& path, std::string& error) override;
+    VideoMetadata get_metadata() const override;
+    bool load_frame(int32_t frame_index, FrameBuffer& output, std::string& error) override;
+    bool load_frames(int32_t start, int32_t count, 
+                     std::vector<FrameBuffer>& output, std::string& error) override;
+    void close() override;
+    bool is_open() const override;
+    
     /**
-     * @brief Open a YUV422 file and prepare for frame extraction
+     * @brief Open a YUV422 file with explicit dimensions
+     * 
+     * Legacy method for backward compatibility. Prefer using open() with
+     * dimensions stored in a VideoParameters object.
      * 
      * @param filename Path to YUV422 file
      * @param expected_width Expected width (must be even)
@@ -45,57 +59,12 @@ public:
      * @return true on success, false on error
      */
     bool open(const std::string& filename, int32_t expected_width, int32_t expected_height);
-    
-    // VideoLoaderBase overrides
-    /**
-     * @brief Get video dimensions from the opened file (from base class)
-     */
-    bool get_dimensions(int32_t& width, int32_t& height) const override;
-    
-    /**
-     * @brief Get total number of frames (always 1 for YUV422)
-     */
-    int32_t get_frame_count() const override;
-    
-    /**
-     * @brief Check if loader is open
-     */
-    bool is_open() const override;
-    
-    /**
-     * @brief Validate YUV422 format
-     */
-    bool validate_format(VideoSystem system, std::string& error_message) override;
-    
-    /**
-     * @brief Load a single frame
-     * 
-     * @param frame_index Frame index (must be 0 for YUV422)
-     * @param frame Output frame buffer in YUV444P16 format
-     * @return true on success, false on error
-     */
-    bool load_frame(int32_t frame_index, FrameBuffer& frame);
-    
-    /**
-     * @brief Load multiple frames
-     * 
-     * @param start_frame Starting frame index (must be 0)
-     * @param end_frame Ending frame index (must be 0)
-     * @param frames Output frame buffers vector
-     * @param error_message Error message if loading fails
-     * @return true on success, false on error
-     */
-    bool load_frames(int32_t start_frame, int32_t end_frame, 
-                     std::vector<FrameBuffer>& frames,
-                     std::string& error_message);
-    
-    /**
-     * @brief Close YUV422 file and release resources
-     */
-    void close();
 
 private:
     std::string filename_;
+    int32_t width_ = 0;
+    int32_t height_ = 0;
+    bool is_open_ = false;
     FrameBuffer cached_frame_;
     bool frame_cached_ = false;
     

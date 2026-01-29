@@ -12,7 +12,7 @@
 
 #include "frame_buffer.h"
 #include "video_parameters.h"
-#include "video_loader_base.h"
+#include "video_loader.h"
 #include <string>
 
 namespace encode_orc {
@@ -21,37 +21,23 @@ namespace encode_orc {
  * @brief PNG image loader
  * 
  * Loads a PNG image as a single frame (frame_count = 1).
- * Inherits from VideoLoaderBase to provide consistent interface with video loaders.
+ * Phase 1 Refactoring: Now implements the unified VideoLoader interface.
  */
-class PNGLoader : public VideoLoaderBase {
+class PNGLoader : public VideoLoader {
 public:
-    /**
-     * @brief Open a PNG file and prepare for frame extraction
-     * 
-     * @param filename Path to PNG file
-     * @param error_message Error message if opening fails
-     * @return true on success, false on error
-     */
-    bool open(const std::string& filename, std::string& error_message);
+    // VideoLoader interface implementation
+    bool open(const std::string& path, std::string& error) override;
+    VideoMetadata get_metadata() const override;
+    bool load_frame(int32_t frame_index, FrameBuffer& output, std::string& error) override;
+    bool load_frames(int32_t start, int32_t count, 
+                     std::vector<FrameBuffer>& output, std::string& error) override;
+    void close() override;
+    bool is_open() const override;
     
     /**
-     * @brief Get video dimensions from the opened file
+     * @brief Load a frame with validation
      * 
-     * @param width Output: image width
-     * @param height Output: image height
-     * @return true if dimensions are available, false otherwise
-     */
-    bool get_dimensions(int32_t& width, int32_t& height) const override;
-    
-    /**
-     * @brief Get total number of frames (always 1 for PNG)
-     * 
-     * @return 1
-     */
-    int32_t get_frame_count() const override;
-    
-    /**
-     * @brief Load the PNG image
+     * Legacy method for backward compatibility with expected dimensions and params.
      * 
      * @param frame_number Frame number (must be 0 for PNG)
      * @param expected_width Expected width (validates against image dimensions)
@@ -67,44 +53,12 @@ public:
                     const VideoParameters& params,
                     FrameBuffer& frame,
                     std::string& error_message);
-    
-    /**
-     * @brief Load multiple frames (only frame 0 is valid for PNG)
-     * 
-     * @param start_frame Starting frame number (must be 0)
-     * @param num_frames Number of frames to load (must be 1)
-     * @param expected_width Expected width
-     * @param expected_height Expected height
-     * @param params Video parameters
-     * @param frames Output vector of frame buffers
-     * @param error_message Error message if loading fails
-     * @return true on success, false on error
-     */
-    bool load_frames(int32_t start_frame,
-                     int32_t num_frames,
-                     int32_t expected_width,
-                     int32_t expected_height,
-                     const VideoParameters& params,
-                     std::vector<FrameBuffer>& frames,
-                     std::string& error_message);
-    
-    /**
-     * @brief Close PNG file and release resources
-     */
-    void close();
-    
-    /**
-     * @brief Check if loader is open
-     */
-    bool is_open() const override { return is_open_; }
-    
-    /**
-     * @brief Validate PNG format (always succeeds - no frame rate)
-     */
-    bool validate_format(VideoSystem system, std::string& error_message) override;
 
 private:
     std::string filename_;
+    int32_t width_ = 0;
+    int32_t height_ = 0;
+    bool is_open_ = false;
     FrameBuffer cached_frame_;
     bool frame_loaded_ = false;
     
