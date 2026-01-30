@@ -202,19 +202,27 @@ bool MP4Loader::extract_frames_to_yuv(int32_t start_frame,
     // Input file
     cmd << "-i \"" << filename_ << "\" ";
     
-    // Frame selection - use different approach based on whether we're selecting a range
+    // Build the video filter chain
+    std::string vf_chain = "";
+    
+    // Add frame selection filter if needed
     if (start_frame > 0 || num_frames < frame_count_) {
-        // Select specific frame range
-        cmd << "-vf \"select='between(n\\," << start_frame << "\\," << (start_frame + num_frames - 1) << ")',setpts=PTS-STARTPTS\" ";
+        vf_chain += "select='between(n\\," + std::to_string(start_frame) + "\\," + 
+                    std::to_string(start_frame + num_frames - 1) + ")',setpts=PTS-STARTPTS";
         cmd << "-vsync 0 ";  // Don't drop or duplicate frames
     }
     
+    // Add scale/color range filter
+    if (!vf_chain.empty()) {
+        vf_chain += ",";
+    }
+    vf_chain += "scale=in_range=auto:out_range=tv";
+    
+    // Apply combined filter chain
+    cmd << "-vf \"" << vf_chain << "\" ";
+    
     // Limit output frames
     cmd << "-frames:v " << num_frames << " ";
-    
-    // Explicitly convert to full range first, then to TV range to normalize
-    // This ensures we get proper studio range output
-    cmd << "-vf \"scale=in_range=auto:out_range=tv\" ";
     
     // Output format: YUV420P 8-bit
     cmd << "-pix_fmt yuv420p ";
