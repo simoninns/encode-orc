@@ -96,6 +96,11 @@ private:
     bool write_vbi(const CaptureMetadata& metadata);
     
     /**
+     * @brief Write drop_outs table
+     */
+    bool write_dropouts(const CaptureMetadata& metadata);
+    
+    /**
      * @brief Execute SQL statement
      */
     bool execute_sql(const char* sql);

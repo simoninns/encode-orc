@@ -115,6 +115,9 @@ void DropoutSimulator::apply(Field& field, const FieldEffectContext& context) {
     if (!enabled_) return;
     if (density_ <= 0.0) return;
     
+    // Clear dropouts from previous field
+    last_field_dropouts_.clear();
+    
     auto& data = field.data();
     int32_t width = field.width();
     int32_t height = field.height();
@@ -154,6 +157,9 @@ void DropoutSimulator::apply(Field& field, const FieldEffectContext& context) {
                              double base_excursion, double amplitude, 
                              int32_t edge_len) {
         if (line < 0 || line >= height || start < 0 || start + length > width) return;
+
+        // Track the dropout location
+        last_field_dropouts_.emplace_back(line, start, start + length);
 
         std::normal_distribution<double> modulation_step(0.0, amplitude * 0.08);
         double modulation = 0.0;
@@ -317,10 +323,8 @@ void DropoutSimulator::apply(Field& field, const FieldEffectContext& context) {
         multi_field_dropouts_.end()
     );
 
-    // Apply single-field dropouts for this field
-    std::poisson_distribution<int> event_count(
-        (density_ * static_cast<double>(width)) / 8.0
-    );
+    // Store dropouts for this field
+    field_dropouts_[context.field_number] = last_field_dropouts_;
 }
 
 

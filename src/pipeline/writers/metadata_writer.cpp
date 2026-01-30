@@ -58,6 +58,7 @@ bool MetadataWriter::create_schema() {
     // Drop existing tables to ensure a clean start
     // This prevents UNIQUE constraint errors when overwriting existing metadata
     const char* drop_sql = R"(
+        DROP TABLE IF EXISTS drop_outs;
         DROP TABLE IF EXISTS vbi;
         DROP TABLE IF EXISTS field_record;
         DROP TABLE IF EXISTS capture;
@@ -122,6 +123,18 @@ bool MetadataWriter::create_schema() {
             vbi1 INTEGER,
             vbi2 INTEGER,
             PRIMARY KEY (capture_id, field_id)
+        );
+        
+        CREATE TABLE drop_outs (
+            capture_id INTEGER NOT NULL,
+            field_id INTEGER NOT NULL,
+            field_line INTEGER NOT NULL,
+            startx INTEGER NOT NULL,
+            endx INTEGER NOT NULL,
+            PRIMARY KEY (capture_id, field_id, field_line, startx, endx),
+            FOREIGN KEY (capture_id, field_id)
+                REFERENCES field_record(capture_id, field_id)
+                ON DELETE CASCADE
         );
     )";
     
@@ -259,6 +272,34 @@ bool MetadataWriter::write_vbi(const CaptureMetadata& metadata) {
     return execute_sql("COMMIT;");
 }
 
+bool MetadataWriter::write_dropouts(const CaptureMetadata& metadata) {
+    if (metadata.dropouts.empty()) {
+        return true;  // No dropouts to write
+    }
+    
+    if (!execute_sql("BEGIN;")) {
+        return false;
+    }
+    
+    for (const auto& dropout : metadata.dropouts) {
+        std::ostringstream sql;
+        sql << "INSERT INTO drop_outs (capture_id, field_id, field_line, startx, endx) VALUES ("
+            << metadata.capture_id << ", "
+            << dropout.field_id << ", "
+            << (dropout.field_line + 1) << ", "  // Convert from 0-based to 1-based line numbering
+            << dropout.startx << ", "
+            << dropout.endx
+            << ");";
+        
+        if (!execute_sql(sql.str().c_str())) {
+            execute_sql("ROLLBACK;");
+            return false;
+        }
+    }
+    
+    return execute_sql("COMMIT;");
+}
+
 bool MetadataWriter::write_metadata(const CaptureMetadata& metadata) {
     if (!db_) {
         error_message_ = "Database not open";
@@ -277,6 +318,11 @@ bool MetadataWriter::write_metadata(const CaptureMetadata& metadata) {
     
     // Write VBI records if present
     if (!write_vbi(metadata)) {
+        return false;
+    }
+    
+    // Write dropout records if present
+    if (!write_dropouts(metadata)) {
         return false;
     }
     

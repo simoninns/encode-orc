@@ -188,6 +188,17 @@ public:
      * @brief Check if we have preprocessors
      */
     bool has_preprocessors() const;
+    
+    /**
+     * @brief Get the dropout simulator effect (if present)
+     * @return Pointer to DropoutSimulator if found, nullptr otherwise
+     */
+    DropoutSimulator* get_dropout_simulator();
+    
+    /**
+     * @brief Get const pointer to dropout simulator effect (if present)
+     */
+    const DropoutSimulator* get_dropout_simulator() const;
 
 private:
     friend class Builder;

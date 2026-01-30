@@ -30,6 +30,7 @@ namespace encode_orc {
  * @param output_db Path to output metadata database file (empty string to skip writing)
  * @param error_message Output parameter for error description
  * @param output_metadata Optional output parameter to receive the generated metadata
+ * @param input_metadata Optional input metadata with pre-existing data (dropouts, etc.) to merge
  * @return True if successful, false otherwise
  */
 bool generate_metadata(const YAMLProjectConfig& config,
@@ -37,7 +38,8 @@ bool generate_metadata(const YAMLProjectConfig& config,
                        int32_t total_frames,
                        const std::string& output_db,
                        std::string& error_message,
-                       CaptureMetadata* output_metadata = nullptr);
+                       CaptureMetadata* output_metadata = nullptr,
+                       const CaptureMetadata* input_metadata = nullptr);
 
 } // namespace encode_orc
 

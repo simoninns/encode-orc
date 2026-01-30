@@ -14,6 +14,9 @@
 #include <cstdint>
 #include <string>
 #include <memory>
+#include <map>
+#include <tuple>
+#include <vector>
 
 namespace encode_orc {
 
@@ -188,6 +191,27 @@ public:
      */
     std::string effect_type() const override { return "dropout"; }
     
+    /**
+     * @brief Get the list of dropouts detected in the last field processed
+     * @return Vector of tuples (field_line, startx, endx)
+     */
+    const std::vector<std::tuple<int32_t, int32_t, int32_t>>& get_last_field_dropouts() const {
+        return last_field_dropouts_;
+    }
+    
+    /**
+     * @brief Get dropouts for a specific field
+     * @param field_number Field number to get dropouts for
+     * @return Vector of tuples (field_line, startx, endx)
+     */
+    std::vector<std::tuple<int32_t, int32_t, int32_t>> get_field_dropouts(int32_t field_number) const {
+        auto it = field_dropouts_.find(field_number);
+        if (it != field_dropouts_.end()) {
+            return it->second;
+        }
+        return std::vector<std::tuple<int32_t, int32_t, int32_t>>();
+    }
+    
 private:
     struct MultiFieldDropout {
         int32_t start_field;           ///< Field number where dropout starts
@@ -205,6 +229,8 @@ private:
     double single_field_prob_ = 0.80;   ///< Probability of single-field dropouts (disc degradation)
     std::vector<MultiFieldDropout> multi_field_dropouts_;
     int32_t last_processed_field_ = -1;
+    std::vector<std::tuple<int32_t, int32_t, int32_t>> last_field_dropouts_; ///< (line, startx, endx)
+    std::map<int32_t, std::vector<std::tuple<int32_t, int32_t, int32_t>>> field_dropouts_; ///< Dropouts per field
 };
 
 

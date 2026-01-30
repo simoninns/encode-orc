@@ -646,6 +646,28 @@ int main(int argc, char* argv[]) {
                         return false;
                     }
                 }
+                
+                // Collect dropout metadata from the dropout effect
+                DropoutSimulator* dropout_simulator = pipeline->get_dropout_simulator();
+                if (dropout_simulator) {
+                    // Field 1 dropouts (field_number)
+                    auto field1_dropouts = dropout_simulator->get_field_dropouts(field_number);
+                    for (const auto& dropout : field1_dropouts) {
+                        int32_t line = std::get<0>(dropout);
+                        int32_t startx = std::get<1>(dropout);
+                        int32_t endx = std::get<2>(dropout);
+                        pre_metadata.add_dropout(field_number, line, startx, endx);
+                    }
+                    
+                    // Field 2 dropouts (field_number + 1)
+                    auto field2_dropouts = dropout_simulator->get_field_dropouts(field_number + 1);
+                    for (const auto& dropout : field2_dropouts) {
+                        int32_t line = std::get<0>(dropout);
+                        int32_t startx = std::get<1>(dropout);
+                        int32_t endx = std::get<2>(dropout);
+                        pre_metadata.add_dropout(field_number + 1, line, startx, endx);
+                    }
+                }
 
                 if ((section_frame + 1) % 10 == 0 || section_frame == section_frames - 1) {
                     ENCODE_ORC_LOG_DEBUG("Writing field {} / {}", (global_frame + 1) * 2, total_frames * 2);
@@ -786,7 +808,7 @@ int main(int argc, char* argv[]) {
         std::string meta_error;
         std::string metadata_filename = base_filename + ".tbc.db";
         
-        if (!generate_metadata(config, system, total_frames, metadata_filename, meta_error)) {
+        if (!generate_metadata(config, system, total_frames, metadata_filename, meta_error, nullptr, &pre_metadata)) {
             ENCODE_ORC_LOG_ERROR("Metadata generation error: {}", meta_error);
             return 1;
         }

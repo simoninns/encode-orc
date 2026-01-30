@@ -351,4 +351,24 @@ bool VideoEncoderPipeline::has_preprocessors() const {
     return !preprocessors_.empty();
 }
 
+DropoutSimulator* VideoEncoderPipeline::get_dropout_simulator() {
+    for (auto& effect : effects_) {
+        auto* dropout = dynamic_cast<DropoutSimulator*>(effect.get());
+        if (dropout != nullptr) {
+            return dropout;
+        }
+    }
+    return nullptr;
+}
+
+const DropoutSimulator* VideoEncoderPipeline::get_dropout_simulator() const {
+    for (const auto& effect : effects_) {
+        const auto* dropout = dynamic_cast<const DropoutSimulator*>(effect.get());
+        if (dropout != nullptr) {
+            return dropout;
+        }
+    }
+    return nullptr;
+}
+
 }  // namespace encode_orc

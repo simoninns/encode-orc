@@ -21,7 +21,8 @@ bool generate_metadata(const YAMLProjectConfig& config,
                       int32_t total_frames,
                       const std::string& output_db,
                        std::string& error_message,
-                       CaptureMetadata* output_metadata) {
+                       CaptureMetadata* output_metadata,
+                       const CaptureMetadata* input_metadata) {
     try {
         int32_t total_fields = total_frames * 2;
         int32_t fps = (system == VideoSystem::PAL) ? 25 : 30;
@@ -201,6 +202,13 @@ bool generate_metadata(const YAMLProjectConfig& config,
         }
         
         // Return metadata if requested
+        // Merge dropouts from input metadata if provided
+        if (input_metadata != nullptr && !input_metadata->dropouts.empty()) {
+            for (const auto& dropout : input_metadata->dropouts) {
+                combined.dropouts.push_back(dropout);
+            }
+        }
+        
         if (output_metadata != nullptr) {
             *output_metadata = combined;
         }
