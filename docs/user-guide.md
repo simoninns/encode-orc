@@ -30,7 +30,7 @@ Stage 3: Composite Encoding
 
 Stage 4: Post-Processing
   ├─ Apply Gaussian noise (noise simulation)
-  ├─ Apply line dropouts (RF breaks)
+  ├─ Apply dropouts (RF breaks)
   └─ Apply phase jitter (jitter/wobble simulation)
 
 Stage 5: Output
@@ -432,43 +432,24 @@ pipeline:
 
 ### Dropouts (Tape Damage)
 
-Simulate line dropouts from tape damage or media defects:
+Simulate short amplitude dropouts from tape damage or media defects. Dropouts
+start at arbitrary sample positions within a line and are typically brief
+bursts with noisy edges:
 
 ```yaml
 pipeline:
   effects:
     - type: "dropout"
       enabled: true
-      pattern: "random"      # "random", "periodic", or "specific-lines"
-      density: 0.005         # 0.5% of lines affected
+      density: 0.005         # 0.5% of samples affected per line
       seed: 42
 ```
 
-**Dropout Patterns:**
-
-```yaml
-# Random pattern: 0.5% of lines randomly affected
-- type: "dropout"
-  pattern: "random"
-  density: 0.005
-  seed: 42
-
-# Periodic pattern: dropout repeats every N lines
-- type: "dropout"
-  pattern: "periodic"
-  density: 0.01      # Affected lines per period
-  
-# Specific lines: affect only listed lines
-- type: "dropout"
-  pattern: "specific-lines"
-  lines: [50, 100, 150, 200]
-```
-
 **Density Guide:**
-- 0.001: 0.1% of lines (1 in 1000)
-- 0.005: 0.5% of lines (1 in 200)
-- 0.01: 1% of lines (1 in 100)
-- 0.05: 5% of lines (1 in 20)
+- 0.001: 0.1% of samples per line affected
+- 0.005: 0.5% of samples per line affected
+- 0.01: 1% of samples per line affected
+- 0.05: 5% of samples per line affected
 
 ### Phase Error (VCR Wobble)
 
@@ -506,11 +487,10 @@ pipeline:
       snr_db: 35.0
       seed: 12345
     
-    # Random line dropouts
+    # Random sample dropouts
     - type: "dropout"
       enabled: true
-      pattern: "random"
-      density: 0.008     # 0.8% of lines
+      density: 0.008     # 0.8% of samples per line
       seed: 54321
     
     # Periodic wobble

@@ -119,9 +119,9 @@ struct FieldEffectConfig {
     std::optional<double> noise_level_db; // Direct noise level in dB (alternative to SNR)
     
     // For dropout effect:
-    std::optional<std::string> dropout_pattern;  // "random", "periodic", "specific-lines"
-    std::optional<double> dropout_density;       // Dropout density (0.0-1.0)
-    std::optional<std::vector<int32_t>> dropout_lines;  // Specific lines to drop
+    std::optional<double> dropout_density;           // Dropout density (0.0-1.0, fraction of samples)
+    std::optional<double> dropout_multi_field_prob;  // Probability of multi-field dropouts (0.0-1.0)
+    std::optional<double> dropout_single_field_prob; // Probability of single-field dropouts (0.0-1.0)
     
     // For phase-error effect:
     std::optional<double> phase_jitter_samples;  // Maximum phase jitter

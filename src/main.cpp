@@ -556,8 +556,19 @@ int main(int argc, char* argv[]) {
                         effects.push_back(std::move(noise_gen));
                     }
                     else if (effect_config.type == "dropout") {
-                        // Dropout effects would be created here
-                        ENCODE_ORC_LOG_WARN("Dropout effect type '{}' not yet implemented in main.cpp", effect_config.type);
+                        double density = effect_config.dropout_density.value_or(0.01);
+                        auto dropout = std::make_unique<DropoutSimulator>(density);
+                        if (effect_config.seed.has_value()) {
+                            dropout->set_seed(effect_config.seed.value());
+                        }
+                        if (effect_config.dropout_multi_field_prob.has_value()) {
+                            dropout->set_multi_field_probability(effect_config.dropout_multi_field_prob.value());
+                        }
+                        if (effect_config.dropout_single_field_prob.has_value()) {
+                            dropout->set_single_field_probability(effect_config.dropout_single_field_prob.value());
+                        }
+                        effects.push_back(std::move(dropout));
+                        ENCODE_ORC_LOG_DEBUG("Added Dropout simulator with density: {}", density);
                     }
                     else if (effect_config.type == "phase-error") {
                         // Phase error effects would be created here

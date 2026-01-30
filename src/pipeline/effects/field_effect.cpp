@@ -116,65 +116,220 @@ void NoiseGenerator::apply(Field& field, const FieldEffectContext& context) {
 // ============================================================================
 
 DropoutSimulator::DropoutSimulator(double density, uint32_t seed)
-    : pattern_(RANDOM), density_(density), seed_(seed) {}
+    : density_(density), seed_(seed), last_processed_field_(-1) {}
 
-void DropoutSimulator::add_dropout_line(int32_t line_number) {
-    dropout_lines_.push_back(line_number);
-}
-
-bool DropoutSimulator::should_dropout_line(int32_t line_number) {
-    static thread_local std::mt19937 rng(seed_);
-    static thread_local std::uniform_real_distribution<double> uniform(0.0, 1.0);
-    
-    // Reseed for reproducibility
-    rng.seed(seed_ + line_number);
-    
-    return uniform(rng) < density_;
-}
-
-void DropoutSimulator::apply(Field& field, const FieldEffectContext& /* context */) {
+void DropoutSimulator::apply(Field& field, const FieldEffectContext& context) {
     if (!enabled_) return;
-    
-    // Constants for composite video blanking level (16-bit scale)
-    const uint16_t blanking_level = 4096;  // ~0.3V in 16-bit scale
+    if (density_ <= 0.0) return;
     
     auto& data = field.data();
     int32_t width = field.width();
-    
-    // Determine which lines to drop out based on pattern
-    std::vector<int32_t> lines_to_dropout;
-    
-    switch (pattern_) {
-        case RANDOM: {
-            // Randomly select lines to drop out
-            for (int32_t line = 0; line < field.height(); ++line) {
-                if (should_dropout_line(line)) {
-                    lines_to_dropout.push_back(line);
+    int32_t height = field.height();
+
+    if (width <= 0 || height <= 0) return;
+
+    // Random generator seeded per field for reproducibility
+    std::mt19937 rng(seed_ + context.field_number);
+    std::uniform_real_distribution<double> uniform01(0.0, 1.0);
+
+    // Dropout length distribution: mostly short (5-10), sometimes longer
+    auto sample_dropout_length = [&](int32_t max_width) -> int32_t {
+        double r = uniform01(rng);
+        if (r < 0.90) {
+            std::uniform_int_distribution<int32_t> short_len(5, 10);
+            return std::min(short_len(rng), max_width);
+        }
+        if (r < 0.98) {
+            std::uniform_int_distribution<int32_t> mid_len(11, 25);
+            return std::min(mid_len(rng), max_width);
+        }
+        int32_t max_long = std::max<int32_t>(26, std::min(max_width, 120));
+        std::uniform_int_distribution<int32_t> long_len(26, max_long);
+        return std::min(long_len(rng), max_width);
+    };
+
+    // Model dropouts as rapid amplitude excursions with noisy edges
+    std::normal_distribution<double> body_noise(0.0, 800.0);
+    std::normal_distribution<double> edge_noise(0.0, 1600.0);
+
+    auto clamp_sample = [](double value) -> uint16_t {
+        value = std::max(0.0, std::min(65535.0, value));
+        return static_cast<uint16_t>(value + 0.5);
+    };
+
+    auto apply_dropout = [&](int32_t line, int32_t start, int32_t length,
+                             double base_excursion, double amplitude, 
+                             int32_t edge_len) {
+        if (line < 0 || line >= height || start < 0 || start + length > width) return;
+
+        std::normal_distribution<double> modulation_step(0.0, amplitude * 0.08);
+        double modulation = 0.0;
+        double modulation_alpha = 0.2;
+        double sign = base_excursion >= 0.0 ? 1.0 : -1.0;  // Preserve sign throughout
+
+        for (int32_t i = 0; i < length; ++i) {
+            int32_t idx = line * width + start + i;
+            double original = static_cast<double>(data[idx]);
+
+            bool is_edge = (i < edge_len) || (i >= (length - edge_len));
+            double noise = is_edge ? edge_noise(rng) : body_noise(rng);
+
+            // Update modulation but keep it same-signed as base_excursion
+            double raw_modulation = (1.0 - modulation_alpha) * modulation + modulation_alpha * modulation_step(rng);
+            modulation = sign * std::abs(raw_modulation);  // Constrain to same sign as base_excursion
+            double excursion = base_excursion + modulation;
+
+            double value = 0.0;
+            if (i < edge_len) {
+                double blend = static_cast<double>(i + 1) / static_cast<double>(edge_len);
+                value = original + excursion * blend + noise;
+            } else if (i >= (length - edge_len)) {
+                double blend = static_cast<double>(length - i) / static_cast<double>(edge_len);
+                value = original + excursion * blend + noise;
+            } else {
+                value = original + excursion + noise;
+            }
+
+            data[idx] = clamp_sample(value);
+        }
+    };
+
+    // Generate new single-field and multi-field dropouts if this field hasn't been processed
+    if (context.field_number > last_processed_field_) {
+        last_processed_field_ = context.field_number;
+
+        // Calculate how much of each line is already covered by active multi-field dropouts
+        std::vector<int32_t> line_covered(height, 0);
+        for (auto& mfd : multi_field_dropouts_) {
+            int32_t field_offset = context.field_number - mfd.start_field;
+            if (field_offset < 0 || field_offset >= mfd.duration_fields) continue;
+
+            double progress = static_cast<double>(field_offset) / static_cast<double>(mfd.duration_fields);
+            double growth_factor = 1.0 + 0.5 * std::sin(M_PI * progress);
+            int32_t current_length = static_cast<int32_t>(mfd.initial_length * growth_factor);
+            
+            if (mfd.line_number >= 0 && mfd.line_number < height) {
+                line_covered[mfd.line_number] += current_length;
+            }
+        }
+
+        // Interpret density as expected fraction of samples affected per line
+        constexpr double average_dropout_length = 8.0;
+
+        for (int32_t line = 0; line < height; ++line) {
+            // Adjust expected events based on what's already covered
+            int32_t already_covered = std::min(line_covered[line], width);
+            double available = std::max(0.0, static_cast<double>(width - already_covered));
+            double adjusted_density = (available > 0.0) ? (density_ * available / static_cast<double>(width)) : 0.0;
+            double adjusted_events = (adjusted_density * static_cast<double>(width)) / average_dropout_length;
+            
+            std::poisson_distribution<int> event_count(std::max(0.0, adjusted_events));
+            int events = event_count(rng);
+            if (events <= 0) continue;
+
+            for (int e = 0; e < events; ++e) {
+                // Decide if this dropout should span multiple fields
+                // Use configured probabilities to allocate to multi vs single
+                bool is_multi_field = uniform01(rng) < (multi_field_prob_ / (multi_field_prob_ + single_field_prob_));
+
+                if (is_multi_field && multi_field_prob_ > 0.0) {
+                    int32_t center_x = std::uniform_int_distribution<int32_t>(0, width - 1)(rng);
+                    int32_t initial_length = sample_dropout_length(width);
+                    if (initial_length <= 0) continue;
+
+                    std::uniform_int_distribution<int32_t> duration_dist(5, 12);
+                    int32_t duration = duration_dist(rng);
+
+                    MultiFieldDropout mfd;
+                    mfd.start_field = context.field_number;
+                    mfd.duration_fields = duration;
+                    mfd.line_number = line;
+                    mfd.center_x = center_x;
+                    mfd.initial_length = initial_length;
+                    
+                    // Generate and store excursion characteristics to maintain consistency across fields
+                    double sign = (uniform01(rng) < 0.5) ? -1.0 : 1.0;
+                    mfd.amplitude = (0.05 + 0.95 * uniform01(rng)) * 32768.0;
+                    mfd.base_excursion = sign * mfd.amplitude;
+
+                    multi_field_dropouts_.push_back(mfd);
+                } else if (!is_multi_field && single_field_prob_ > 0.0) {
+                    // Create single-field dropout immediately
+                    int32_t length = sample_dropout_length(width);
+                    if (length <= 0) continue;
+
+                    std::uniform_int_distribution<int32_t> start_dist(0, width - 1);
+                    int32_t start = start_dist(rng);
+                    if (start + length > width) {
+                        length = width - start;
+                    }
+                    if (length <= 0) continue;
+
+                    double sign = (uniform01(rng) < 0.5) ? -1.0 : 1.0;
+                    double amplitude = (0.05 + 0.95 * uniform01(rng)) * 32768.0;
+                    double base_excursion = sign * amplitude;
+
+                    int32_t min_edge = (length >= 40) ? 3 : 1;
+                    int32_t max_edge = (length >= 80) ? 12 : (length >= 40 ? 8 : 4);
+                    std::uniform_int_distribution<int32_t> edge_len_dist(min_edge, max_edge);
+                    int32_t edge_len = std::min<int32_t>(length / 2, edge_len_dist(rng));
+                    if (edge_len < 1) edge_len = 1;
+
+                    apply_dropout(line, start, length, base_excursion, amplitude, edge_len);
                 }
             }
-            break;
-        }
-        case PERIODIC: {
-            // Drop every N-th line (density controls period)
-            int32_t period = static_cast<int32_t>(1.0 / density_);
-            for (int32_t line = 0; line < field.height(); line += period) {
-                lines_to_dropout.push_back(line);
-            }
-            break;
-        }
-        case SPECIFIC_LINES: {
-            lines_to_dropout = dropout_lines_;
-            break;
         }
     }
-    
-    // Fill selected lines with blanking level
-    for (int32_t line : lines_to_dropout) {
-        if (line >= 0 && line < field.height()) {
-            std::fill_n(&data[line * width], width, blanking_level);
+
+    // Apply multi-field dropouts that are active for this field
+    for (auto& mfd : multi_field_dropouts_) {
+        int32_t field_offset = context.field_number - mfd.start_field;
+        if (field_offset < 0 || field_offset >= mfd.duration_fields) continue;
+
+        // Growth/shrinkage profile: peak at mid-point, shrinks towards edges
+        double progress = static_cast<double>(field_offset) / static_cast<double>(mfd.duration_fields);
+        double growth_factor = 1.0 + 0.5 * std::sin(M_PI * progress);  // Peaks at 1.5x at mid-point
+        int32_t current_length = static_cast<int32_t>(mfd.initial_length * growth_factor);
+
+        // Calculate spread left and right from center
+        int32_t left_extent = current_length / 2;
+        int32_t right_extent = current_length - left_extent;
+
+        int32_t start = mfd.center_x - left_extent;
+        if (start < 0) {
+            right_extent += start;  // Reduce right if hitting boundary
+            start = 0;
         }
+        if (start + current_length > width) {
+            current_length = width - start;
+        }
+        if (current_length <= 0) continue;
+
+        // Use the stored excursion characteristics (generated when dropout was created)
+        int32_t min_edge = (current_length >= 40) ? 3 : 1;
+        int32_t max_edge = (current_length >= 80) ? 12 : (current_length >= 40 ? 8 : 4);
+        int32_t edge_len = std::min<int32_t>(current_length / 2,
+                                              std::uniform_int_distribution<int32_t>(min_edge, max_edge)(rng));
+        if (edge_len < 1) edge_len = 1;
+
+        apply_dropout(mfd.line_number, start, current_length, mfd.base_excursion, mfd.amplitude, edge_len);
     }
+
+    // Remove expired multi-field dropouts
+    multi_field_dropouts_.erase(
+        std::remove_if(multi_field_dropouts_.begin(), multi_field_dropouts_.end(),
+                      [context](const MultiFieldDropout& mfd) {
+                          return context.field_number >= mfd.start_field + mfd.duration_fields;
+                      }),
+        multi_field_dropouts_.end()
+    );
+
+    // Apply single-field dropouts for this field
+    std::poisson_distribution<int> event_count(
+        (density_ * static_cast<double>(width)) / 8.0
+    );
 }
+
 
 // ============================================================================
 // PhaseErrorSimulator Implementation

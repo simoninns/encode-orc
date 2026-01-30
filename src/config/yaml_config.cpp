@@ -207,20 +207,16 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                             }
                         }
                         
-                        // Dropout effect configuration
+                        // Dropout effect configuration (random only)
                         if (effect_cfg.type == "dropout") {
-                            if (effect_node["pattern"]) {
-                                effect_cfg.dropout_pattern = effect_node["pattern"].as<std::string>();
-                            }
                             if (effect_node["density"]) {
                                 effect_cfg.dropout_density = effect_node["density"].as<double>();
                             }
-                            if (effect_node["lines"] && effect_node["lines"].IsSequence()) {
-                                std::vector<int32_t> dropout_lines;
-                                for (const auto& line_node : effect_node["lines"]) {
-                                    dropout_lines.push_back(line_node.as<int32_t>());
-                                }
-                                effect_cfg.dropout_lines = dropout_lines;
+                            if (effect_node["multi_field_probability"]) {
+                                effect_cfg.dropout_multi_field_prob = effect_node["multi_field_probability"].as<double>();
+                            }
+                            if (effect_node["single_field_probability"]) {
+                                effect_cfg.dropout_single_field_prob = effect_node["single_field_probability"].as<double>();
                             }
                         }
                         

@@ -1,0 +1,61 @@
+name: "NTSC-Dropout Test"
+description: "NTSC test signal with line dropouts for tape damage simulation"
+
+output:
+  filename: "test-output/ntsc-dropout"
+  format: "ntsc-composite"
+
+laserdisc:
+  mode: "cav"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+  
+  metadata:
+    generators:
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [16, 17, 18, 278, 279, 280]
+        format: "picture-number"
+      
+      - type: "vits-ntsc"
+        enabled: true
+        signals:
+          - line: 13
+            signal: "ntc7-composite"
+          - line: 19
+            signal: "vir"
+          - line: 275
+            signal: "ntc7-combination"
+          - line: 281
+            signal: "vir"
+      
+      - type: "color-burst"
+        enabled: true
+  
+  effects:
+    # Noise simulation
+    - type: "noise"
+      enabled: true
+      snr_db: 25.0
+      seed: 12345
+    
+    # Random dropouts to simulate tape damage and scratches
+    - type: "dropout"
+      enabled: true
+      density: 0.00001
+      multi_field_probability: 0.50    # 50% chance of multi-field (scratches)
+      single_field_probability: 0.01   # 01% chance of single-field (disc degradation)
+      seed: 42
+
+sections:
+  - name: "Content"
+    source:
+      type: "mp4-file"
+      file: "testcard-images/ntsc-mp4/ntsc-nynashamn.mp4"
+    biphase-vbi:
+      disc_area: "programme-area"
+      picture_start: 1

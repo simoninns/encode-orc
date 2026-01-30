@@ -143,20 +143,15 @@ private:
 /**
  * @brief Dropout simulator for tape artifacts
  * 
- * Simulates tape dropouts by replacing specified lines or random lines
- * with blanking level (black).
+ * Simulates tape dropouts as short amplitude spikes or collapses that
+ * can start anywhere within a line. Dropouts can persist across multiple
+ * fields (like scratches on a disc), growing and shrinking from a center point.
  */
 class DropoutSimulator : public FieldEffect {
 public:
-    enum DropoutPattern {
-        RANDOM,          ///< Random dropouts with specified density
-        PERIODIC,        ///< Periodic dropouts (every N lines)
-        SPECIFIC_LINES   ///< Drop out specific line numbers
-    };
-    
     /**
-     * @brief Construct dropout simulator with random pattern
-     * @param density Dropout density (0.0 to 1.0, fraction of lines affected)
+     * @brief Construct dropout simulator with random dropouts
+     * @param density Dropout density (0.0 to 1.0, fraction of samples affected)
      * @param seed Random seed for reproducible patterns
      */
     DropoutSimulator(double density = 0.01, uint32_t seed = 42);
@@ -167,19 +162,21 @@ public:
     void set_seed(uint32_t seed) { seed_ = seed; }
     
     /**
-     * @brief Set dropout pattern
-     */
-    void set_pattern(DropoutPattern pattern) { pattern_ = pattern; }
-    
-    /**
-     * @brief Set dropout density (for RANDOM pattern)
+        * @brief Set dropout density
      */
     void set_density(double density) { density_ = density; }
     
     /**
-     * @brief Add specific line number to drop out (for SPECIFIC_LINES pattern)
+     * @brief Set probability of multi-field dropouts (scratches)
+     * @param prob Probability from 0.0 to 1.0
      */
-    void add_dropout_line(int32_t line_number);
+    void set_multi_field_probability(double prob) { multi_field_prob_ = std::max(0.0, std::min(1.0, prob)); }
+    
+    /**
+     * @brief Set probability of single-field dropouts (disc degradation)
+     * @param prob Probability from 0.0 to 1.0
+     */
+    void set_single_field_probability(double prob) { single_field_prob_ = std::max(0.0, std::min(1.0, prob)); }
     
     /**
      * @brief Apply dropouts to the field
@@ -192,16 +189,24 @@ public:
     std::string effect_type() const override { return "dropout"; }
     
 private:
-    DropoutPattern pattern_ = RANDOM;
+    struct MultiFieldDropout {
+        int32_t start_field;           ///< Field number where dropout starts
+        int32_t duration_fields;       ///< Duration in fields
+        int32_t line_number;           ///< Line where dropout occurs
+        int32_t center_x;              ///< Center sample position
+        int32_t initial_length;        ///< Initial dropout length
+        double base_excursion;         ///< Base amplitude excursion (preserved across fields)
+        double amplitude;              ///< Amplitude for modulation
+    };
+
     double density_ = 0.01;
     uint32_t seed_ = 42;
-    std::vector<int32_t> dropout_lines_;
-    
-    /**
-     * @brief Check if a line should be dropped out (for RANDOM pattern)
-     */
-    bool should_dropout_line(int32_t line_number);
+    double multi_field_prob_ = 0.20;    ///< Probability of multi-field dropouts (scratches)
+    double single_field_prob_ = 0.80;   ///< Probability of single-field dropouts (disc degradation)
+    std::vector<MultiFieldDropout> multi_field_dropouts_;
+    int32_t last_processed_field_ = -1;
 };
+
 
 /**
  * @brief Phase error simulator for VCR/tape playback effects
