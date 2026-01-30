@@ -42,6 +42,8 @@ public:
      * @param is_first_field true if this is field1, false for field2
      * @param width Width of the video (pixels)
      * @param studio_range_input true if input is studio range (0-1023), false for full-range (0-65535)
+     * @param y_buffer Optional separate Y output buffer (for Y/C output)
+     * @param c_buffer Optional separate C output buffer (for Y/C output)
      */
     virtual void encode_active_line(uint16_t* line_buffer,
                                    const uint16_t* y_line,
@@ -51,7 +53,9 @@ public:
                                    int32_t field_number,
                                    bool is_first_field,
                                    int32_t width,
-                                   bool studio_range_input) = 0;
+                                   bool studio_range_input,
+                                   uint16_t* y_buffer = nullptr,
+                                   uint16_t* c_buffer = nullptr) = 0;
     
     /**
      * @brief Convert YUV sample to composite signal at given phase

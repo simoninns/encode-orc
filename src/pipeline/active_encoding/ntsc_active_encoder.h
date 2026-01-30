@@ -56,7 +56,9 @@ public:
                            int32_t field_number,
                            bool is_first_field,
                            int32_t width,
-                           bool studio_range_input) override;
+                           bool studio_range_input,
+                           uint16_t* y_buffer = nullptr,
+                           uint16_t* c_buffer = nullptr) override;
     
     /**
      * @brief Convert YIQ sample to NTSC composite at given phase

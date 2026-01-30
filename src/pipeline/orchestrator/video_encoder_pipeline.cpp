@@ -38,6 +38,11 @@ VideoEncoderPipeline::Builder& VideoEncoderPipeline::Builder::enable_luma_filter
     return *this;
 }
 
+VideoEncoderPipeline::Builder& VideoEncoderPipeline::Builder::enable_yc_output(bool enable) {
+    enable_yc_output_ = enable;
+    return *this;
+}
+
 VideoEncoderPipeline::Builder& VideoEncoderPipeline::Builder::add_metadata_generator(
     std::unique_ptr<MetadataGenerator> generator) {
     generators_.push_back(std::move(generator));
@@ -85,6 +90,9 @@ std::unique_ptr<VideoEncoderPipeline> VideoEncoderPipeline::Builder::build() {
     auto pipeline = std::unique_ptr<VideoEncoderPipeline>(
         new VideoEncoderPipeline(params_, std::move(active_encoder))
     );
+    
+    // Set Y/C output flag
+    pipeline->enable_yc_output_ = enable_yc_output_;
     
     // Add metadata generators
     pipeline->generators_ = std::move(generators_);
@@ -161,6 +169,16 @@ Field VideoEncoderPipeline::encode_field_from_yuv(const Field& field_yuv,
     
     Field field = std::move(structured.field_data);
     
+    // Create Y and C fields if Y/C output is enabled
+    Field* y_field_ptr = nullptr;
+    Field* c_field_ptr = nullptr;
+    if (enable_yc_output_) {
+        field.y_field().resize(field.width(), field.height());
+        field.c_field().resize(field.width(), field.height());
+        y_field_ptr = &field.y_field();
+        c_field_ptr = &field.c_field();
+    }
+    
     // Get YUV plane pointers (planar layout: Y, U, V)
     int32_t field_width = field_yuv.width();
     int32_t source_field_height = field_yuv.height() / 3;
@@ -203,11 +221,16 @@ Field VideoEncoderPipeline::encode_field_from_yuv(const Field& field_yuv,
                 const uint16_t* u_line = u_plane + (line_in_field * field_width);
                 const uint16_t* v_line = v_plane + (line_in_field * field_width);
                 
+                // Get pointers to Y/C line buffers if Y/C output is enabled
+                uint16_t* y_line_buffer = y_field_ptr ? y_field_ptr->line_data(line) : nullptr;
+                uint16_t* c_line_buffer = c_field_ptr ? c_field_ptr->line_data(line) : nullptr;
+                
                 // Stage 4: Encode active video
                 active_encoder_->encode_active_line(
                     line_buffer, y_line, u_line, v_line,
                     line, field_number, is_first_field,
-                    field_width, studio_range_input
+                    field_width, studio_range_input,
+                    y_line_buffer, c_line_buffer
                 );
             }
         }

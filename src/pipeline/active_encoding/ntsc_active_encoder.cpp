@@ -71,7 +71,9 @@ void NTSCActiveEncoder::encode_active_line(uint16_t* line_buffer,
                                            int32_t field_number,
                                            bool /* is_first_field */,
                                            int32_t width,
-                                           bool studio_range_input) {
+                                           bool studio_range_input,
+                                           uint16_t* y_buffer,
+                                           uint16_t* c_buffer) {
     // Resolve source pointers; only allocate filtered buffers when filters are enabled.
     const uint16_t* y_data = y_line;
     const uint16_t* i_data = i_line;
@@ -155,6 +157,14 @@ void NTSCActiveEncoder::encode_active_line(uint16_t* line_buffer,
 
         int32_t composite = luma_scaled + chroma_scaled;
         line_buffer[sample] = clamp_to_16bit(composite);
+        
+        // If Y/C output is requested, populate separate Y and C buffers
+        if (y_buffer != nullptr) {
+            y_buffer[sample] = clamp_to_16bit(luma_scaled);
+        }
+        if (c_buffer != nullptr) {
+            c_buffer[sample] = clamp_to_16bit(chroma_scaled + ((white_level_ - black_level_) / 2) + black_level_);
+        }
 
         // Update phase using rotation matrix (more accurate than direct calculation)
         double next_sin = (sin_phase * cos_step) + (cos_phase * sin_step);

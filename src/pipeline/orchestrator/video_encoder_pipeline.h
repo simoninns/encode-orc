@@ -68,6 +68,11 @@ public:
         Builder& enable_luma_filter(bool enable = true);
         
         /**
+         * @brief Enable separate Y/C output generation
+         */
+        Builder& enable_yc_output(bool enable = true);
+        
+        /**
          * @brief Add a metadata generator to the pipeline
          */
         Builder& add_metadata_generator(std::unique_ptr<MetadataGenerator> generator);
@@ -102,6 +107,7 @@ public:
         VideoParameters params_;
         bool enable_chroma_filter_ = true;
         bool enable_luma_filter_ = false;
+        bool enable_yc_output_ = false;
         std::vector<std::unique_ptr<MetadataGenerator>> generators_;
         std::vector<std::unique_ptr<FieldEffect>> effects_;
         std::vector<std::unique_ptr<FieldPreprocessor>> preprocessors_;
@@ -193,6 +199,7 @@ private:
     std::vector<std::unique_ptr<MetadataGenerator>> generators_;
     std::vector<std::unique_ptr<FieldEffect>> effects_;
     std::vector<std::unique_ptr<FieldPreprocessor>> preprocessors_;
+    bool enable_yc_output_ = false;
     
     /**
      * @brief Private constructor for Builder

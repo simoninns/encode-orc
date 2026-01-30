@@ -506,6 +506,11 @@ int main(int argc, char* argv[]) {
                             .set_parameters(params)
                             .enable_chroma_filter(enable_chroma_filter)
                             .enable_luma_filter(enable_luma_filter);
+            
+            // Enable Y/C output if format is Y/C
+            if (config.output.format == "pal-yc" || config.output.format == "ntsc-yc") {
+                pipeline_builder.enable_yc_output(true);
+            }
 
             if (!generators.empty()) {
                 pipeline_builder.set_metadata_generators(std::move(generators));

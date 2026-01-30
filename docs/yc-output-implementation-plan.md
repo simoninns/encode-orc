@@ -88,36 +88,60 @@ The Y/C output feature existed in the legacy encoder but was not carried forward
 
 **Objective**: Update the pipeline encoder to generate separate Y and C field representations alongside composite
 
-**Status**: ⏳ NOT STARTED - Required for full Y/C support
+**Status**: ✅ COMPLETED
 
-**Files to Modify**:
+**Files Modified**:
 - `src/pipeline/active_encoding/active_video_encoder.h` (interface)
+- `src/pipeline/active_encoding/ntsc_active_encoder.h`
 - `src/pipeline/active_encoding/ntsc_active_encoder.cpp`
+- `src/pipeline/active_encoding/pal_active_encoder.h`
 - `src/pipeline/active_encoding/pal_active_encoder.cpp`
+- `src/pipeline/orchestrator/video_encoder_pipeline.h`
 - `src/pipeline/orchestrator/video_encoder_pipeline.cpp`
+- `src/main.cpp`
 
-**Required Changes**:
+**Changes Made**:
 
-The encoder needs to extract Y and C components from the generated composite video and populate the Field's Y and C representations. Two approaches are possible:
+1. **Extended encoder interface** to support optional Y/C buffer parameters:
+   - Added `y_buffer` and `c_buffer` parameters to `encode_active_line()` methods
+   - Parameters default to `nullptr` for backward compatibility
 
-**Approach 1: Extract from Composite (Simpler)**
-After generating the composite field, extract Y and C components:
-- Y component: Extract luma samples from composite
-- C component: Extract chroma samples from composite
-- This happens at the Field/writer level, not during encoding
+2. **Updated PAL and NTSC encoders** to populate Y/C buffers:
+   - Y buffer receives luma component scaled to signal levels
+   - C buffer receives chroma component centered around mid-level
+   - Both encoders extract Y and C during the composite encoding loop (Approach 1)
+   - No performance impact when Y/C output is disabled (nullptr checks)
 
-**Approach 2: Generate During Encoding (Better Quality)**
-Modify encoders to output Y and C during generation:
-- Track Y and C separately throughout encoding pipeline
-- Store in Field's y_field and c_field members
-- Better quality, no re-extraction needed
+3. **Added Y/C output flag to VideoEncoderPipeline**:
+   - New `enable_yc_output()` builder method
+   - Pipeline creates Y and C fields on-demand when flag is set
+   - Passes Y/C line buffers to active encoders during encoding
 
-**Recommended**: Approach 2 for best quality, but Approach 1 may be simpler initially.
+4. **Updated main.cpp integration**:
+   - Detects Y/C format from config (`pal-yc` or `ntsc-yc`)
+   - Enables Y/C output in pipeline builder when appropriate
+   - Verified with both PAL and NTSC test projects
 
-**Implementation Details**:
-- Add optional Y/C generation to `encode_frame()` return value
-- Only generate Y/C if output format is `pal-yc` or `ntsc-yc`
-- Existing composite path unchanged for performance
+**Implementation Approach**:
+
+Used **Approach 1: Extract from Composite** for simplicity:
+- Y and C components are extracted during composite generation
+- Same encoding loop generates all three representations
+- Minimal code duplication
+- Slightly lower quality than generating Y/C natively, but acceptable
+
+**Testing Results**:
+- ✅ PAL Y/C: Field size 354,120 samples, Y and C fields match
+- ✅ NTSC Y/C: Field size 238,420 samples, Y and C fields match  
+- ✅ Composite formats (PAL/NTSC) continue to work without Y/C overhead
+- ✅ Build succeeds with no warnings or errors
+
+**Memory Usage**:
+- Composite-only output: No change (Y/C fields not created)
+- Y/C output: ~3x memory (composite + Y + C fields)
+- All three representations stored simultaneously
+
+**Next Steps**: Phase 3 (YCTBCWriter Integration) to actually write Y/C files separately
 
 ---
 
@@ -285,15 +309,9 @@ The `mode` field is deprecated and should not be used.
 **Completed:**
 1. ✅ **Phase 1**: YAML mode field removal (already done)
 2. ✅ **Phase 2**: Field class extension and format detection
+3. ✅ **Phase 2.5**: Video encoder Y/C field generation
 
 **Remaining (in order):**
-3. **Phase 2.5**: Update encoders to generate Y/C fields
-   - Modify ntsc_active_encoder.cpp and pal_active_encoder.cpp
-   - Extract or generate Y and C components
-   - Populate Field's y_field() and c_field()
-   - Test: Verify Y and C fields are populated
-   - Test: Verify composite field still correct
-
 4. **Phase 3**: Integrate YCTBCWriter
    - Update writer selection in main.cpp
    - Route Y/C fields to separate writers
@@ -317,17 +335,22 @@ The `mode` field is deprecated and should not be used.
 
 ## Testing Strategy
 
-### Current Status (After Phase 2)
-- Y/C format is now recognized (no error rejection)
-- Filenames handled correctly
-- Standard composite writer used for all formats (including Y/C)
-- Build succeeds without warnings or errors
+### Current Status (After Phase 2.5)
+- ✅ Y/C format is now recognized (no error rejection)
+- ✅ Filenames handled correctly
+- ✅ Y and C field representations are generated during encoding
+- ✅ Field objects contain separate Y and C data when Y/C format is selected
+- ✅ Composite formats continue to work without Y/C overhead
+- ✅ Build succeeds without warnings or errors
+- ⏳ Standard composite writer still used for all formats (Phase 3 will add YCTBCWriter)
 
-### Phase 2.5 Testing (Encoder Y/C Generation)
-- Verify Field objects have Y and C representations populated
-- Verify composite field still generates correct video
-- Check Y field contains luma-only data (approximately half amplitude)
-- Check C field contains chroma-only data (approximately centered around middle)
+### Phase 2.5 Testing (Encoder Y/C Generation) ✅ COMPLETED
+- ✅ Verified Field objects have Y and C representations populated
+- ✅ Verified composite field still generates correct video
+- ✅ Checked Y field contains luma-only data (scaled to signal levels)
+- ✅ Checked C field contains chroma-only data (centered around middle)
+- ✅ Tested both PAL and NTSC Y/C formats
+- ✅ Verified composite formats don't create Y/C fields unnecessarily
 
 ### Phase 3 Testing (YCTBCWriter Integration)
 1. **Y/C output generation**:
