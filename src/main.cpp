@@ -12,6 +12,7 @@
 #include "metadata_generator.h"
 #include "pipeline_generators.h"
 #include "vits_pipeline_generator.h"
+#include "field_effect.h"
 #include "video_parameters.h"
 #include "metadata.h"
 #include "logging.h"
@@ -523,6 +524,51 @@ int main(int argc, char* argv[]) {
                 }
             }
 
+            // Instantiate field effects from YAML configuration
+            std::vector<std::unique_ptr<FieldEffect>> effects;
+            if (config.pipeline.effects.has_value()) {
+                for (const auto& effect_config : config.pipeline.effects->effects) {
+                    if (!effect_config.enabled) {
+                        continue;  // Skip disabled effects
+                    }
+
+                    if (effect_config.type == "noise") {
+                        std::unique_ptr<NoiseGenerator> noise_gen;
+
+                        // Create noise generator with SNR or direct noise level
+                        if (effect_config.snr_db.has_value()) {
+                            noise_gen = std::make_unique<NoiseGenerator>(NoiseGenerator::from_snr(effect_config.snr_db.value()));
+                            ENCODE_ORC_LOG_DEBUG("Added Noise generator with SNR: {} dB", effect_config.snr_db.value());
+                        } else if (effect_config.noise_level_db.has_value()) {
+                            noise_gen = std::make_unique<NoiseGenerator>(effect_config.noise_level_db.value());
+                            ENCODE_ORC_LOG_DEBUG("Added Noise generator with noise level: {} dB", effect_config.noise_level_db.value());
+                        } else {
+                            // Use default (40 dB SNR)
+                            noise_gen = std::make_unique<NoiseGenerator>(NoiseGenerator::from_snr(40.0));
+                            ENCODE_ORC_LOG_DEBUG("Added Noise generator with default 40 dB SNR");
+                        }
+
+                        // Set seed if provided
+                        if (effect_config.seed.has_value()) {
+                            noise_gen->set_seed(effect_config.seed.value());
+                        }
+
+                        effects.push_back(std::move(noise_gen));
+                    }
+                    else if (effect_config.type == "dropout") {
+                        // Dropout effects would be created here
+                        ENCODE_ORC_LOG_WARN("Dropout effect type '{}' not yet implemented in main.cpp", effect_config.type);
+                    }
+                    else if (effect_config.type == "phase-error") {
+                        // Phase error effects would be created here
+                        ENCODE_ORC_LOG_WARN("Phase-error effect type '{}' not yet implemented in main.cpp", effect_config.type);
+                    }
+                    else {
+                        ENCODE_ORC_LOG_WARN("Unknown effect type '{}' in pipeline configuration", effect_config.type);
+                    }
+                }
+            }
+
             // Build pipeline for this section
             VideoEncoderPipeline::Builder pipeline_builder;
             pipeline_builder.set_system(system)
@@ -537,6 +583,10 @@ int main(int argc, char* argv[]) {
 
             if (!generators.empty()) {
                 pipeline_builder.set_metadata_generators(std::move(generators));
+            }
+
+            if (!effects.empty()) {
+                pipeline_builder.set_field_effects(std::move(effects));
             }
 
             auto pipeline = pipeline_builder.build();
@@ -733,3 +783,4 @@ int main(int argc, char* argv[]) {
     
     return 0;
 }
+

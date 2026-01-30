@@ -1,0 +1,47 @@
+name: "NTSC Noise YC"
+description: "NTSC test signal with Gaussian noise and separate YC output"
+
+output:
+  filename: "test-output/ntsc-noise-yc"
+  format: "ntsc-yc"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+  
+  metadata:
+    generators:
+      - type: "vitc"
+        enabled: true
+        lines: [14, 15, 16, 277, 278, 279]
+        start_frame_offset: 0
+      
+      - type: "color-burst"
+        enabled: true
+
+  effects:
+    - type: "noise"
+      enabled: true
+      snr_db: 20.0
+      seed: 42
+
+sections:
+  - name: "Lead-in"
+    duration: 1
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+  
+  - name: "Test Content"
+    duration: 20
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+  
+  - name: "Lead-out"
+    duration: 1
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/ntsc-raw/525_5994_75_BARS.raw"

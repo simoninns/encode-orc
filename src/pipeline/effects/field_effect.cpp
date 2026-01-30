@@ -85,15 +85,22 @@ void NoiseGenerator::apply(Field& field, const FieldEffectContext& context) {
         noise_rms = std::pow(10.0, noise_level_db_ / 20.0) * 32768.0;  // Normalized to 16-bit
     }
     
-    // Seed the RNG with user-provided seed
-    static thread_local std::mt19937 rng(seed_);
-    static thread_local std::uniform_real_distribution<double> uniform(0.0, 1.0);
-    rng.seed(seed_ + context.field_number);  // Vary seed per field for different noise
+    // Seed a local RNG so each field gets reproducible noise
+    std::mt19937 rng(seed_ + context.field_number);
+    std::uniform_real_distribution<double> uniform(0.0, 1.0);
+    auto gaussian_random = [&]() {
+        // Box-Muller transform
+        double u1 = uniform(rng);
+        double u2 = uniform(rng);
+        if (u1 < 1e-10) u1 = 1e-10;
+        if (u2 < 1e-10) u2 = 1e-10;
+        return std::sqrt(-2.0 * std::log(u1)) * std::cos(2.0 * M_PI * u2);
+    };
     
     // Add Gaussian noise to all samples
     auto& data = field.data();
     for (auto& sample : data) {
-        double gaussian = generate_gaussian_random();
+        double gaussian = gaussian_random();
         double noise = gaussian * noise_rms;
         
         // Add noise and clamp to valid range [0, 65535]

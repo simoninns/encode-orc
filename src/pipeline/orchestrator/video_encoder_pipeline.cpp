@@ -312,10 +312,15 @@ Field VideoEncoderPipeline::encode_field_from_yuv(const Field& field_yuv,
     effect_context.is_first_field = is_first_field;
     effect_context.signal_level_white = 55000;  // Approximate white level in 16-bit scale
     effect_context.signal_level_black = 4096;   // Approximate black level
-    
+
     for (auto& effect : effects_) {
         if (effect && effect->is_enabled()) {
-            effect->apply(field, effect_context);
+            if (enable_yc_output_ && y_field_ptr && c_field_ptr) {
+                effect->apply(*y_field_ptr, effect_context);
+                effect->apply(*c_field_ptr, effect_context);
+            } else {
+                effect->apply(field, effect_context);
+            }
         }
     }
     
