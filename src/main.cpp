@@ -21,6 +21,7 @@
 #include "mp4_loader.h"
 #include "writer.h"
 #include "tbc_writer.h"
+#include "yc_tbc_writer.h"
 #include "standard_writer.h"
 #include "version.h"
 #include <iostream>
@@ -295,20 +296,41 @@ int main(int argc, char* argv[]) {
 
     // Open output writer
     std::unique_ptr<Writer> writer;
-    if (config.output.writer == "standard") {
-        writer = std::make_unique<StandardWriter>();
-    } else {
-        writer = std::make_unique<TBCWriter>();
-    }
-
-    if (!writer->open(output_filename)) {
-        ENCODE_ORC_LOG_ERROR("Could not open output file: {}", output_filename);
-        return 1;
-    }
-
-    if (auto* tbc = dynamic_cast<TBCWriter*>(writer.get())) {
+    std::unique_ptr<YCTBCWriter> yc_writer;
+    
+    if (config.output.format == "pal-yc" || config.output.format == "ntsc-yc") {
+        // Use Y/C writer for separate Y and C output
+        yc_writer = std::make_unique<YCTBCWriter>(YCTBCWriter::NamingMode::MODERN);
+        if (!yc_writer->open(output_filename)) {
+            ENCODE_ORC_LOG_ERROR("Could not open Y/C output files: {}", output_filename);
+            return 1;
+        }
+        
+        // Set padding for both Y and C writers
         int32_t field_height_diff = params.field2_height - params.field1_height;
-        tbc->set_field1_padding(params.field_width, static_cast<uint16_t>(params.blanking_16b_ire), field_height_diff);
+        if (auto* y_tbc = yc_writer->y_writer()) {
+            y_tbc->set_field1_padding(params.field_width, static_cast<uint16_t>(params.blanking_16b_ire), field_height_diff);
+        }
+        if (auto* c_tbc = yc_writer->c_writer()) {
+            c_tbc->set_field1_padding(params.field_width, static_cast<uint16_t>(params.blanking_16b_ire), field_height_diff);
+        }
+    } else {
+        // Use standard composite writer
+        if (config.output.writer == "standard") {
+            writer = std::make_unique<StandardWriter>();
+        } else {
+            writer = std::make_unique<TBCWriter>();
+        }
+
+        if (!writer->open(output_filename)) {
+            ENCODE_ORC_LOG_ERROR("Could not open output file: {}", output_filename);
+            return 1;
+        }
+
+        if (auto* tbc = dynamic_cast<TBCWriter*>(writer.get())) {
+            int32_t field_height_diff = params.field2_height - params.field1_height;
+            tbc->set_field1_padding(params.field_width, static_cast<uint16_t>(params.blanking_16b_ire), field_height_diff);
+        }
     }
 
     // Pre-generate VBI data if required (LaserDisc biphase)
@@ -534,9 +556,33 @@ int main(int argc, char* argv[]) {
 
                 Frame encoded_frame = pipeline->encode_frame(frame_buffer, field_number, vbi_data);
 
-                if (!writer->write_field(encoded_frame.field1()) || !writer->write_field(encoded_frame.field2())) {
-                    ENCODE_ORC_LOG_ERROR("Failed to write encoded fields for frame {}", global_frame);
-                    return false;
+                // Write fields based on output format
+                if (yc_writer) {
+                    // Write Y and C fields separately
+                    const Field* y_field1 = encoded_frame.field1().y_field_const();
+                    const Field* c_field1 = encoded_frame.field1().c_field_const();
+                    const Field* y_field2 = encoded_frame.field2().y_field_const();
+                    const Field* c_field2 = encoded_frame.field2().c_field_const();
+                    
+                    if (!y_field1 || !c_field1 || !y_field2 || !c_field2) {
+                        ENCODE_ORC_LOG_ERROR("Y/C fields not generated for frame {}", global_frame);
+                        return false;
+                    }
+                    
+                    if (!yc_writer->write_y_field(*y_field1) || !yc_writer->write_y_field(*y_field2)) {
+                        ENCODE_ORC_LOG_ERROR("Failed to write Y fields for frame {}", global_frame);
+                        return false;
+                    }
+                    if (!yc_writer->write_c_field(*c_field1) || !yc_writer->write_c_field(*c_field2)) {
+                        ENCODE_ORC_LOG_ERROR("Failed to write C fields for frame {}", global_frame);
+                        return false;
+                    }
+                } else {
+                    // Write composite fields normally
+                    if (!writer->write_field(encoded_frame.field1()) || !writer->write_field(encoded_frame.field2())) {
+                        ENCODE_ORC_LOG_ERROR("Failed to write encoded fields for frame {}", global_frame);
+                        return false;
+                    }
                 }
 
                 if ((section_frame + 1) % 10 == 0 || section_frame == section_frames - 1) {
@@ -656,6 +702,10 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Close writers
+    if (yc_writer) {
+        yc_writer->close();
+    }
     if (writer) {
         writer->close();
     }
@@ -663,10 +713,7 @@ int main(int argc, char* argv[]) {
     // Generate metadata for entire file (only for TBC writer, not standard writer)
     if (config.output.writer != "standard") {
         std::string meta_error;
-        std::string metadata_filename = output_filename + ".db";
-        
-        // Note: Y/C output metadata handling will be added when Y/C encoding is fully implemented
-        // For now, metadata is always associated with composite representation
+        std::string metadata_filename = output_filename + ".tbc.db";
         
         if (!generate_metadata(config, system, total_frames, metadata_filename, meta_error)) {
             ENCODE_ORC_LOG_ERROR("Metadata generation error: {}", meta_error);
@@ -675,6 +722,13 @@ int main(int argc, char* argv[]) {
     }
     
     ENCODE_ORC_LOG_INFO("Successfully generated {} frames", total_frames);
-    ENCODE_ORC_LOG_INFO("Output file: {}", output_filename);
+    
+    // Log output file(s)
+    if (config.output.format == "pal-yc" || config.output.format == "ntsc-yc") {
+        ENCODE_ORC_LOG_INFO("Output files: {}.tbcy, {}.tbcc", output_filename, output_filename);
+    } else {
+        ENCODE_ORC_LOG_INFO("Output file: {}", output_filename);
+    }
+    
     return 0;
 }
