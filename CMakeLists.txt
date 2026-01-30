@@ -60,53 +60,66 @@ endif()
 
 # Generate version header
 configure_file(
-    ${CMAKE_SOURCE_DIR}/include/version.h.in
+    ${CMAKE_SOURCE_DIR}/src/config/version.h.in
     ${CMAKE_BINARY_DIR}/generated/version.h
     @ONLY
 )
 
 # Include directories
-include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${PROJECT_SOURCE_DIR}/src)
+include_directories(${PROJECT_SOURCE_DIR}/src/config)
+include_directories(${PROJECT_SOURCE_DIR}/src/utils)
+include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/loaders)
+include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/field_splitting)
+include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/preprocessing)
+include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/structure_generation)
+include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/metadata_generators)
+include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/metadata_generators/encoders)
+include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/active_encoding)
+include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/effects)
+include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/writers)
+include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/orchestrator)
+include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/common)
 include_directories(${CMAKE_BINARY_DIR}/generated)
 
 # Source files
 set(SOURCES
     src/main.cpp
-    src/logging.cpp
-    src/yaml_config.cpp
-    src/metadata_writer.cpp
-    src/metadata_generator.cpp
-    src/color_burst_generator.cpp
-    src/field_splitter.cpp
-    src/field_structure_generator.cpp
-    src/pal_encoder.cpp
-    src/pal_vits_generator.cpp
-    src/ntsc_encoder.cpp
-    src/ntsc_vits_generator.cpp
-    src/biphase_encoder.cpp
-    src/manchester_encoder.cpp
-    src/vitc_generator.cpp
-    src/color_conversion.cpp
-    src/video_loader_base.cpp
-    src/yuv422_loader.cpp
-    src/png_loader.cpp
-    src/mov_loader.cpp
-    src/mp4_loader.cpp
-    src/video_encoder.cpp
+    src/utils/logging.cpp
+    src/config/yaml_config.cpp
+    src/pipeline/writers/metadata_writer.cpp
+    src/pipeline/metadata_generators/metadata_generator.cpp
+    src/pipeline/metadata_generators/color_burst_generator.cpp
+    src/pipeline/field_splitting/field_splitter.cpp
+    src/pipeline/structure_generation/field_structure_generator.cpp
+    
+    src/pipeline/metadata_generators/pal_vits_generator.cpp
+    
+    src/pipeline/metadata_generators/ntsc_vits_generator.cpp
+    src/pipeline/metadata_generators/encoders/biphase_encoder.cpp
+    src/pipeline/metadata_generators/encoders/manchester_encoder.cpp
+    src/pipeline/metadata_generators/vitc_generator.cpp
+    src/pipeline/loaders/color_conversion.cpp
+    src/pipeline/loaders/video_loader_base.cpp
+    src/pipeline/loaders/yuv422_loader.cpp
+    src/pipeline/loaders/png_loader.cpp
+    src/pipeline/loaders/mov_loader.cpp
+    src/pipeline/loaders/mp4_loader.cpp
+    
     # Phase 4: Pipeline metadata generators
-    src/vbi_metadata_generator.cpp
-    src/color_burst_pipeline_generator.cpp
-    src/vitc_pipeline_generator.cpp
-    src/vits_pipeline_generator.cpp
-    src/biphase_vbi_generator.cpp
-    src/pipeline_generators.cpp
+    src/pipeline/metadata_generators/vbi_metadata_generator.cpp
+    src/pipeline/metadata_generators/color_burst_pipeline_generator.cpp
+    src/pipeline/metadata_generators/vitc_pipeline_generator.cpp
+    src/pipeline/metadata_generators/vits_pipeline_generator.cpp
+    src/pipeline/metadata_generators/biphase_vbi_generator.cpp
+    src/pipeline/metadata_generators/pipeline_generators.cpp
     # Phase 5: Active video encoding refactoring
-    src/pal_active_encoder.cpp
-    src/ntsc_active_encoder.cpp
-    src/video_encoder_pipeline.cpp
+    src/pipeline/active_encoding/pal_active_encoder.cpp
+    src/pipeline/active_encoding/ntsc_active_encoder.cpp
+    src/pipeline/orchestrator/video_encoder_pipeline.cpp
     # Phase 6: Field effects and preprocessing
-    src/field_effect.cpp
-    src/field_preprocessor.cpp
+    src/pipeline/effects/field_effect.cpp
+    src/pipeline/preprocessing/field_preprocessor.cpp
 )
 
 # Create executable

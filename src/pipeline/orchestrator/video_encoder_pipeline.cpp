@@ -134,7 +134,7 @@ Field VideoEncoderPipeline::encode_field(const FrameBuffer& frame_buffer, int32_
 Field VideoEncoderPipeline::encode_field_from_yuv(const Field& field_yuv,
                                                   int32_t field_number,
                                                   bool is_first_field,
-                                                  const VBIData* /* vbi_data */) {
+                                                  const VBIData* vbi_data) {
     // Get field height (field1: 312/262, field2: 313/263)
     int32_t field_height = is_first_field ? params_.field1_height : params_.field2_height;
     VideoSystem system = active_encoder_->get_video_system();
@@ -217,6 +217,23 @@ Field VideoEncoderPipeline::encode_field_from_yuv(const Field& field_yuv,
         }
     }
     
+    // Stage 5: Apply metadata generators (VBI, VITC, VITS, etc.)
+    if (!generators_.empty()) {
+        MetadataContext ctx;
+        ctx.field_number = field_number;
+        ctx.total_frame = field_number / 2;
+        ctx.is_first_field = is_first_field;
+        ctx.system = system;
+        ctx.vbi_data = vbi_data;
+        ctx.source_standard = SourceVideoStandard::None;
+
+        for (auto& generator : generators_) {
+            if (generator && generator->is_applicable(ctx)) {
+                generator->apply(field, ctx);
+            }
+        }
+    }
+
     // Stage 7: Apply field effects (noise, dropouts, etc.)
     FieldEffectContext effect_context;
     effect_context.field_number = field_number;

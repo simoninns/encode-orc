@@ -8,17 +8,24 @@
  */
 
 #include "yaml_config.h"
-#include "video_encoder.h"
+#include "video_encoder_pipeline.h"
 #include "metadata_generator.h"
 #include "pipeline_generators.h"
 #include "video_parameters.h"
+#include "metadata.h"
 #include "logging.h"
+#include "yuv422_loader.h"
+#include "png_loader.h"
 #include "mov_loader.h"
 #include "mp4_loader.h"
+#include "writer.h"
+#include "tbc_writer.h"
+#include "standard_writer.h"
 #include "version.h"
 #include <iostream>
 #include <fstream>
 #include <cstdio>
+#include <memory>
 
 int main(int argc, char* argv[]) {
     using namespace encode_orc;
@@ -258,147 +265,93 @@ int main(int argc, char* argv[]) {
     ENCODE_ORC_LOG_INFO("Total frames to encode: {}", total_frames);
     
     // Encode video for each section
-    std::ofstream tbc_file;
     bool is_separate_yc = (config.output.mode == "separate-yc" || config.output.mode == "separate-yc-legacy");
-    bool is_yc_legacy = (config.output.mode == "separate-yc-legacy");
-    
-    // For combined mode, open the single output file
-    if (!is_separate_yc) {
-        tbc_file.open(config.output.filename, std::ios::binary);
-        if (!tbc_file) {
-            ENCODE_ORC_LOG_ERROR("Could not open output file: {}", config.output.filename);
-            return 1;
-        }
-    } else {
-        // For Y/C mode, delete any pre-existing output files to ensure clean start
-        std::string base_out = config.output.filename;
-        if (base_out.length() > 4 && base_out.substr(base_out.length() - 4) == ".tbc") {
-            base_out = base_out.substr(0, base_out.length() - 4);
-        }
-        
-        if (is_yc_legacy) {
-            std::remove((base_out + ".tbc").c_str());
-            std::remove((base_out + "_chroma.tbc").c_str());
-        } else {
-            std::remove((base_out + ".tbcy").c_str());
-            std::remove((base_out + ".tbcc").c_str());
-        }
+    if (is_separate_yc) {
+        ENCODE_ORC_LOG_ERROR("Separate Y/C output is not supported by the pipeline encoder");
+        ENCODE_ORC_LOG_ERROR("Please use combined output mode or re-enable legacy encoders");
+        return 1;
     }
-    
-    // Set video level overrides if specified in YAML
+
+    // Build video parameters (with optional overrides)
+    VideoParameters params = (system == VideoSystem::PAL) ?
+        VideoParameters::create_pal_composite() :
+        VideoParameters::create_ntsc_composite();
+
     if (has_video_level_overrides) {
-        VideoEncoder::set_video_level_overrides(
+        VideoParameters::apply_video_level_overrides(
+            params,
             video_levels.value().blanking_16b_ire,
             video_levels.value().black_16b_ire,
             video_levels.value().white_16b_ire
         );
     }
-    
+
+    // Open output writer
+    std::unique_ptr<Writer> writer;
+    if (config.output.writer == "standard") {
+        writer = std::make_unique<StandardWriter>();
+    } else {
+        writer = std::make_unique<TBCWriter>();
+    }
+
+    if (!writer->open(config.output.filename)) {
+        ENCODE_ORC_LOG_ERROR("Could not open output file: {}", config.output.filename);
+        return 1;
+    }
+
+    if (auto* tbc = dynamic_cast<TBCWriter*>(writer.get())) {
+        int32_t field_height_diff = params.field2_height - params.field1_height;
+        tbc->set_field1_padding(params.field_width, static_cast<uint16_t>(params.blanking_16b_ire), field_height_diff);
+    }
+
+    // Pre-generate VBI data if required (LaserDisc biphase)
+    bool needs_vbi_data = false;
+    if (config.pipeline.metadata.has_value()) {
+        for (const auto& gen : config.pipeline.metadata->generators) {
+            if (gen.type == "biphase-vbi" && gen.enabled) {
+                needs_vbi_data = true;
+                break;
+            }
+        }
+    }
+
+    CaptureMetadata pre_metadata;
+    if (needs_vbi_data) {
+        std::string prep_error;
+        if (!generate_metadata(config, system, total_frames, "", prep_error, &pre_metadata)) {
+            ENCODE_ORC_LOG_ERROR("Metadata preparation error: {}", prep_error);
+            return 1;
+        }
+    }
+
     int32_t frame_offset = 0;
-    int32_t running_timecode_frame = 0;  // Track continuous timecode across sections
-    bool timecode_mode_active = false;   // Whether we're in continuous timecode mode
-    
+
     for (const auto& section : config.sections) {
         ENCODE_ORC_LOG_INFO("Encoding section: {}", section.name);
-        
+
         // Track actual number of frames encoded in this section
         int32_t section_frames = 0;
-        
+
         if (section.yuv422_image_source || section.png_image_source || section.mov_file_source || section.mp4_file_source) {
-            int32_t picture_start = 0;
-            int32_t chapter = 0;
-            std::string timecode_start = "";
-            std::string disc_area = "programme-area";  // Default to programme area
-            
-            if (section.biphase_vbi) {
-                // Get disc area
-                disc_area = section.biphase_vbi->disc_area;
-                
-                // Get Biphase VBI metadata parameters
-                if (section.biphase_vbi->picture_start) {
-                    picture_start = section.biphase_vbi->picture_start.value();
-                    timecode_mode_active = false;  // Switch to CAV mode
-                } else if (section.biphase_vbi->chapter) {
-                    chapter = section.biphase_vbi->chapter.value();
-                    timecode_mode_active = false;  // Chapter mode
-                } else if (section.biphase_vbi->timecode_start) {
-                    // Explicit timecode start - parse and update running offset
-                    timecode_start = section.biphase_vbi->timecode_start.value();
-                    timecode_mode_active = true;
-                    
-                    // Parse the timecode to set running_timecode_frame
-                    int32_t fps = (system == VideoSystem::PAL) ? 25 : 30;
-                    int32_t start_hh = 0, start_mm = 0, start_ss = 0, start_ff = 0;
-                    int parsed = std::sscanf(timecode_start.c_str(), "%d:%d:%d:%d", 
-                                              &start_hh, &start_mm, &start_ss, &start_ff);
-                    if (parsed >= 3) {
-                        running_timecode_frame = start_hh * 3600 * fps +
-                                               start_mm * 60 * fps +
-                                               start_ss * fps +
-                                               start_ff;
-                    }
-                }
-            } else if (timecode_mode_active && disc_area == "programme-area") {
-                // No laserdisc section, but we're in timecode mode - continue from previous
-                int32_t fps = (system == VideoSystem::PAL) ? 25 : 30;
-                int32_t hh = running_timecode_frame / (3600 * fps);
-                int32_t mm = (running_timecode_frame / (60 * fps)) % 60;
-                int32_t ss = (running_timecode_frame / fps) % 60;
-                int32_t ff = running_timecode_frame % fps;
-                
-                char timecode_buffer[32];
-                std::snprintf(timecode_buffer, sizeof(timecode_buffer), "%02d:%02d:%02d:%02d", hh, mm, ss, ff);
-                timecode_start = timecode_buffer;
-                
-                ENCODE_ORC_LOG_DEBUG("Auto-continuing timecode for section '{}': {}", section.name, timecode_start);
-            }
-            
             // Get filter settings (use defaults if not specified)
             bool enable_chroma_filter = true;  // Default: enabled
             bool enable_luma_filter = false;   // Default: disabled
-            
+
             if (section.filters) {
                 enable_chroma_filter = section.filters->chroma.enabled;
                 enable_luma_filter = section.filters->luma.enabled;
             }
-            
-            // Determine source video standard from pipeline configuration
-            // TODO: This is temporary until VideoEncoder is refactored in Phase 5
-            SourceVideoStandard source_standard = SourceVideoStandard::None;
-            if (config.pipeline.metadata.has_value()) {
-                for (const auto& gen : config.pipeline.metadata->generators) {
-                    if (gen.type == "biphase-vbi" && gen.enabled) {
-                        // LaserDisc standard
-                        source_standard = (system == VideoSystem::PAL) ? 
-                            SourceVideoStandard::IEC60857_1986 : SourceVideoStandard::IEC60856_1986;
-                        break;
-                    } else if (gen.type == "vitc" && gen.enabled) {
-                        // Consumer tape
-                        source_standard = SourceVideoStandard::ConsumerTape;
-                        break;
-                    }
-                }
-            }
-            
-            // Create encoder and configure pipeline generators (Phase 4+)
-            VideoEncoder encoder;
-            
+
             // Instantiate metadata generators from YAML configuration
+            std::vector<std::unique_ptr<MetadataGenerator>> generators;
             if (config.pipeline.metadata.has_value()) {
-                std::vector<std::unique_ptr<MetadataGenerator>> generators;
-                
-                // Get video parameters for generator construction
-                VideoParameters gen_params = (system == VideoSystem::PAL) ?
-                    VideoParameters::create_pal_composite() :
-                    VideoParameters::create_ntsc_composite();
-                
                 for (const auto& gen_config : config.pipeline.metadata->generators) {
                     if (!gen_config.enabled) {
                         continue;  // Skip disabled generators
                     }
-                    
+
                     if (gen_config.type == "color-burst") {
-                        generators.push_back(std::make_unique<ColorBurstMetadataGenerator>(gen_params));
+                        generators.push_back(std::make_unique<ColorBurstMetadataGenerator>(params));
                         ENCODE_ORC_LOG_DEBUG("Added ColorBurst generator to pipeline");
                     }
                     else if (gen_config.type == "vitc") {
@@ -410,11 +363,11 @@ int main(int argc, char* argv[]) {
                                 lines.push_back(line_1indexed - 1);
                             }
                         }
-                        generators.push_back(std::make_unique<VITCMetadataGenerator>(gen_params, lines));
+                        generators.push_back(std::make_unique<VITCMetadataGenerator>(params, lines));
                         ENCODE_ORC_LOG_DEBUG("Added VITC generator to pipeline");
                     }
                     else if (gen_config.type == "vits") {
-                        generators.push_back(std::make_unique<VITSMetadataGenerator>(gen_params));
+                        generators.push_back(std::make_unique<VITSMetadataGenerator>(params));
                         ENCODE_ORC_LOG_DEBUG("Added VITS generator to pipeline");
                     }
                     else if (gen_config.type == "biphase-vbi") {
@@ -426,165 +379,167 @@ int main(int argc, char* argv[]) {
                                 lines.push_back(line_1indexed - 1);
                             }
                         }
-                        generators.push_back(std::make_unique<BiphaseVBIMetadataGenerator>(gen_params, lines));
+                        generators.push_back(std::make_unique<BiphaseVBIMetadataGenerator>(params, lines));
                         ENCODE_ORC_LOG_DEBUG("Added BiphaseVBI generator to pipeline");
                     }
                     else {
                         ENCODE_ORC_LOG_WARN("Unknown generator type '{}' in pipeline configuration", gen_config.type);
                     }
                 }
-                
-                // Set generators on encoder
-                encoder.set_metadata_generators(std::move(generators));
             }
-            
-            bool ok = false;
+
+            // Build pipeline for this section
+            VideoEncoderPipeline::Builder pipeline_builder;
+            pipeline_builder.set_system(system)
+                            .set_parameters(params)
+                            .enable_chroma_filter(enable_chroma_filter)
+                            .enable_luma_filter(enable_luma_filter);
+
+            if (!generators.empty()) {
+                pipeline_builder.set_metadata_generators(std::move(generators));
+            }
+
+            auto pipeline = pipeline_builder.build();
+            if (!pipeline) {
+                ENCODE_ORC_LOG_ERROR("Failed to create pipeline for section '{}'", section.name);
+                return 1;
+            }
+
+            auto encode_frame = [&](const FrameBuffer& frame_buffer, int32_t section_frame) -> bool {
+                int32_t global_frame = frame_offset + section_frame;
+                int32_t field_number = global_frame * 2;
+
+                const VBIData* vbi_data = nullptr;
+                if (needs_vbi_data && field_number < static_cast<int32_t>(pre_metadata.vbi_data.size()) &&
+                    pre_metadata.vbi_data[field_number].has_value()) {
+                    vbi_data = &pre_metadata.vbi_data[field_number].value();
+                }
+
+                Frame encoded_frame = pipeline->encode_frame(frame_buffer, field_number, vbi_data);
+
+                if (!writer->write_field(encoded_frame.field1()) || !writer->write_field(encoded_frame.field2())) {
+                    ENCODE_ORC_LOG_ERROR("Failed to write encoded fields for frame {}", global_frame);
+                    return false;
+                }
+
+                if ((section_frame + 1) % 10 == 0 || section_frame == section_frames - 1) {
+                    ENCODE_ORC_LOG_DEBUG("Writing field {} / {}", (global_frame + 1) * 2, total_frames * 2);
+                }
+
+                return true;
+            };
+
             if (section.yuv422_image_source) {
                 std::string yuv422_file = section.yuv422_image_source->file;
                 section_frames = section.duration.value();
-                ok = encoder.encode_yuv422_image(config.output.filename + ".temp",
-                                                system, source_standard, yuv422_file,
-                                                section_frames,
-                                                picture_start, chapter, timecode_start, disc_area,
-                                                enable_chroma_filter, enable_luma_filter,
-                                                is_separate_yc, is_yc_legacy, (config.output.writer == "standard"));
+
+                int32_t img_width = 720;
+                int32_t img_height = (system == VideoSystem::PAL) ? 576 : 480;
+
+                YUV422Loader yuv422_loader;
+                if (!yuv422_loader.open(yuv422_file, img_width, img_height)) {
+                    ENCODE_ORC_LOG_ERROR("Failed to open YUV422 file: {}", yuv422_file);
+                    return 1;
+                }
+
+                FrameBuffer frame_buffer;
+                std::string load_error;
+                if (!yuv422_loader.load_frame(0, frame_buffer, load_error)) {
+                    ENCODE_ORC_LOG_ERROR("Failed to load YUV422 frame: {}", load_error);
+                    yuv422_loader.close();
+                    return 1;
+                }
+                yuv422_loader.close();
+
+                for (int32_t i = 0; i < section_frames; ++i) {
+                    if (!encode_frame(frame_buffer, i)) {
+                        return 1;
+                    }
+                }
             } else if (section.png_image_source) {
                 std::string png_file = section.png_image_source->file;
                 section_frames = section.duration.value();
-                ok = encoder.encode_png_image(config.output.filename + ".temp",
-                                              system, source_standard, png_file,
-                                              section_frames,
-                                              picture_start, chapter, timecode_start, disc_area,
-                                              enable_chroma_filter, enable_luma_filter,
-                                              is_separate_yc, is_yc_legacy, (config.output.writer == "standard"));
+
+                PNGLoader png_loader;
+                std::string load_error;
+                if (!png_loader.open(png_file, load_error)) {
+                    ENCODE_ORC_LOG_ERROR("Failed to open PNG file: {}", load_error);
+                    return 1;
+                }
+
+                FrameBuffer frame_buffer;
+                if (!png_loader.load_frame(0, frame_buffer, load_error)) {
+                    ENCODE_ORC_LOG_ERROR("Failed to load PNG frame: {}", load_error);
+                    png_loader.close();
+                    return 1;
+                }
+                png_loader.close();
+
+                for (int32_t i = 0; i < section_frames; ++i) {
+                    if (!encode_frame(frame_buffer, i)) {
+                        return 1;
+                    }
+                }
             } else if (section.mov_file_source) {
                 std::string mov_file = section.mov_file_source->file;
                 int32_t start_frame = section.mov_file_source->start_frame.value_or(0);
-                section_frames = section.duration.value();  // Already populated in preprocessing
-                
-                ok = encoder.encode_mov_file(config.output.filename + ".temp",
-                                            system, source_standard, mov_file,
-                                            section_frames, start_frame,
-                                            picture_start, chapter, timecode_start, disc_area,
-                                            enable_chroma_filter, enable_luma_filter,
-                                            is_separate_yc, is_yc_legacy, (config.output.writer == "standard"));
+                section_frames = section.duration.value();
+
+                MOVLoader mov_loader;
+                std::string load_error;
+                if (!mov_loader.open(mov_file, load_error)) {
+                    ENCODE_ORC_LOG_ERROR("Failed to open MOV file: {}", load_error);
+                    return 1;
+                }
+
+                for (int32_t i = 0; i < section_frames; ++i) {
+                    FrameBuffer frame_buffer;
+                    if (!mov_loader.load_frame(start_frame + i, frame_buffer, load_error)) {
+                        ENCODE_ORC_LOG_ERROR("Failed to load MOV frame {}: {}", start_frame + i, load_error);
+                        mov_loader.close();
+                        return 1;
+                    }
+
+                    if (!encode_frame(frame_buffer, i)) {
+                        mov_loader.close();
+                        return 1;
+                    }
+                }
+                mov_loader.close();
             } else if (section.mp4_file_source) {
                 std::string mp4_file = section.mp4_file_source->file;
                 int32_t start_frame = section.mp4_file_source->start_frame.value_or(0);
-                section_frames = section.duration.value();  // Already populated in preprocessing
-                
-                ok = encoder.encode_mp4_file(config.output.filename + ".temp",
-                                            system, source_standard, mp4_file,
-                                            section_frames, start_frame,
-                                            picture_start, chapter, timecode_start, disc_area,
-                                            enable_chroma_filter, enable_luma_filter,
-                                            is_separate_yc, is_yc_legacy, (config.output.writer == "standard"));
-            }
-            if (!ok) {
-                ENCODE_ORC_LOG_ERROR("Encoding error: {}", encoder.get_error());
-                return 1;
-            }
-            
-            // Append temp file(s) to main output
-            if (is_separate_yc) {
-                // For separate Y/C mode, append both luma and chroma files
-                // Calculate base filename by removing .tbc extension if present
-                std::string base_out = config.output.filename;
-                if (base_out.length() > 4 && base_out.substr(base_out.length() - 4) == ".tbc") {
-                    base_out = base_out.substr(0, base_out.length() - 4);
+                section_frames = section.duration.value();
+
+                MP4Loader mp4_loader;
+                std::string load_error;
+                if (!mp4_loader.open(mp4_file, load_error)) {
+                    ENCODE_ORC_LOG_ERROR("Failed to open MP4 file: {}", load_error);
+                    return 1;
                 }
-                
-                if (is_yc_legacy) {
-                    // Legacy mode: base.tbc (luma) and base_chroma.tbc (chroma)
-                    // Temp files are named: config.output.filename + ".temp.tbc" and ".temp_chroma.tbc"
-                    // Final files are named: base_out + ".tbc" and base_out + "_chroma.tbc"
-                    
-                    // Append Y file (luma)
-                    std::ifstream temp_y_file(config.output.filename + ".temp.tbc", std::ios::binary);
-                    if (temp_y_file) {
-                        std::ios::openmode mode = (frame_offset == 0) ? std::ios::binary : (std::ios::binary | std::ios::app);
-                        std::ofstream out_y_file(base_out + ".tbc", mode);
-                        out_y_file << temp_y_file.rdbuf();
-                        temp_y_file.close();
-                        out_y_file.close();
-                        std::remove((config.output.filename + ".temp.tbc").c_str());
-                    } else {
-                        ENCODE_ORC_LOG_WARN("Could not open temp Y file: {}.temp.tbc", config.output.filename);
+
+                for (int32_t i = 0; i < section_frames; ++i) {
+                    FrameBuffer frame_buffer;
+                    if (!mp4_loader.load_frame(start_frame + i, frame_buffer, load_error)) {
+                        ENCODE_ORC_LOG_ERROR("Failed to load MP4 frame {}: {}", start_frame + i, load_error);
+                        mp4_loader.close();
+                        return 1;
                     }
-                    
-                    // Append C file (chroma)
-                    std::ifstream temp_c_file(config.output.filename + ".temp_chroma.tbc", std::ios::binary);
-                    if (temp_c_file) {
-                        std::ios::openmode mode = (frame_offset == 0) ? std::ios::binary : (std::ios::binary | std::ios::app);
-                        std::ofstream out_c_file(base_out + "_chroma.tbc", mode);
-                        out_c_file << temp_c_file.rdbuf();
-                        temp_c_file.close();
-                        out_c_file.close();
-                        std::remove((config.output.filename + ".temp_chroma.tbc").c_str());
-                    } else {
-                        ENCODE_ORC_LOG_WARN("Could not open temp C file: {}.temp_chroma.tbc", config.output.filename);
-                    }
-                } else {
-                    // Modern mode: base.tbcy (luma) and base.tbcc (chroma)
-                    // Temp files are named: config.output.filename + ".temp.tbcy" and ".temp.tbcc"
-                    // Final files are named: base_out + ".tbcy" and base_out + ".tbcc"
-                    
-                    // Append Y file
-                    std::ifstream temp_y_file(config.output.filename + ".temp.tbcy", std::ios::binary);
-                    if (temp_y_file) {
-                        std::ios::openmode mode = (frame_offset == 0) ? std::ios::binary : (std::ios::binary | std::ios::app);
-                        std::ofstream out_y_file(base_out + ".tbcy", mode);
-                        out_y_file << temp_y_file.rdbuf();
-                        temp_y_file.close();
-                        out_y_file.close();
-                        std::remove((config.output.filename + ".temp.tbcy").c_str());
-                    } else {
-                        ENCODE_ORC_LOG_WARN("Could not open temp Y file: {}.temp.tbcy", config.output.filename);
-                    }
-                    
-                    // Append C file
-                    std::ifstream temp_c_file(config.output.filename + ".temp.tbcc", std::ios::binary);
-                    if (temp_c_file) {
-                        std::ios::openmode mode = (frame_offset == 0) ? std::ios::binary : (std::ios::binary | std::ios::app);
-                        std::ofstream out_c_file(base_out + ".tbcc", mode);
-                        out_c_file << temp_c_file.rdbuf();
-                        temp_c_file.close();
-                        out_c_file.close();
-                        std::remove((config.output.filename + ".temp.tbcc").c_str());
-                    } else {
-                        ENCODE_ORC_LOG_WARN("Could not open temp C file: {}.temp.tbcc", config.output.filename);
+
+                    if (!encode_frame(frame_buffer, i)) {
+                        mp4_loader.close();
+                        return 1;
                     }
                 }
-            } else {
-                // For combined mode, append single .tbc file
-                std::ifstream temp_file(config.output.filename + ".temp", std::ios::binary);
-                if (temp_file) {
-                    tbc_file << temp_file.rdbuf();
-                    tbc_file.flush();  // Ensure data is written to disk
-                    temp_file.close();
-                    std::remove((config.output.filename + ".temp").c_str());
-                } else {
-                    ENCODE_ORC_LOG_WARN("Could not open temp file: {}.temp", config.output.filename);
-                }
+                mp4_loader.close();
             }
-            
-            std::remove((config.output.filename + ".temp.db").c_str());
-            std::remove((config.output.filename + ".temp.json").c_str());
-            
+
             frame_offset += section_frames;
-            
-            // Update running timecode if in timecode mode
-            if (timecode_mode_active && disc_area == "programme-area") {
-                running_timecode_frame += section_frames;
-            }
-            
             ENCODE_ORC_LOG_INFO("  ✓ Encoded {} frames", section_frames);
         }
     }
-    
-    if (!is_separate_yc) {
-        tbc_file.close();
-    }
+
+    writer->close();
     
     // Generate metadata for entire file (only for TBC writer, not standard writer)
     if (config.output.writer != "standard") {
@@ -598,22 +553,6 @@ int main(int argc, char* argv[]) {
     }
     
     ENCODE_ORC_LOG_INFO("Successfully generated {} frames", total_frames);
-    if (is_separate_yc) {
-        std::string base_out = config.output.filename;
-        if (base_out.length() > 4 && base_out.substr(base_out.length() - 4) == ".tbc") {
-            base_out = base_out.substr(0, base_out.length() - 4);
-        }
-        if (is_yc_legacy) {
-            ENCODE_ORC_LOG_INFO("Output files:");
-            ENCODE_ORC_LOG_INFO("  {} (luma)", base_out + ".tbc");
-            ENCODE_ORC_LOG_INFO("  {} (chroma)", base_out + "_chroma.tbc");
-        } else {
-            ENCODE_ORC_LOG_INFO("Output files:");
-            ENCODE_ORC_LOG_INFO("  {} (luma)", base_out + ".tbcy");
-            ENCODE_ORC_LOG_INFO("  {} (chroma)", base_out + ".tbcc");
-        }
-    } else {
-        ENCODE_ORC_LOG_INFO("Output file: {}", config.output.filename);
-    }
+    ENCODE_ORC_LOG_INFO("Output file: {}", config.output.filename);
     return 0;
 }
