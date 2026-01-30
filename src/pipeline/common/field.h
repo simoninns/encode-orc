@@ -12,13 +12,17 @@
 
 #include <cstdint>
 #include <vector>
+#include <memory>
 
 namespace encode_orc {
 
 /**
  * @brief Represents a single interlaced video field
  * 
- * A field contains one set of scan lines from an interlaced video frame.
+ * A field can contain:
+ * - Composite representation: Y+C combined (always present)
+ * - Separate Y/C representations: separate Y and C fields (optional, for Y/C output)
+ * 
  * Fields are stored as 16-bit unsigned samples.
  */
 class Field {
@@ -35,6 +39,52 @@ public:
      */
     Field(int32_t width, int32_t height)
         : width_(width), height_(height), data_(width * height, 0) {}
+    
+    /**
+     * @brief Check if this field has separate Y/C representations
+     * @return true if Y and C fields are available
+     */
+    bool has_separate_yc() const {
+        return y_field_ != nullptr && c_field_ != nullptr;
+    }
+    
+    /**
+     * @brief Get or create separate Y representation
+     * @return Reference to Y field
+     */
+    Field& y_field() {
+        if (!y_field_) {
+            y_field_ = std::make_unique<Field>(width_, height_);
+        }
+        return *y_field_;
+    }
+    
+    /**
+     * @brief Get Y field (const)
+     * @return Const pointer to Y field if available, nullptr otherwise
+     */
+    const Field* y_field_const() const {
+        return y_field_.get();
+    }
+    
+    /**
+     * @brief Get or create separate C representation
+     * @return Reference to C field
+     */
+    Field& c_field() {
+        if (!c_field_) {
+            c_field_ = std::make_unique<Field>(width_, height_);
+        }
+        return *c_field_;
+    }
+    
+    /**
+     * @brief Get C field (const)
+     * @return Const pointer to C field if available, nullptr otherwise
+     */
+    const Field* c_field_const() const {
+        return c_field_.get();
+    }
     
     /**
      * @brief Get field width in samples
@@ -126,6 +176,11 @@ private:
     int32_t width_ = 0;
     int32_t height_ = 0;
     std::vector<uint16_t> data_;
+    
+    // Optional separate Y and C representations (for Y/C output)
+    // Using unique_ptr to avoid forward declaration issues
+    std::unique_ptr<Field> y_field_;
+    std::unique_ptr<Field> c_field_;
 };
 
 /**

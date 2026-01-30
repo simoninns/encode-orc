@@ -50,129 +50,165 @@ The Y/C output feature existed in the legacy encoder but was not carried forward
 
 ---
 
-### Phase 2: Core Encoder Logic
+### Phase 2: Field Class Extension and Format Detection
 
-**Objective**: Enable Y/C output path in main.cpp and wire it to the appropriate writer
+**Objective**: Extend the Field class to support separate Y/C representations and enable format-based routing
+
+**Status**: ✅ COMPLETED
 
 **Files Modified**:
+- `src/pipeline/common/field.h`
 - `src/main.cpp`
+
+**Changes Made**:
+
+1. **Extended Field class** to support dual representations:
+   - Added `std::unique_ptr<Field> y_field_` and `std::unique_ptr<Field> c_field_` members
+   - Added methods: `has_separate_yc()`, `y_field()`, `y_field_const()`, `c_field()`, `c_field_const()`
+   - Y/C representations are created on-demand to avoid overhead for composite-only output
+   - Primary composite representation always present, Y/C are optional
+
+2. **Removed Y/C rejection block** from main.cpp:
+   - Deleted error messages about Y/C not being supported
+   - Format now correctly recognized for `pal-yc` and `ntsc-yc`
+
+3. **Implemented format-based filename handling**:
+   - Composite formats: `.tbc` extension added if missing
+   - Y/C formats: `.tbc` extension removed for future YCTBCWriter integration
+
+4. **Simplified writer selection**:
+   - Currently uses standard TBC writer for all formats (composite representation)
+   - Y/C writer integration deferred to Phase 4
+
+**Rationale**: Using unique_ptr for Y/C fields avoids circular type issues and provides lazy initialization. The Field class now cleanly supports both representations without lossy conversion.
+
+---
+
+### Phase 2.5: Video Encoder Y/C Field Generation
+
+**Objective**: Update the pipeline encoder to generate separate Y and C field representations alongside composite
+
+**Status**: ⏳ NOT STARTED - Required for full Y/C support
+
+**Files to Modify**:
+- `src/pipeline/active_encoding/active_video_encoder.h` (interface)
+- `src/pipeline/active_encoding/ntsc_active_encoder.cpp`
+- `src/pipeline/active_encoding/pal_active_encoder.cpp`
+- `src/pipeline/orchestrator/video_encoder_pipeline.cpp`
+
+**Required Changes**:
+
+The encoder needs to extract Y and C components from the generated composite video and populate the Field's Y and C representations. Two approaches are possible:
+
+**Approach 1: Extract from Composite (Simpler)**
+After generating the composite field, extract Y and C components:
+- Y component: Extract luma samples from composite
+- C component: Extract chroma samples from composite
+- This happens at the Field/writer level, not during encoding
+
+**Approach 2: Generate During Encoding (Better Quality)**
+Modify encoders to output Y and C during generation:
+- Track Y and C separately throughout encoding pipeline
+- Store in Field's y_field and c_field members
+- Better quality, no re-extraction needed
+
+**Recommended**: Approach 2 for best quality, but Approach 1 may be simpler initially.
+
+**Implementation Details**:
+- Add optional Y/C generation to `encode_frame()` return value
+- Only generate Y/C if output format is `pal-yc` or `ntsc-yc`
+- Existing composite path unchanged for performance
+
+---
+
+### Phase 3: Writer Integration for Y/C Output
+
+**Objective**: Integrate YCTBCWriter and route Y/C fields to separate files
+
+**Status**: ⏳ NOT STARTED - Depends on Phase 2.5
+
+**Files to Modify**:
+- `src/main.cpp` (writer selection and field writing)
+- `src/pipeline/writers/yc_tbc_writer.h` (already implemented, ready to use)
 
 **Changes**:
 
-1. **Remove Y/C rejection block** (lines ~269-273):
-   ```cpp
-   // DELETE THIS:
-   bool is_separate_yc = (config.output.mode == "separate-yc" || config.output.mode == "separate-yc-legacy");
-   if (is_separate_yc) {
-       ENCODE_ORC_LOG_ERROR("Separate Y/C output is not supported by the pipeline encoder");
-       ENCODE_ORC_LOG_ERROR("Please use combined output mode or re-enable legacy encoders");
-       return 1;
-   }
-   ```
-
-2. **Replace with format-based detection**:
-   ```cpp
-   bool is_separate_yc = (config.output.format == "pal-yc" || 
-                          config.output.format == "ntsc-yc");
-   ```
-
-3. **Select appropriate writer** (around line ~298):
+1. **Update writer selection** in main.cpp:
    ```cpp
    std::unique_ptr<Writer> writer;
+   std::unique_ptr<YCTBCWriter> yc_writer;
    
-   if (is_separate_yc) {
-       // Y/C output: use YCTBCWriter with modern naming (.tbcy/.tbcc)
-       writer = std::make_unique<YCTBCWriter>(YCTBCWriter::NamingMode::MODERN);
-   } else if (config.output.writer == "standard") {
-       writer = std::make_unique<StandardWriter>();
+   if (config.output.format == "pal-yc" || config.output.format == "ntsc-yc") {
+       yc_writer = std::make_unique<YCTBCWriter>(YCTBCWriter::NamingMode::MODERN);
+       if (!yc_writer->open(output_filename)) {
+           ENCODE_ORC_LOG_ERROR("Could not open Y/C output files: {}", output_filename);
+           return 1;
+       }
    } else {
+       // Standard composite writer
        writer = std::make_unique<TBCWriter>();
-   }
-   ```
-
-4. **Handle filename for Y/C output**:
-   ```cpp
-   // Ensure proper filename format
-   std::string output_filename = config.output.filename;
-   
-   // For composite formats, add .tbc if missing
-   if (!is_separate_yc && 
-       config.output.format == "pal-composite" || config.output.format == "ntsc-composite") {
-       if (output_filename.length() < 4 || output_filename.substr(output_filename.length() - 4) != ".tbc") {
-           output_filename += ".tbc";
-       }
-   }
-   // For Y/C formats, ensure NO extension (YCTBCWriter adds .tbcy/.tbcc)
-   else if (is_separate_yc) {
-       if (output_filename.length() >= 4 && 
-           (output_filename.substr(output_filename.length() - 4) == ".tbc" ||
-            output_filename.substr(output_filename.length() - 5) == ".tbcy" ||
-            output_filename.substr(output_filename.length() - 5) == ".tbcc")) {
-           // Remove any trailing TBC extensions
-           size_t dot_pos = output_filename.find_last_of('.');
-           if (dot_pos != std::string::npos) {
-               output_filename = output_filename.substr(0, dot_pos);
-           }
+       if (!writer->open(output_filename)) {
+           ENCODE_ORC_LOG_ERROR("Could not open output file: {}", output_filename);
+           return 1;
        }
    }
    ```
 
-5. **Update metadata filename handling**:
+2. **Update field writing loop**:
    ```cpp
-   // For metadata, use the full output filename (with extensions added)
-   std::string metadata_filename;
-   if (is_separate_yc) {
-       // For Y/C, metadata goes next to the .tbcy file
-       metadata_filename = output_filename + ".tbcy.db";
+   if (yc_writer) {
+       // Write Y and C fields separately
+       if (!yc_writer->write_y_field(encoded_frame.field1()) || 
+           !yc_writer->write_y_field(encoded_frame.field2())) {
+           ENCODE_ORC_LOG_ERROR("Failed to write Y fields");
+           return false;
+       }
+       if (!yc_writer->write_c_field(encoded_frame.field1()) || 
+           !yc_writer->write_c_field(encoded_frame.field2())) {
+           ENCODE_ORC_LOG_ERROR("Failed to write C fields");
+           return false;
+       }
    } else {
-       // For composite, metadata goes next to the .tbc file
-       metadata_filename = output_filename + ".db";
+       // Write composite fields normally
+       if (!writer->write_field(encoded_frame.field1()) || 
+           !writer->write_field(encoded_frame.field2())) {
+           ENCODE_ORC_LOG_ERROR("Failed to write fields");
+           return false;
+       }
    }
    ```
 
-**Rationale**: The encoder should automatically select the correct writer based on the format field. Y/C files need special handling for the filename to ensure the writer can add the correct extensions.
+3. **Update file closing and metadata handling**:
+   - Close YCTBCWriter separately
+   - Generate metadata for `.tbcy.db` for Y/C output
 
 ---
 
-### Phase 3: Video Parameters and Encoding
+### Phase 4: Metadata Generation for Y/C Output
 
-**Objective**: Verify that video encoding produces correct composite output for both YC and composite formats
+**Objective**: Ensure VITS, biphase VBI, and other metadata apply correctly to Y field
+
+**Status**: ⏳ NOT STARTED - Depends on Phase 2.5
 
 **Files Affected**:
-- `src/main.cpp` (verification only, no changes needed)
+- `src/pipeline/metadata_generators/*` (verification only)
+- `src/main.cpp` (metadata routing)
 
 **Current Behavior** (correct):
-- Video parameters are always composite (PAL or NTSC)
-- The encoder produces full composite video internally
-- Y/C separation happens at the writer stage, not in the encoder
-- All pipeline stages (preprocessing, metadata generation, effects) work with composite video
+- Metadata generators work with composite fields
+- VITS, biphase VBI, color burst all modify the signal
 
-**No Changes Needed**: The pipeline encoder is format-agnostic for processing—it always produces composite. The writer decides how to output it.
-
----
-
-### Phase 4: Writer Integration
-
-**Objective**: Verify YCTBCWriter implementation and ensure it's properly integrated
-
-**Files Affected**:
-- `src/pipeline/writers/yc_tbc_writer.h` (verification only)
-- `src/main.cpp` (integration)
-
-**Existing Functionality** (already implemented):
-- YCTBCWriter supports both MODERN and LEGACY naming modes
-- MODERN mode: `.tbcy` (luma) and `.tbcc` (chroma)
-- LEGACY mode: `.tbc` (luma) and `_chroma.tbc` (chroma)
-- Handles splitting composite video into Y and C channels
-
-**Integration Points**:
-1. Include header in main.cpp: `#include "pipeline/writers/yc_tbc_writer.h"`
-2. Instantiate YCTBCWriter for Y/C formats (see Phase 2)
-3. Pass base filename without extension
-
-**No Code Changes**: The YCTBCWriter is already fully functional and ready to use.
+**Changes for Y/C Output**:
+1. Metadata generators should only modify the Y field when Y/C output is active
+2. The C field should remain untouched by metadata
+3. This requires:
+   - Passing output format to metadata generators
+   - Or passing Y field specifically (after extraction)
+   - Metadata database associations with `.tbcy.db` for Y/C output
 
 ---
+
+### Phase 3 (Current): Video Parameters and Encoding
 
 ### Phase 5: Test Project Updates
 
@@ -246,72 +282,72 @@ The `mode` field is deprecated and should not be used.
 
 ## Implementation Sequence
 
-Follow this order to minimize risk and allow for incremental testing:
+**Completed:**
+1. ✅ **Phase 1**: YAML mode field removal (already done)
+2. ✅ **Phase 2**: Field class extension and format detection
 
-1. **Phase 1**: Remove YAML mode field parsing and validation
-   - Test: Verify config still parses correctly
-   - Verify: mode is auto-derived from format
+**Remaining (in order):**
+3. **Phase 2.5**: Update encoders to generate Y/C fields
+   - Modify ntsc_active_encoder.cpp and pal_active_encoder.cpp
+   - Extract or generate Y and C components
+   - Populate Field's y_field() and c_field()
+   - Test: Verify Y and C fields are populated
+   - Test: Verify composite field still correct
 
-2. **Phase 2**: Update main.cpp logic
-   - Remove rejection block
-   - Add format-based detection
-   - Wire up YCTBCWriter
-   - Handle filenames correctly
-   - Test: Build without errors
+4. **Phase 3**: Integrate YCTBCWriter
+   - Update writer selection in main.cpp
+   - Route Y/C fields to separate writers
+   - Test: Generate `.tbcy` and `.tbcc` files
+   - Test: Verify output with tbcdecode or equivalent
 
-3. **Phase 4**: Verify YCTBCWriter integration (no changes needed)
-   - Test: Run with `pal-yc` and `ntsc-yc` formats
-   - Verify: `.tbcy` and `.tbcc` files are generated
+5. **Phase 4**: Configure metadata for Y/C
+   - Update metadata generators to work with Y field only
+   - Generate `.tbcy.db` for Y/C output
+   - Test: VITS/biphase data on Y field only
 
-4. **Phase 5**: Update test projects
+6. **Phase 5**: Update test projects
    - Remove `mode` field from consumer tape projects
-   - Run full test suite
+   - Test: Run full test suite
 
-5. **Phase 3**: Verify video encoding (should work as-is)
-   - Test: Check output file integrity
-   - Verify: Y/C separation is correct
-
-6. **Phase 6**: Update documentation
+7. **Phase 6**: Update documentation
    - Remove all `mode` field references
-   - Add Y/C examples
+   - Add Y/C examples and output explanations
 
 ---
 
 ## Testing Strategy
 
-### Unit Tests
-- Verify format → mode derivation logic
-- Verify filename handling for all format types
+### Current Status (After Phase 2)
+- Y/C format is now recognized (no error rejection)
+- Filenames handled correctly
+- Standard composite writer used for all formats (including Y/C)
+- Build succeeds without warnings or errors
 
-### Integration Tests
-1. **Composite output**:
-   ```bash
-   ./encode-orc test-projects/pal-cav.yaml
-   # Verify: test-output/pal-cav.tbc exists
-   ```
+### Phase 2.5 Testing (Encoder Y/C Generation)
+- Verify Field objects have Y and C representations populated
+- Verify composite field still generates correct video
+- Check Y field contains luma-only data (approximately half amplitude)
+- Check C field contains chroma-only data (approximately centered around middle)
 
-2. **Y/C output**:
+### Phase 3 Testing (YCTBCWriter Integration)
+1. **Y/C output generation**:
    ```bash
    ./encode-orc test-projects/pal-consumer-tape.yaml
-   # Verify: test-output/pal-consumer.tbcy and .tbcc exist
+   # Verify: test-output/pal-consumer.tbcy exists
+   # Verify: test-output/pal-consumer.tbcc exists
    ```
 
-3. **NTSC composite**:
+2. **File integrity**:
    ```bash
-   ./encode-orc test-projects/ntsc-cav.yaml
-   # Verify: test-output/ntsc-cav.tbc exists
+   ls -lh test-output/pal-consumer.tb*
+   # Y and C files should be roughly equal size
    ```
 
-4. **NTSC Y/C**:
+3. **Composite still works**:
    ```bash
-   ./encode-orc test-projects/ntsc-consumer-tape.yaml
-   # Verify: test-output/ntsc-consumer.tbcy and .tbcc exist
+   ./encode-orc test-projects/pal-cav.yaml
+   # Verify: test-output/pal-cav.tbc exists (composite)
    ```
-
-### Verification
-- All test projects should complete successfully
-- File sizes should be reasonable (Y/C files should be ~2x composite for proper separation)
-- Metadata databases should be generated correctly
 
 ---
 
@@ -319,28 +355,82 @@ Follow this order to minimize risk and allow for incremental testing:
 
 If issues arise during implementation:
 
-1. **Revert Phase 1 changes**: Restore YAML mode parsing
-2. **Revert Phase 2 changes**: Restore rejection block
-3. **Keep Phase 6 changes**: Update docs to reflect current state
+1. **Phase 2.5 issues**: 
+   - Revert encoder changes (y_field and c_field stay empty)
+   - Y/C output will simply use composite representation
 
-The design is modular—each phase can be reverted independently without affecting others.
+2. **Phase 3 issues**:
+   - Revert to using TBCWriter for all formats
+   - Comment out YCTBCWriter code
 
----
+3. **Phase 4+ issues**:
+   - Revert changes, keep phases 1-3 intact
+
+Each phase is independent—failures don't cascade.
 
 ## Success Criteria
 
-✅ Y/C output formats accepted and processed without errors
-✅ `.tbcy` and `.tbcc` files generated for Y/C formats
-✅ `.tbc` files still generated for composite formats
-✅ YAML `mode` field no longer needed or documented
-✅ All existing test projects continue to work
-✅ New consumer tape projects generate correct output
-✅ Documentation reflects simplified configuration
+**Phase 2** ✅ ACHIEVED:
+- ✅ Y/C formats accepted without error
+- ✅ Format detection working correctly
+- ✅ Project builds without warnings
+- ✅ Filenames handled appropriately
 
----
+**Phase 2.5** (when complete):
+- Field objects contain Y and C representations
+- Y field contains luma-only data
+- C field contains chroma-only data
+- Composite field unchanged
+
+**Phase 3** (when complete):
+- ✅ `.tbcy` and `.tbcc` files generated
+- ✅ `.tbc` files still generated for composite
+- ✅ YCTBCWriter correctly splits output
+
+**Phase 4-6** (when complete):
+- ✅ Metadata applies only to Y field for Y/C output
+- ✅ YAML `mode` field no longer documented
+- ✅ All test projects work
+- ✅ Documentation reflects new architecture
+
+## Architecture Notes
+
+### Field Class with Dual Representations
+
+The Field class now supports both representations:
+
+```cpp
+// Primary representation (always present)
+std::vector<uint16_t> data_;  // Composite video
+
+// Optional Y/C representations (created on-demand)
+std::unique_ptr<Field> y_field_;  // Luma component
+std::unique_ptr<Field> c_field_;  // Chroma component
+```
+
+**Advantages**:
+- No performance impact for composite-only output (Y/C created only when needed)
+- Metadata generators can target Y field specifically
+- Writers choose which representation to output
+- No lossy decomposition needed
+
+**Memory Usage**:
+- Composite-only: same as before
+- Y/C output: ~3x (composite + Y + C)
+- Acceptable for real-time encoding
+
+### Metadata and Y/C Output
+
+When Y/C output is selected:
+- VITS, biphase VBI apply only to Y field
+- Color burst applies only to Y field (chroma is separate)
+- Metadata databases associated with `.tbcy.db`
+- All other metadata behavior unchanged
 
 ## Future Considerations
 
-- Support for LEGACY Y/C naming mode (`.tbc` + `_chroma.tbc`) if needed
-- Potential optimization: avoid full composite generation if Y/C output is requested
-- Consider supporting other writer types (standard) with Y/C output
+- Support for LEGACY Y/C naming mode (`.tbc` + `_chroma.tbc`)
+- Optimization: Skip composite generation if only Y/C output requested
+- Consider supporting StandardWriter with Y/C output
+- Potential HDV/DVCPRO-style compression for Y/C pair
+- Investigation of real-time Y/C encoding without composite generation

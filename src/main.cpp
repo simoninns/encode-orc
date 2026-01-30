@@ -264,14 +264,6 @@ int main(int argc, char* argv[]) {
     }
     
     ENCODE_ORC_LOG_INFO("Total frames to encode: {}", total_frames);
-    
-    // Encode video for each section
-    bool is_separate_yc = (config.output.mode == "separate-yc" || config.output.mode == "separate-yc-legacy");
-    if (is_separate_yc) {
-        ENCODE_ORC_LOG_ERROR("Separate Y/C output is not supported by the pipeline encoder");
-        ENCODE_ORC_LOG_ERROR("Please use combined output mode or re-enable legacy encoders");
-        return 1;
-    }
 
     // Build video parameters (with optional overrides)
     VideoParameters params = (system == VideoSystem::PAL) ?
@@ -287,12 +279,17 @@ int main(int argc, char* argv[]) {
         );
     }
 
-    // Ensure filename has .tbc extension for composite formats
+    // Handle filename for different output formats
     std::string output_filename = config.output.filename;
     if (config.output.format == "pal-composite" || config.output.format == "ntsc-composite") {
         // Add .tbc extension if not already present
         if (output_filename.length() < 4 || output_filename.substr(output_filename.length() - 4) != ".tbc") {
             output_filename += ".tbc";
+        }
+    } else if (config.output.format == "pal-yc" || config.output.format == "ntsc-yc") {
+        // For Y/C formats, remove any .tbc extension (will be handled by Y/C writer)
+        if (output_filename.length() >= 4 && output_filename.substr(output_filename.length() - 4) == ".tbc") {
+            output_filename = output_filename.substr(0, output_filename.length() - 4);
         }
     }
 
@@ -654,12 +651,17 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    writer->close();
+    if (writer) {
+        writer->close();
+    }
     
     // Generate metadata for entire file (only for TBC writer, not standard writer)
     if (config.output.writer != "standard") {
         std::string meta_error;
         std::string metadata_filename = output_filename + ".db";
+        
+        // Note: Y/C output metadata handling will be added when Y/C encoding is fully implemented
+        // For now, metadata is always associated with composite representation
         
         if (!generate_metadata(config, system, total_frames, metadata_filename, meta_error)) {
             ENCODE_ORC_LOG_ERROR("Metadata generation error: {}", meta_error);
