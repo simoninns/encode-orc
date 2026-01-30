@@ -154,6 +154,14 @@ void NTSCActiveEncoder::encode_active_line(uint16_t* line_buffer,
         // NTSC chroma (no V-switch like PAL)
         double chroma = (i_norm * sin_phase) + (q_norm * cos_phase);
         int32_t chroma_scaled = static_cast<int32_t>(chroma * luma_range);
+        
+        // Clamp very small chroma oscillations to zero to eliminate wobble
+        // caused by chroma filter ringing near neutral (I=Q=512) input values.
+        // Threshold of ±50 levels suppresses the subcarrier oscillation (±38-44 levels)
+        // while preserving actual color content (which would be much larger).
+        if (chroma_scaled > -50 && chroma_scaled < 50) {
+            chroma_scaled = 0;
+        }
 
         int32_t composite = luma_scaled + chroma_scaled;
         line_buffer[sample] = clamp_to_16bit(composite);
