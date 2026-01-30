@@ -148,6 +148,108 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                 pipeline_cfg.metadata = metadata_cfg;
             }
             
+            // Parse preprocessing configuration (Phase 6)
+            if (pipeline_node["preprocessing"]) {
+                PipelinePreprocessingConfig preprocessing_cfg;
+                YAML::Node preprocessing_node = pipeline_node["preprocessing"];
+                
+                // Parse filters
+                if (preprocessing_node["filters"]) {
+                    FilterConfig filter_cfg;
+                    YAML::Node filters_node = preprocessing_node["filters"];
+                    
+                    // Parse chroma filter
+                    if (filters_node["chroma"]) {
+                        YAML::Node chroma_node = filters_node["chroma"];
+                        if (chroma_node["enabled"]) {
+                            filter_cfg.chroma.enabled = chroma_node["enabled"].as<bool>();
+                        }
+                    }
+                    
+                    // Parse luma filter
+                    if (filters_node["luma"]) {
+                        YAML::Node luma_node = filters_node["luma"];
+                        if (luma_node["enabled"]) {
+                            filter_cfg.luma.enabled = luma_node["enabled"].as<bool>();
+                        }
+                    }
+                    
+                    preprocessing_cfg.filters = filter_cfg;
+                }
+                
+                pipeline_cfg.preprocessing = preprocessing_cfg;
+            }
+            
+            // Parse effects configuration (Phase 6)
+            if (pipeline_node["effects"]) {
+                PipelineEffectsConfig effects_cfg;
+                YAML::Node effects_node = pipeline_node["effects"];
+                
+                if (effects_node.IsSequence()) {
+                    for (const auto& effect_node : effects_node) {
+                        FieldEffectConfig effect_cfg;
+                        
+                        // Required: type
+                        if (!effect_node["type"]) {
+                            error_message = "Field effect missing required 'type' field";
+                            return false;
+                        }
+                        effect_cfg.type = effect_node["type"].as<std::string>();
+                        
+                        // Optional: enabled (default false for effects)
+                        if (effect_node["enabled"]) {
+                            effect_cfg.enabled = effect_node["enabled"].as<bool>();
+                        }
+                        
+                        // Noise effect configuration
+                        if (effect_cfg.type == "noise") {
+                            if (effect_node["snr_db"]) {
+                                effect_cfg.snr_db = effect_node["snr_db"].as<double>();
+                            }
+                            if (effect_node["noise_level_db"]) {
+                                effect_cfg.noise_level_db = effect_node["noise_level_db"].as<double>();
+                            }
+                        }
+                        
+                        // Dropout effect configuration
+                        if (effect_cfg.type == "dropout") {
+                            if (effect_node["pattern"]) {
+                                effect_cfg.dropout_pattern = effect_node["pattern"].as<std::string>();
+                            }
+                            if (effect_node["density"]) {
+                                effect_cfg.dropout_density = effect_node["density"].as<double>();
+                            }
+                            if (effect_node["lines"] && effect_node["lines"].IsSequence()) {
+                                std::vector<int32_t> dropout_lines;
+                                for (const auto& line_node : effect_node["lines"]) {
+                                    dropout_lines.push_back(line_node.as<int32_t>());
+                                }
+                                effect_cfg.dropout_lines = dropout_lines;
+                            }
+                        }
+                        
+                        // Phase error effect configuration
+                        if (effect_cfg.type == "phase-error") {
+                            if (effect_node["phase_jitter_samples"]) {
+                                effect_cfg.phase_jitter_samples = effect_node["phase_jitter_samples"].as<double>();
+                            }
+                            if (effect_node["frequency_hz"]) {
+                                effect_cfg.frequency_hz = effect_node["frequency_hz"].as<double>();
+                            }
+                        }
+                        
+                        // Common configuration
+                        if (effect_node["seed"]) {
+                            effect_cfg.seed = effect_node["seed"].as<uint32_t>();
+                        }
+                        
+                        effects_cfg.effects.push_back(effect_cfg);
+                    }
+                }
+                
+                pipeline_cfg.effects = effects_cfg;
+            }
+            
             config.pipeline = pipeline_cfg;
         } else {
             error_message = "Missing required 'pipeline' configuration. Please use the new pipeline.metadata.generators format.";

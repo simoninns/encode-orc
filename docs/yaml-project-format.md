@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `encode-orc` application exclusively uses YAML configuration files to define video encoding projects. This format provides a flexible and maintainable way to configure complex video encoding tasks with LaserDisc metadata support.
+The `encode-orc` application exclusively uses YAML configuration files to define video encoding projects. This format provides a flexible and maintainable way to configure complex video encoding tasks with LaserDisc metadata support, field preprocessing (filtering), and post-encoding effects (noise, dropouts, phase errors).
 
 ## Design Goals
 
@@ -10,6 +10,8 @@ The `encode-orc` application exclusively uses YAML configuration files to define
 - **Multi-section support**: Allow different sections with varying standards and sources
 - **LaserDisc metadata**: Support CLV/CAV timecodes, chapter numbers, and picture numbers
 - **VBI/VITS control**: Fine-grained control over vertical blanking interval data
+- **Pipeline effects** (Phase 6): Add tape artifacts (noise, dropouts, phase errors) post-encoding
+- **Field preprocessing** (Phase 6): Apply low-pass filters to chroma and luma before encoding
 - **Reusability**: Projects can be version-controlled and shared
 - **Self-documenting**: Clear project name and description fields
 
@@ -45,6 +47,73 @@ output:
     blanking_16b_ire: 17125   # Optional: blanking level (default: system-dependent)
     black_16b_ire: 17125      # Optional: black level (default: system-dependent)
     white_16b_ire: 54016      # Optional: white/peak level (default: system-dependent)
+
+# Pipeline configuration (Phase 4+)
+# Controls preprocessing filters, metadata generation, and post-encoding effects
+pipeline:
+  # Stage 3: Preprocessing filters (Phase 6)
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true    # Default: true (prevents high-frequency chroma artifacts)
+        # Type automatically selected based on video system (PAL/NTSC)
+      luma:
+        enabled: false   # Default: false (typically not needed)
+  
+  # Stage 5: Metadata generators (Phase 4+)
+  metadata:
+    generators:
+      # LaserDisc VBI data (picture numbers, chapter, timecode)
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [16, 17, 18]  # 1-indexed field lines for VBI encoding
+        format: "picture-number"  # or "timecode"
+      
+      # Consumer tape VITC (Vertical Interval Time Code)
+      - type: "vitc"
+        enabled: false
+        lines: [19, 21]  # 1-indexed lines for VITC
+        start_frame_offset: 0
+      
+      # VITS test signals (vertical interval test signals)
+      - type: "vits"
+        enabled: true
+        signals:
+          - line: 13
+            field: 1
+            signal: "multiburst"
+          - line: 19
+            field: 1
+            signal: "uk-national"
+      
+      # Color burst reference signal
+      - type: "color-burst"
+        enabled: true
+  
+  # Stage 7: Field effects (Phase 6) - Applied AFTER encoding
+  # Effects simulate tape artifacts like noise, dropouts, and phase errors
+  effects:
+    # Gaussian noise (tape hiss simulation)
+    - type: "noise"
+      enabled: false
+      snr_db: 40.0              # Signal-to-Noise Ratio in dB (alternative: noise_level_db)
+      # noise_level_db: -40.0   # Direct noise level in dB
+      seed: 42                  # Random seed for reproducibility
+    
+    # Tape dropouts (line-based defects)
+    - type: "dropout"
+      enabled: false
+      pattern: "random"         # or "periodic", "specific-lines"
+      density: 0.005            # 0.5% of lines affected
+      lines: [50, 100, 150]     # Specific lines only (for pattern: "specific-lines")
+      seed: 42
+    
+    # VCR time-base errors (phase jitter)
+    - type: "phase-error"
+      enabled: false
+      phase_jitter_samples: 10.0
+      frequency_hz: 1.0
+      seed: 42
 
 # When mode is "separate-yc" or "separate-yc-legacy", two files are produced:
 # - <basename>.tbcy : luma
@@ -173,6 +242,114 @@ biphase-vbi:
   vits:
     enabled: true  # Currently ignored
 ```
+
+---
+
+## Pipeline Configuration (Phase 4+)
+
+The `pipeline` section controls the video processing stages:
+1. **Preprocessing** (Stage 3) - Optional filtering before encoding
+2. **Metadata Generation** (Stage 5) - VBI, VITC, VITS data insertion
+3. **Effects** (Stage 7) - Post-encoding tape artifact simulation
+
+### Preprocessing Filters (Phase 6)
+
+Preprocessing filters apply low-pass filtering to YUV components before composite encoding to prevent high-frequency artifacts:
+
+```yaml
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true   # Enable 1.3 MHz chroma filter (PAL/NTSC automatic)
+      luma:
+        enabled: false  # Enable luma filter (typically not needed)
+```
+
+**Chroma Filter**:
+- **PAL**: 1.3 MHz Gaussian low-pass (25-tap FIR)
+- **NTSC**: 600 kHz low-pass (25-tap FIR)
+- **Default**: Enabled (recommended to prevent color bar artifacts)
+
+**Luma Filter**:
+- **PAL**: 5.5 MHz low-pass (25-tap FIR)
+- **NTSC**: 3.6 MHz low-pass (25-tap FIR)
+- **Default**: Disabled (typically unnecessary)
+
+### Metadata Generators (Phase 4+)
+
+Metadata generators add VBI data, timecode, and test signals:
+
+```yaml
+pipeline:
+  metadata:
+    generators:
+      # LaserDisc biphase-encoded VBI (picture numbers, chapter, timecode)
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [16, 17, 18]       # 1-indexed field lines
+        format: "picture-number"  # or "timecode"
+      
+      # Consumer tape VITC (Vertical Interval Time Code)
+      - type: "vitc"
+        enabled: false
+        lines: [19, 21]           # 1-indexed VITC lines
+        start_frame_offset: 0     # Frame number offset for timecode
+      
+      # VITS test signals
+      - type: "vits"
+        enabled: true
+        signals:
+          - { line: 13, field: 1, signal: "multiburst" }
+          - { line: 19, field: 1, signal: "uk-national" }
+      
+      # Color burst reference
+      - type: "color-burst"
+        enabled: true
+```
+
+Generators are applied in order and can be independently enabled/disabled.
+
+### Field Effects (Phase 6)
+
+Field effects simulate tape artifacts by modifying the encoded composite signal:
+
+```yaml
+pipeline:
+  effects:
+    # Gaussian noise (tape hiss)
+    - type: "noise"
+      enabled: false
+      snr_db: 40.0        # Signal-to-Noise Ratio (40 dB = high quality)
+      # snr_db options: 45+ (archive), 40 (good), 35 (typical VCR), 25 (degraded)
+      seed: 42            # For reproducible noise pattern
+    
+    # Line dropouts (tape damage)
+    - type: "dropout"
+      enabled: false
+      pattern: "random"   # "random", "periodic", or "specific-lines"
+      density: 0.005      # 0.5% of lines affected
+      lines: [50, 100]    # For "specific-lines" pattern only
+      seed: 42
+    
+    # Phase jitter (VCR time-base errors)
+    - type: "phase-error"
+      enabled: false
+      phase_jitter_samples: 10.0
+      frequency_hz: 1.0   # Wobble frequency
+      seed: 42
+```
+
+**Effect Timing**: Effects are applied **after** active video encoding, simulating real tape playback defects on the final composite signal.
+
+**SNR (Signal-to-Noise Ratio) Guide**:
+- **45 dB**: Archive-quality, minimal noise
+- **40 dB**: High-quality consumer VCR
+- **35 dB**: Typical consumer VCR
+- **30 dB**: Worn VCR or budget equipment
+- **25 dB**: Severely degraded tape
+
+**Reproducibility**: All effects use optional `seed` parameter. Omit seed for random results each run; specify seed for deterministic output.
 
 ---
 
@@ -664,6 +841,185 @@ sections:
 
 **Note**: The `metadata_decoder` field controls the decoder string written to the SQLite metadata database. This can be useful for compatibility testing with different decoder tools (e.g., "ld-decode", "vhs-decode") or for identifying files generated by custom encoding workflows. If omitted, it defaults to "encode-orc".
 
+### Example 8: Field Effects - Tape Noise Simulation (Phase 6)
+
+```yaml
+name: "Tape Noise Simulation"
+description: "Simulate tape hiss and degradation with Gaussian noise"
+
+output:
+  filename: "noisy-tape.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  standard: "iec60857-1986"
+  mode: "cav"
+
+pipeline:
+  effects:
+    - type: "noise"
+      enabled: true
+      snr_db: 35.0        # Typical consumer VCR quality
+      seed: 42            # Reproducible noise pattern
+
+sections:
+  - name: "Color Bars with Noise"
+    duration: 100
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
+    biphase-vbi:
+      picture_start: 1
+```
+
+### Example 9: Field Effects - Tape Dropouts (Phase 6)
+
+```yaml
+name: "Tape Dropout Simulation"
+description: "Simulate random tape damage with line dropouts"
+
+output:
+  filename: "damaged-tape.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  standard: "none"
+  mode: "none"
+
+pipeline:
+  effects:
+    # Random dropouts (0.5% of lines)
+    - type: "dropout"
+      enabled: true
+      pattern: "random"
+      density: 0.005
+      seed: 42
+
+sections:
+  - name: "Test Pattern"
+    duration: 500
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
+```
+
+### Example 10: Complete Tape Simulation (Phase 6)
+
+```yaml
+name: "Complete Degraded Tape Simulation"
+description: "Multi-effect tape simulation with noise, dropouts, and phase errors"
+
+output:
+  filename: "simulated-tape.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  standard: "iec60857-1986"
+  mode: "cav"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true   # Clean up high-frequency artifacts
+      luma:
+        enabled: false
+
+  metadata:
+    generators:
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [16, 17, 18]
+      - type: "vits"
+        enabled: true
+      - type: "color-burst"
+        enabled: true
+
+  effects:
+    # Tape hiss (moderate degradation)
+    - type: "noise"
+      enabled: true
+      snr_db: 32.0
+      seed: 12345
+
+    # Random line dropouts from tape damage
+    - type: "dropout"
+      enabled: true
+      pattern: "random"
+      density: 0.008      # 0.8% of lines affected
+      seed: 54321
+
+    # VCR playback wobble
+    - type: "phase-error"
+      enabled: true
+      phase_jitter_samples: 5.0
+      frequency_hz: 2.5   # Periodic wobble
+      seed: 99999
+
+sections:
+  - name: "Degraded Archive Tape"
+    duration: 1000
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/pal-ebu-colorbars-75.raw"
+    biphase-vbi:
+      picture_start: 1
+```
+
+### Example 11: Multi-Effect Configuration with Preprocessing (Phase 6)
+
+```yaml
+name: "Professional Archive with Effects"
+description: "High-quality encoding with optional tape simulation for testing"
+
+output:
+  filename: "archive-output.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  standard: "iec60857-1986"
+  mode: "clv"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+      luma:
+        enabled: true   # Also filter luma for this archive project
+
+  metadata:
+    generators:
+      - type: "color-burst"
+        enabled: true
+      - type: "vits"
+        enabled: true
+
+  # All effects disabled by default; uncomment to enable for testing
+  effects:
+    - type: "noise"
+      enabled: false
+      snr_db: 45.0      # Archive quality (when enabled)
+      seed: 11111
+    
+    - type: "dropout"
+      enabled: false
+      pattern: "random"
+      density: 0.001
+      seed: 22222
+
+sections:
+  - name: "Archive Material"
+    duration: 7500      # 5 minutes at 25fps
+    source:
+      type: "mov-file"
+      file: "archive-material.mov"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+      timecode_start: "00:00:00:00"
+```
+
 ---
 
 ## Field Reference
@@ -698,6 +1054,87 @@ sections:
 | `biphase-vbi` | object | No | Section-level Biphase VBI settings (LaserDisc metadata). Supports: disc_area (or leadin/leadout flags), picture_start, chapter, timecode_start, start. VBI/VITS enabled flags are parsed but not applied. |
 
 ### LaserDisc Modes
+
+| Mode | Fields | Description |
+|------|--------|-------------|
+| `cav` | `picture_start` (optional) | CAV picture numbers (continues from previous if not specified) |
+| `clv` | `chapter` (optional), `timecode_start` (optional) | CLV timecode with chapter (continues from previous if not specified) |
+| `picture-numbers` | `start` (optional) | Simple picture numbering (continues from previous if not specified) |
+
+**Note**: The mode is chosen once at the project level; sections cannot override it. Mixing `cav` and `clv` (or `none`) within the same project is not allowed.
+
+---
+
+## Pipeline Configuration Reference (Phase 4+)
+
+### Preprocessing Filters (Phase 6)
+
+| Field | Type | Values | Default | Description |
+|-------|------|--------|---------|-------------|
+| `pipeline.preprocessing.filters.chroma.enabled` | boolean | true/false | true | Enable 1.3 MHz chroma low-pass filter |
+| `pipeline.preprocessing.filters.luma.enabled` | boolean | true/false | false | Enable 5.5 MHz luma low-pass filter |
+
+**Note**: Filter type (PAL vs NTSC cutoff frequency) is automatically selected based on output format.
+
+### Metadata Generators (Phase 4+)
+
+| Field | Type | Values | Description |
+|-------|------|--------|-------------|
+| `pipeline.metadata.generators[].type` | string | "biphase-vbi", "vitc", "vits", "color-burst" | Generator type |
+| `pipeline.metadata.generators[].enabled` | boolean | true/false | Enable/disable generator |
+| `pipeline.metadata.generators[].lines` | array | [int, ...] | 1-indexed field lines (for biphase-vbi, vitc) |
+| `pipeline.metadata.generators[].format` | string | "picture-number", "timecode" | VBI format (biphase-vbi only) |
+| `pipeline.metadata.generators[].start_frame_offset` | integer | 0+ | Frame offset for timecode (vitc only) |
+
+### Field Effects (Phase 6)
+
+#### Noise Effect
+
+| Field | Type | Values | Default | Description |
+|-------|------|--------|---------|-------------|
+| `pipeline.effects[].type` | string | "noise" | - | Effect type |
+| `pipeline.effects[].enabled` | boolean | true/false | false | Enable noise effect |
+| `pipeline.effects[].snr_db` | number | 20-50 | - | Signal-to-Noise Ratio in dB |
+| `pipeline.effects[].noise_level_db` | number | -80 to 0 | - | Direct noise level (alternative to snr_db) |
+| `pipeline.effects[].seed` | integer | 0+ | (random) | Random seed for reproducibility |
+
+**SNR Examples**:
+- 45 dB: Archive-quality
+- 40 dB: High-quality VCR
+- 35 dB: Typical consumer VCR
+- 30 dB: Worn equipment
+- 25 dB: Severely degraded
+
+#### Dropout Effect
+
+| Field | Type | Values | Default | Description |
+|-------|------|--------|---------|-------------|
+| `pipeline.effects[].type` | string | "dropout" | - | Effect type |
+| `pipeline.effects[].enabled` | boolean | true/false | false | Enable dropout effect |
+| `pipeline.effects[].pattern` | string | "random", "periodic", "specific-lines" | "random" | Dropout pattern |
+| `pipeline.effects[].density` | number | 0.0-1.0 | 0.01 | Dropout density (fraction of lines) |
+| `pipeline.effects[].lines` | array | [int, ...] | [] | Specific lines (for specific-lines pattern) |
+| `pipeline.effects[].seed` | integer | 0+ | (random) | Random seed for reproducibility |
+
+**Density Examples**:
+- 0.001: 0.1% of lines affected
+- 0.005: 0.5% of lines affected
+- 0.01: 1% of lines affected
+- 0.05: 5% of lines affected
+
+#### Phase Error Effect
+
+| Field | Type | Values | Default | Description |
+|-------|------|--------|---------|-------------|
+| `pipeline.effects[].type` | string | "phase-error" | - | Effect type |
+| `pipeline.effects[].enabled` | boolean | true/false | false | Enable phase-error effect |
+| `pipeline.effects[].phase_jitter_samples` | number | 0+ | 10.0 | Maximum phase jitter in samples |
+| `pipeline.effects[].frequency_hz` | number | 0+ | 1.0 | Wobble frequency in Hz |
+| `pipeline.effects[].seed` | integer | 0+ | (random) | Random seed for reproducibility |
+
+---
+
+## LaserDisc Modes
 
 | Mode | Fields | Description |
 |------|--------|-------------|

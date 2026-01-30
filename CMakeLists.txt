@@ -104,6 +104,9 @@ set(SOURCES
     src/pal_active_encoder.cpp
     src/ntsc_active_encoder.cpp
     src/video_encoder_pipeline.cpp
+    # Phase 6: Field effects and preprocessing
+    src/field_effect.cpp
+    src/field_preprocessor.cpp
 )
 
 # Create executable

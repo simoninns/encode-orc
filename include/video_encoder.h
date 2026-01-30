@@ -13,6 +13,8 @@
 #include "video_parameters.h"
 #include "source_video_standard.h"
 #include "metadata_generator_base.h"
+#include "field_effect.h"
+#include "field_preprocessor.h"
 #include "pal_encoder.h"
 #include "ntsc_encoder.h"
 #include "tbc_writer.h"
@@ -42,6 +44,28 @@ public:
      * @brief Clear all metadata generators
      */
     void clear_metadata_generators();
+    
+    /**
+     * @brief Set field effects for the pipeline
+     * @param effects Vector of field effects to apply to each field
+     */
+    void set_field_effects(std::vector<std::unique_ptr<FieldEffect>> effects);
+    
+    /**
+     * @brief Clear all field effects
+     */
+    void clear_field_effects();
+    
+    /**
+     * @brief Set field preprocessors (filters) for the pipeline
+     * @param preprocessors Vector of preprocessors to apply to each field
+     */
+    void set_field_preprocessors(std::vector<std::unique_ptr<FieldPreprocessor>> preprocessors);
+    
+    /**
+     * @brief Clear all field preprocessors
+     */
+    void clear_field_preprocessors();
     
     /**
      * @brief Set video level overrides for subsequent encoding operations
@@ -200,6 +224,12 @@ private:
     
     // Pipeline metadata generators (Phase 4+)
     std::vector<std::unique_ptr<MetadataGenerator>> metadata_generators_;
+    
+    // Field effects (Phase 6)
+    std::vector<std::unique_ptr<FieldEffect>> field_effects_;
+    
+    // Field preprocessors (Phase 6)
+    std::vector<std::unique_ptr<FieldPreprocessor>> field_preprocessors_;
     
     // Static video level overrides for all encoding operations
     static std::optional<int32_t> s_blanking_16b_ire_override;

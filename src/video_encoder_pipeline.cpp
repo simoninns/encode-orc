@@ -50,6 +50,24 @@ VideoEncoderPipeline::Builder& VideoEncoderPipeline::Builder::set_metadata_gener
     return *this;
 }
 
+VideoEncoderPipeline::Builder& VideoEncoderPipeline::Builder::add_field_effect(
+    std::unique_ptr<FieldEffect> effect) {
+    effects_.push_back(std::move(effect));
+    return *this;
+}
+
+VideoEncoderPipeline::Builder& VideoEncoderPipeline::Builder::set_field_effects(
+    std::vector<std::unique_ptr<FieldEffect>> effects) {
+    effects_ = std::move(effects);
+    return *this;
+}
+
+VideoEncoderPipeline::Builder& VideoEncoderPipeline::Builder::add_preprocessor(
+    std::unique_ptr<FieldPreprocessor> preprocessor) {
+    preprocessors_.push_back(std::move(preprocessor));
+    return *this;
+}
+
 std::unique_ptr<VideoEncoderPipeline> VideoEncoderPipeline::Builder::build() {
     // Create appropriate active video encoder based on system
     std::unique_ptr<ActiveVideoEncoder> active_encoder;
@@ -70,6 +88,12 @@ std::unique_ptr<VideoEncoderPipeline> VideoEncoderPipeline::Builder::build() {
     
     // Add metadata generators
     pipeline->generators_ = std::move(generators_);
+    
+    // Add field effects
+    pipeline->effects_ = std::move(effects_);
+    
+    // Add preprocessors
+    pipeline->preprocessors_ = std::move(preprocessors_);
     
     return pipeline;
 }
@@ -193,19 +217,45 @@ Field VideoEncoderPipeline::encode_field_from_yuv(const Field& field_yuv,
         }
     }
     
+    // Stage 7: Apply field effects (noise, dropouts, etc.)
+    FieldEffectContext effect_context;
+    effect_context.field_number = field_number;
+    effect_context.line_number = 0;
+    effect_context.is_first_field = is_first_field;
+    effect_context.signal_level_white = 55000;  // Approximate white level in 16-bit scale
+    effect_context.signal_level_black = 4096;   // Approximate black level
+    
+    for (auto& effect : effects_) {
+        if (effect && effect->is_enabled()) {
+            effect->apply(field, effect_context);
+        }
+    }
+    
     return field;
 }
 
-void VideoEncoderPipeline::add_metadata_generator(std::unique_ptr<MetadataGenerator> generator) {
-    generators_.push_back(std::move(generator));
+void VideoEncoderPipeline::add_field_effect(std::unique_ptr<FieldEffect> effect) {
+    effects_.push_back(std::move(effect));
 }
 
-void VideoEncoderPipeline::clear_metadata_generators() {
-    generators_.clear();
+void VideoEncoderPipeline::clear_field_effects() {
+    effects_.clear();
 }
 
-bool VideoEncoderPipeline::has_metadata_generators() const {
-    return !generators_.empty();
+bool VideoEncoderPipeline::has_field_effects() const {
+    return !effects_.empty();
+}
+
+void VideoEncoderPipeline::add_preprocessor(std::unique_ptr<FieldPreprocessor> preprocessor) {
+    preprocessors_.push_back(std::move(preprocessor));
+}
+
+void VideoEncoderPipeline::clear_preprocessors() {
+    preprocessors_.clear();
+}
+
+bool VideoEncoderPipeline::has_preprocessors() const {
+    return !preprocessors_.empty();
 }
 
 }  // namespace encode_orc

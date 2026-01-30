@@ -17,6 +17,8 @@
 #include "field_splitter.h"
 #include "field_structure_generator.h"
 #include "metadata_generator_base.h"
+#include "field_effect.h"
+#include "field_preprocessor.h"
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -76,6 +78,21 @@ public:
         Builder& set_metadata_generators(std::vector<std::unique_ptr<MetadataGenerator>> generators);
         
         /**
+         * @brief Add a field effect to the pipeline
+         */
+        Builder& add_field_effect(std::unique_ptr<FieldEffect> effect);
+        
+        /**
+         * @brief Set field effects (replaces any existing ones)
+         */
+        Builder& set_field_effects(std::vector<std::unique_ptr<FieldEffect>> effects);
+        
+        /**
+         * @brief Add a field preprocessor (filter)
+         */
+        Builder& add_preprocessor(std::unique_ptr<FieldPreprocessor> preprocessor);
+        
+        /**
          * @brief Build the pipeline
          */
         std::unique_ptr<VideoEncoderPipeline> build();
@@ -86,6 +103,8 @@ public:
         bool enable_chroma_filter_ = true;
         bool enable_luma_filter_ = false;
         std::vector<std::unique_ptr<MetadataGenerator>> generators_;
+        std::vector<std::unique_ptr<FieldEffect>> effects_;
+        std::vector<std::unique_ptr<FieldPreprocessor>> preprocessors_;
     };
     
     /**
@@ -133,6 +152,36 @@ public:
      * @brief Check if we have metadata generators
      */
     bool has_metadata_generators() const;
+    
+    /**
+     * @brief Add field effect
+     */
+    void add_field_effect(std::unique_ptr<FieldEffect> effect);
+    
+    /**
+     * @brief Clear all field effects
+     */
+    void clear_field_effects();
+    
+    /**
+     * @brief Check if we have field effects
+     */
+    bool has_field_effects() const;
+    
+    /**
+     * @brief Add field preprocessor (filter)
+     */
+    void add_preprocessor(std::unique_ptr<FieldPreprocessor> preprocessor);
+    
+    /**
+     * @brief Clear all preprocessors
+     */
+    void clear_preprocessors();
+    
+    /**
+     * @brief Check if we have preprocessors
+     */
+    bool has_preprocessors() const;
 
 private:
     friend class Builder;
@@ -142,6 +191,8 @@ private:
     std::unique_ptr<FieldSplitter> field_splitter_;
     std::unique_ptr<FieldStructureGenerator> structure_gen_;
     std::vector<std::unique_ptr<MetadataGenerator>> generators_;
+    std::vector<std::unique_ptr<FieldEffect>> effects_;
+    std::vector<std::unique_ptr<FieldPreprocessor>> preprocessors_;
     
     /**
      * @brief Private constructor for Builder

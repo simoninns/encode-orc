@@ -53,6 +53,22 @@ void VideoEncoder::clear_metadata_generators() {
     metadata_generators_.clear();
 }
 
+void VideoEncoder::set_field_effects(std::vector<std::unique_ptr<FieldEffect>> effects) {
+    field_effects_ = std::move(effects);
+}
+
+void VideoEncoder::clear_field_effects() {
+    field_effects_.clear();
+}
+
+void VideoEncoder::set_field_preprocessors(std::vector<std::unique_ptr<FieldPreprocessor>> preprocessors) {
+    field_preprocessors_ = std::move(preprocessors);
+}
+
+void VideoEncoder::clear_field_preprocessors() {
+    field_preprocessors_.clear();
+}
+
 /**
  * @brief Helper function to create the appropriate writer for composite video output
  * @param standard_mode If true, use StandardWriter; otherwise use TBCWriter

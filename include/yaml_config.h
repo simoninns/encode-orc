@@ -77,21 +77,6 @@ struct PipelineGeneratorConfig {
 };
 
 /**
- * @brief Pipeline metadata configuration (NEW)
- */
-struct PipelineMetadataConfig {
-    std::vector<PipelineGeneratorConfig> generators;
-};
-
-/**
- * @brief Pipeline configuration (NEW)
- */
-struct PipelineConfig {
-    std::optional<PipelineMetadataConfig> metadata;
-    // Future: preprocessing, effects, etc.
-};
-
-/**
  * @brief Chroma filter configuration
  */
 struct ChromaFilterConfig {
@@ -115,6 +100,60 @@ struct LumaFilterConfig {
 struct FilterConfig {
     ChromaFilterConfig chroma;
     LumaFilterConfig luma;
+};
+
+/**
+ * @brief Pipeline metadata configuration (NEW)
+ */
+struct PipelineMetadataConfig {
+    std::vector<PipelineGeneratorConfig> generators;
+};
+
+/**
+ * @brief Field effect configuration (Phase 6)
+ */
+struct FieldEffectConfig {
+    std::string type;           // "noise", "dropout", "phase-error"
+    bool enabled = false;       // Whether this effect is active
+    
+    // For noise effect:
+    std::optional<double> snr_db;         // Signal-to-noise ratio in dB
+    std::optional<double> noise_level_db; // Direct noise level in dB (alternative to SNR)
+    
+    // For dropout effect:
+    std::optional<std::string> dropout_pattern;  // "random", "periodic", "specific-lines"
+    std::optional<double> dropout_density;       // Dropout density (0.0-1.0)
+    std::optional<std::vector<int32_t>> dropout_lines;  // Specific lines to drop
+    
+    // For phase-error effect:
+    std::optional<double> phase_jitter_samples;  // Maximum phase jitter
+    std::optional<double> frequency_hz;          // Modulation frequency
+    
+    // Common to all effects:
+    std::optional<uint32_t> seed;  // Random seed for reproducibility
+};
+
+/**
+ * @brief Pipeline effects configuration (Phase 6)
+ */
+struct PipelineEffectsConfig {
+    std::vector<FieldEffectConfig> effects;
+};
+
+/**
+ * @brief Pipeline preprocessing configuration (Phase 6)
+ */
+struct PipelinePreprocessingConfig {
+    std::optional<FilterConfig> filters;  // Chroma and luma filters
+};
+
+/**
+ * @brief Pipeline configuration (NEW)
+ */
+struct PipelineConfig {
+    std::optional<PipelineMetadataConfig> metadata;
+    std::optional<PipelinePreprocessingConfig> preprocessing;  // Phase 6
+    std::optional<PipelineEffectsConfig> effects;              // Phase 6
 };
 
 /**
