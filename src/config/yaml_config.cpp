@@ -344,14 +344,6 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                         bv.disc_area = bv_node["disc_area"].as<std::string>();
                     }
                     
-                    // Convenience boolean flags
-                    if (bv_node["leadin"] && bv_node["leadin"].as<bool>()) {
-                        bv.disc_area = "lead-in";
-                    }
-                    if (bv_node["leadout"] && bv_node["leadout"].as<bool>()) {
-                        bv.disc_area = "lead-out";
-                    }
-                    
                     if (bv_node["picture_start"]) {
                         bv.picture_start = bv_node["picture_start"].as<int32_t>();
                     }

@@ -12,33 +12,33 @@
 
 ## Pipeline Architecture
 
-The encode-orc pipeline processes video through seven stages:
+The encode-orc pipeline processes video through the following stages:
 
 ```
 Stage 1: Source Loading
   ├─ Read video from disk (YUV422, PNG, MOV, MP4)
   └─ Decode to raw YUV 4:2:2 frames
 
-Stage 3: Preprocessing
+Stage 2: Preprocessing
   ├─ Apply chroma low-pass filter (optional)
   └─ Apply luma low-pass filter (optional)
 
-Stage 5: Composite Encoding
+Stage 3: Composite Encoding
   ├─ Encode YUV 4:2:2 to composite video
   ├─ Insert color burst reference signals
-  └─ Generate color-based VBI/VITS/VITC metadata
+  └─ Generate color-based VBI/VITS/VITC signals (including metadata)
 
-Stage 7: Post-Processing (Phase 6)
-  ├─ Apply Gaussian noise (tape hiss simulation)
-  ├─ Apply line dropouts (tape damage)
-  └─ Apply phase jitter (VCR time-base errors)
+Stage 4: Post-Processing
+  ├─ Apply Gaussian noise (noise simulation)
+  ├─ Apply line dropouts (RF breaks)
+  └─ Apply phase jitter (jitter/wobble simulation)
 
-Stage 8: Output
-  ├─ Write TBC file(s) with metadata
-  └─ Generate SQLite metadata database
+Stage 5: Output
+  ├─ Write TBC file(s) in ld-decode TBC format
+  └─ Generate SQLite metadata database in ld-decode format
 ```
 
-Each stage is independently configurable, and stages can be enabled/disabled as needed.
+Each stage is independently configurable.
 
 ---
 
@@ -140,7 +140,7 @@ sections:
 
 ---
 
-## Stage 3: Preprocessing Filters
+## Stage 2: Preprocessing Filters
 
 Apply low-pass filtering to remove high-frequency artifacts before composite encoding.
 
@@ -168,15 +168,6 @@ pipeline:
 - **NTSC**: 3.6 MHz low-pass (25-tap FIR)
 - Enable only if you observe high-frequency artifacts in grayscale content
 
-### When to Use Filters
-
-| Content Type | Chroma | Luma | Reason |
-|--------------|--------|------|--------|
-| Color bars (test patterns) | ✓ | ✗ | Prevent ringing on color edges |
-| Photo/artwork | ✓ | ✗ | Smooth color transitions |
-| High-resolution text | ✓ | ✓ | Reduce edge ringing |
-| Smooth video content | ✓ | ✗ | Standard approach |
-
 ### Section-Level Filter Overrides
 
 You can override filters for specific sections:
@@ -197,9 +188,9 @@ sections:
 
 ---
 
-## Stage 5: Composite Encoding & Metadata
+## Stage 3: Composite Encoding & line signals
 
-The metadata generation (VBI, VITS, VITC, color burst) is configured entirely through the `pipeline.metadata.generators` list. Each generator you enable adds specific vertical interval signals to the output.
+The line signal generation (VBI, VITS, VITC, color burst) is configured entirely through the `pipeline.metadata.generators` list. Each generator you enable adds specific vertical interval signals to the output.
 
 ### Available Metadata Generators
 
@@ -385,7 +376,7 @@ sections:
 
 ---
 
-## Stage 7: Post-Processing Effects (Phase 6)
+## Stage 4: Post-Processing Effects
 
 Simulate tape artifacts and degradation on the final composite signal. All effects are optional and applied in sequence.
 
