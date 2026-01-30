@@ -11,6 +11,7 @@
 #include "vits_pipeline_generator.h"
 #include "logging.h"
 #include "field.h"
+#include <algorithm>
 
 namespace encode_orc {
 
@@ -292,15 +293,59 @@ void BiphaseVBIMetadataGenerator::apply(Field& field, const MetadataContext& con
         return;
     }
     
-    // Encode each VBI byte onto its line using BiphaseEncoder static methods
-    for (size_t i = 0; i < lines_.size() && i < 3; i++) {
-        int32_t line_idx = lines_[i];
-        if (line_idx < 0 || line_idx >= field.height()) continue;
+    // Get field height for the current field being processed
+    int32_t field_height = field.height();
+    
+    // Use actual field1 height from parameters (in absolute frame line numbering)
+    int32_t field1_absolute_height = params_.field1_height;
+    
+    // Process configured lines and encode VBI data
+    // We map lines based on their position within the current field
+    
+    for (size_t i = 0; i < lines_.size(); i++) {
+        int32_t absolute_line = lines_[i];
         
-        uint16_t* line_buffer = field.line_data(line_idx);
-        uint8_t vbi_byte = (i == 0) ? context.vbi_data->vbi0 : 
-                          (i == 1) ? context.vbi_data->vbi1 : 
-                                     context.vbi_data->vbi2;
+        // Determine which field this line belongs to (using absolute line numbering)
+        bool is_field1_line = (absolute_line < field1_absolute_height);
+        
+        // Skip if this line belongs to the other field
+        if (is_field1_line != context.is_first_field) {
+            continue;
+        }
+        
+        // Convert absolute line to field-relative line
+        int32_t field_relative_line = is_field1_line ? 
+                                     absolute_line : 
+                                     (absolute_line - field1_absolute_height);
+        
+        // Validate line is within current field
+        if (field_relative_line < 0 || field_relative_line >= field_height) {
+            continue;
+        }
+        
+        // Determine which VBI byte this line maps to (vbi0, vbi1, vbi2)
+        // We need to count how many lines in the current field we've already processed
+        int32_t byte_index = 0;
+        for (size_t j = 0; j < i; j++) {
+            int32_t prev_absolute_line = lines_[j];
+            bool prev_is_field1 = (prev_absolute_line < field1_absolute_height);
+            if (prev_is_field1 == is_field1_line) {
+                byte_index++;
+            }
+        }
+        
+        // Sanity check
+        if (byte_index > 2) {
+            ENCODE_ORC_LOG_WARN("Biphase VBI generator: more than 3 lines per field configured, skipping line {}", absolute_line);
+            continue;
+        }
+        
+        // Get the appropriate VBI byte
+        uint8_t vbi_byte = (byte_index == 0) ? context.vbi_data->vbi0 : 
+                          (byte_index == 1) ? context.vbi_data->vbi1 : 
+                                              context.vbi_data->vbi2;
+        
+        uint16_t* line_buffer = field.line_data(field_relative_line);
         
         // Encode single byte as 3-byte biphase (byte, 0xFF, 0xFF for single-byte mode)
         auto samples = BiphaseEncoder::encode(vbi_byte, 0xFF, 0xFF,

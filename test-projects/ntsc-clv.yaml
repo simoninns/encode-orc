@@ -18,15 +18,15 @@ pipeline:
     generators:
       - type: "biphase-vbi"
         enabled: true
-        lines: [15, 16, 17]
+        lines: [16, 17, 18, 278, 279, 280]
         format: "timecode"
       
       - type: "vits-ntsc"
         enabled: true
         signals:
-          - line: 18
-            signal: "itu-composite"
           - line: 19
+            signal: "itu-composite"
+          - line: 20
             signal: "itu-its"
           - line: 281
             signal: "itu-composite"

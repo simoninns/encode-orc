@@ -144,11 +144,11 @@ Field VideoEncoderPipeline::encode_field_from_yuv(const Field& field_yuv,
     if (system == VideoSystem::PAL) {
         vsync_lines = 5;          // Lines 0-4
         active_lines_start = 23;  // Line 23
-        active_lines_end = 310;   // Line 310
+        active_lines_end = field_height - 3;  // 3 lines from bottom (blanking)
     } else {
         vsync_lines = 3;          // Lines 0-2
         active_lines_start = 21;  // Line 21
-        active_lines_end = 261;   // Line 261
+        active_lines_end = field_height - 2;  // 2 lines from bottom (blanking)
     }
     
     // Stage 1: Generate field structure (sync, blanking, color burst)

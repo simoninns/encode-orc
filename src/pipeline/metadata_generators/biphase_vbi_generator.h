@@ -21,10 +21,12 @@ namespace encode_orc {
 /**
  * @brief Pipeline generator for LaserDisc VBI frame numbers
  * 
- * Encodes 24-bit VBI data onto lines 16, 17, and 18 using biphase (Manchester)
+ * Encodes 24-bit VBI data onto specified lines using biphase (Manchester)
  * encoding for LaserDisc formats.
  * 
- * Lines affected: 15, 16, 17 (0-indexed) = 16, 17, 18 (1-indexed)
+ * Lines are absolute 0-indexed across the full frame.
+ * NTSC: lines 16, 17, 18 (field 1) and 278, 279, 280 (field 2)
+ * PAL: lines 17, 18, 19 (field 1) and 330, 331, 332 (field 2)
  */
 class BiphaseVBIGenerator : public PipelineMetadataGenerator {
 public:
@@ -43,7 +45,7 @@ public:
         std::vector<int32_t> lines;  // Lines to encode VBI on (0-indexed)
         VBIFormat format;            // Picture numbers or timecode
         
-        Config() : lines({15, 16, 17}), format(VBIFormat::PictureNumber) {}  // Default: picture numbers on lines 16-18
+        Config() : format(VBIFormat::PictureNumber) {}  // Default: lines must be specified in YAML config
     };
     
     /**

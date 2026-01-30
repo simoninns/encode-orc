@@ -121,12 +121,14 @@ private:
 /**
  * @brief Pipeline-compatible biphase VBI generator
  * 
- * Adds LaserDisc VBI data (biphase-encoded) to lines 16, 17, 18
+ * Adds LaserDisc VBI data (biphase-encoded) to specified lines across both fields.
+ * Lines are absolute 0-indexed: NTSC defaults to {15, 16, 17, 277, 278, 279},
+ * PAL defaults to {16, 17, 18, 329, 330, 331}.
  */
 class BiphaseVBIMetadataGenerator : public MetadataGenerator {
 public:
     explicit BiphaseVBIMetadataGenerator(const VideoParameters& params,
-                                         const std::vector<int32_t>& lines = {15, 16, 17});
+                                         const std::vector<int32_t>& lines = {});
     
     void apply(encode_orc::Field& field, const MetadataContext& context) override;
     std::vector<int32_t> affected_lines() const override;

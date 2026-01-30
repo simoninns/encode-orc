@@ -18,13 +18,13 @@ pipeline:
     generators:
       - type: "biphase-vbi"
         enabled: true
-        lines: [15, 16, 17]
+        lines: [16, 17, 18, 328, 329, 330]
         format: "timecode"
       
       - type: "vits-pal"
         enabled: true
         signals:
-          - line: 18
+          - line: 19
             signal: "multiburst"
           - line: 20
             signal: "uk-national"

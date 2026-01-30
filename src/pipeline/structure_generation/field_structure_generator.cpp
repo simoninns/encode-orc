@@ -37,10 +37,9 @@ StructuredField FieldStructureGenerator::create_field_structure(
     // Determine actual field height for this field
     // NTSC: Field 1 has 262 lines, Field 2 has 263 lines
     // PAL: Field 1 has 312 lines, Field 2 has 313 lines
-    int32_t actual_field_height = params_.field_height;
-    if (is_first_field) {
-        actual_field_height = (system == VideoSystem::NTSC) ? 262 : 312;
-    }
+    int32_t actual_field_height = is_first_field ? 
+                                  params_.field1_height : 
+                                  params_.field2_height;
     
     // Create field with proper dimensions
     result.field_data = Field(params_.field_width, actual_field_height);
