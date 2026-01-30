@@ -287,6 +287,15 @@ int main(int argc, char* argv[]) {
         );
     }
 
+    // Ensure filename has .tbc extension for composite formats
+    std::string output_filename = config.output.filename;
+    if (config.output.format == "pal-composite" || config.output.format == "ntsc-composite") {
+        // Add .tbc extension if not already present
+        if (output_filename.length() < 4 || output_filename.substr(output_filename.length() - 4) != ".tbc") {
+            output_filename += ".tbc";
+        }
+    }
+
     // Open output writer
     std::unique_ptr<Writer> writer;
     if (config.output.writer == "standard") {
@@ -295,8 +304,8 @@ int main(int argc, char* argv[]) {
         writer = std::make_unique<TBCWriter>();
     }
 
-    if (!writer->open(config.output.filename)) {
-        ENCODE_ORC_LOG_ERROR("Could not open output file: {}", config.output.filename);
+    if (!writer->open(output_filename)) {
+        ENCODE_ORC_LOG_ERROR("Could not open output file: {}", output_filename);
         return 1;
     }
 
@@ -650,7 +659,7 @@ int main(int argc, char* argv[]) {
     // Generate metadata for entire file (only for TBC writer, not standard writer)
     if (config.output.writer != "standard") {
         std::string meta_error;
-        std::string metadata_filename = config.output.filename + ".db";
+        std::string metadata_filename = output_filename + ".db";
         
         if (!generate_metadata(config, system, total_frames, metadata_filename, meta_error)) {
             ENCODE_ORC_LOG_ERROR("Metadata generation error: {}", meta_error);
@@ -659,6 +668,6 @@ int main(int argc, char* argv[]) {
     }
     
     ENCODE_ORC_LOG_INFO("Successfully generated {} frames", total_frames);
-    ENCODE_ORC_LOG_INFO("Output file: {}", config.output.filename);
+    ENCODE_ORC_LOG_INFO("Output file: {}", output_filename);
     return 0;
 }

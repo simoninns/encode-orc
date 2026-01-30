@@ -2,7 +2,7 @@ name: "NTSC-CLV Standard"
 description: "NTSC LaserDisc with CLV timecode (IEC 60856-1986)"
 
 output:
-  filename: "test-output/ntsc-clv.tbc"
+  filename: "test-output/ntsc-clv"
   format: "ntsc-composite"
 
 laserdisc:

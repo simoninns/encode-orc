@@ -2,7 +2,7 @@ name: "PAL-CLV Standard"
 description: "PAL LaserDisc with CLV timecode (IEC 60857-1986)"
 
 output:
-  filename: "test-output/pal-clv.tbc"
+  filename: "test-output/pal-clv"
   format: "pal-composite"
 
 laserdisc:

@@ -2,7 +2,7 @@ name: "PAL-CAV Standard"
 description: "PAL LaserDisc with CAV picture numbering (IEC 60857-1986)"
 
 output:
-  filename: "test-output/pal-cav.tbc"
+  filename: "test-output/pal-cav"
   format: "pal-composite"
 
 laserdisc:
