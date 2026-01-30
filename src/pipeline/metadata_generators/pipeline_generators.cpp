@@ -8,6 +8,7 @@
  */
 
 #include "pipeline_generators.h"
+#include "vits_pipeline_generator.h"
 #include "logging.h"
 #include "field.h"
 
@@ -163,6 +164,116 @@ void VITSMetadataGenerator::apply(Field& field, const MetadataContext& context) 
 std::vector<int32_t> VITSMetadataGenerator::affected_lines() const {
     // Both PAL and NTSC use field-relative lines 18 and 19
     return {18, 19};
+}
+
+// ============================================================================
+// PALVITSMetadataGenerator
+// ============================================================================
+
+PALVITSMetadataGenerator::PALVITSMetadataGenerator(const VideoParameters& params,
+                                                   const std::vector<VITSSignalConfig>& signals)
+    : params_(params), generator_(std::make_unique<PALVITSGenerator>(params)), signals_(signals) {
+}
+
+void PALVITSMetadataGenerator::apply(Field& field, const MetadataContext& context) {
+    // Determine which field we're in (1 or 2)
+    int32_t field_in_frame = context.is_first_field ? 1 : 2;
+    
+    // Generate each configured signal
+    for (const auto& signal_config : signals_) {
+        // Check if this signal applies to the current field
+        if (signal_config.field != field_in_frame) {
+            continue;  // Skip signals for other field
+        }
+        
+        // Validate line number
+        if (signal_config.line < 0 || signal_config.line >= field.height()) {
+            ENCODE_ORC_LOG_WARN("PAL VITS signal configured for invalid line: {}", signal_config.line);
+            continue;
+        }
+        
+        // Generate the appropriate signal
+        uint16_t* line_buffer = field.line_data(signal_config.line);
+        
+        switch (signal_config.signal) {
+            case VITSSignalType::ITU_COMPOSITE:
+                generator_->generate_itu_composite(line_buffer, context.field_number);
+                break;
+            case VITSSignalType::UK_NATIONAL:
+                generator_->generate_uk_national(line_buffer, context.field_number);
+                break;
+            case VITSSignalType::ITU_ITS:
+                generator_->generate_itu_its(line_buffer, context.field_number);
+                break;
+            case VITSSignalType::MULTIBURST:
+                generator_->generate_multiburst(line_buffer, context.field_number);
+                break;
+        }
+    }
+}
+
+std::vector<int32_t> PALVITSMetadataGenerator::affected_lines() const {
+    std::vector<int32_t> lines;
+    for (const auto& signal : signals_) {
+        lines.push_back(signal.line);
+    }
+    return lines;
+}
+
+// ============================================================================
+// NTSCVITSMetadataGenerator
+// ============================================================================
+
+NTSCVITSMetadataGenerator::NTSCVITSMetadataGenerator(const VideoParameters& params,
+                                                     const std::vector<VITSSignalConfig>& signals)
+    : params_(params), generator_(std::make_unique<NTSCVITSGenerator>(params)), signals_(signals) {
+}
+
+void NTSCVITSMetadataGenerator::apply(Field& field, const MetadataContext& context) {
+    // Determine which field we're in (1 or 2)
+    int32_t field_in_frame = context.is_first_field ? 1 : 2;
+    
+    // Generate each configured signal
+    for (const auto& signal_config : signals_) {
+        // Check if this signal applies to the current field
+        if (signal_config.field != field_in_frame) {
+            continue;  // Skip signals for other field
+        }
+        
+        // Validate line number
+        if (signal_config.line < 0 || signal_config.line >= field.height()) {
+            ENCODE_ORC_LOG_WARN("NTSC VITS signal configured for invalid line: {}", signal_config.line);
+            continue;
+        }
+        
+        // Generate the appropriate signal
+        uint16_t* line_buffer = field.line_data(signal_config.line);
+        
+        switch (signal_config.signal) {
+            case VITSSignalType::ITU_COMPOSITE:
+                generator_->generate_ntc7_composite(line_buffer, context.field_number);
+                break;
+            case VITSSignalType::UK_NATIONAL:
+                // UK National is PAL-specific, not available for NTSC
+                ENCODE_ORC_LOG_WARN("UK National VITS signal is PAL-specific, skipping for NTSC");
+                break;
+            case VITSSignalType::ITU_ITS:
+                generator_->generate_ntc7_combination(line_buffer, context.field_number);
+                break;
+            case VITSSignalType::MULTIBURST:
+                // NTSC doesn't have a standalone multiburst, use NTC7 composite which includes multiburst
+                generator_->generate_ntc7_composite(line_buffer, context.field_number);
+                break;
+        }
+    }
+}
+
+std::vector<int32_t> NTSCVITSMetadataGenerator::affected_lines() const {
+    std::vector<int32_t> lines;
+    for (const auto& signal : signals_) {
+        lines.push_back(signal.line);
+    }
+    return lines;
 }
 
 // ============================================================================

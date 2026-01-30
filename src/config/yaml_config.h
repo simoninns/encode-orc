@@ -11,7 +11,6 @@
 #define ENCODE_ORC_YAML_CONFIG_H
 
 #include "video_parameters.h"
-#include "source_video_standard.h"
 #include <string>
 #include <vector>
 #include <optional>
@@ -66,8 +65,7 @@ struct PipelineGeneratorConfig {
     
     // For vits-pal / vits-ntsc:
     struct VITSSignal {
-        int32_t line = 0;         // Line number (0-indexed)
-        int32_t field = 1;        // Field number (1 or 2)
+        int32_t line = 0;         // Absolute line number (1-indexed in YAML, 1-525 for NTSC, 1-625 for PAL)
         std::string signal;       // "itu-composite", "uk-national", "itu-its", "multiburst"
     };
     std::vector<VITSSignal> vits_signals;

@@ -66,10 +66,4 @@ std::string ColorBurstPipelineGenerator::name() const {
     return "ColorBurstPipelineGenerator";
 }
 
-bool ColorBurstPipelineGenerator::is_applicable([[maybe_unused]] const MetadataContext& context) const {
-    // Color burst is always needed for composite video
-    // (For separate Y/C, we might want to skip luma and only do chroma)
-    return true;
-}
-
 } // namespace encode_orc

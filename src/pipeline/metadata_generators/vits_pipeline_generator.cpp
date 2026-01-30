@@ -104,11 +104,6 @@ std::string PALVITSPipelineGenerator::name() const {
     return "PALVITSPipelineGenerator";
 }
 
-bool PALVITSPipelineGenerator::is_applicable(const MetadataContext& context) const {
-    // Only applicable for PAL systems
-    return context.system == VideoSystem::PAL;
-}
-
 // =============================================================================
 // NTSCVITSPipelineGenerator
 // =============================================================================
@@ -169,11 +164,6 @@ std::vector<int32_t> NTSCVITSPipelineGenerator::affected_lines() const {
 
 std::string NTSCVITSPipelineGenerator::name() const {
     return "NTSCVITSPipelineGenerator";
-}
-
-bool NTSCVITSPipelineGenerator::is_applicable(const MetadataContext& context) const {
-    // Only applicable for NTSC systems
-    return context.system == VideoSystem::NTSC;
 }
 
 } // namespace encode_orc

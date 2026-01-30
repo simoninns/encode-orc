@@ -45,9 +45,4 @@ std::string VITCPipelineGenerator::name() const {
     return "VITCPipelineGenerator";
 }
 
-bool VITCPipelineGenerator::is_applicable(const MetadataContext& context) const {
-    // VITC is typically used for consumer tape formats
-    return context.source_standard == SourceVideoStandard::ConsumerTape;
-}
-
 } // namespace encode_orc

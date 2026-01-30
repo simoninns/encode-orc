@@ -14,6 +14,7 @@
 #include <sstream>
 #include <iostream>
 #include <cstring>
+#include <cmath>
 #include <algorithm>
 #include <cstdio>
 #include <array>
@@ -73,9 +74,17 @@ bool MOVLoader::load_frame(int32_t frame_index, FrameBuffer& output, std::string
 
 bool MOVLoader::load_frames(int32_t start, int32_t count, 
                              std::vector<FrameBuffer>& output, std::string& error) {
-    // Use default video parameters for loading
+    // Auto-detect video system from frame rate
     VideoParameters default_params;
-    default_params.system = VideoSystem::PAL;  // Will be validated by caller if needed
+    if (frame_rate_ > 0.0) {
+        // Check if frame rate is closer to NTSC (~29.97 or ~23.976) or PAL (25.0 or ~50.0)
+        double ntsc_diff = std::min(std::abs(frame_rate_ - 29.97), std::abs(frame_rate_ - 23.976));
+        double pal_diff = std::min(std::abs(frame_rate_ - 25.0), std::abs(frame_rate_ - 50.0));
+        default_params.system = (ntsc_diff < pal_diff) ? VideoSystem::NTSC : VideoSystem::PAL;
+    } else {
+        // Default to PAL if frame rate unknown
+        default_params.system = VideoSystem::PAL;
+    }
     
     return load_frames(start, count, width_, height_, default_params, output, error);
 }

@@ -1,0 +1,76 @@
+name: "PAL Loader Types Demo - CAV"
+description: "PAL LaserDisc with CAV picture numbering - demonstrates all supported loader types"
+
+output:
+  filename: "test-output/pal-loaders.tbc"
+  format: "pal-composite"
+
+laserdisc:
+  mode: "cav"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+  
+  metadata:
+    generators:
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [15, 16, 17]
+        format: "picture-number"
+      
+      - type: "vits-pal"
+        enabled: true
+        signals:
+          - line: 18
+            signal: "multiburst"
+          - line: 20
+            signal: "uk-national"
+          - line: 332
+            signal: "itu-composite"
+          - line: 333
+            signal: "itu-composite"
+      
+      - type: "color-burst"
+        enabled: true
+
+sections:
+  - name: "YUV422 Raw Image Loader"
+    duration: 5
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      picture_start: 1
+
+  - name: "MOV File Loader"
+    duration: 5
+    source:
+      type: "mov-file"
+      file: "testcard-images/pal-mov/pt5300.mov"
+      start_frame: 0
+    biphase-vbi:
+      disc_area: "programme-area"
+      picture_start: 6
+
+  - name: "MP4 File Loader"
+    duration: 5
+    source:
+      type: "mp4-file"
+      file: "testcard-images/pal-mp4/pal-nynashamn.mp4"
+      start_frame: 0
+    biphase-vbi:
+      disc_area: "programme-area"
+      picture_start: 11
+
+  - name: "PNG Image Loader"
+    duration: 5
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Clipping-Target-Broadcast.png"
+    biphase-vbi:
+      disc_area: "programme-area"
+      picture_start: 16

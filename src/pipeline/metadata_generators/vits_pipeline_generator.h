@@ -62,7 +62,6 @@ public:
     void apply(StructuredField& field, const MetadataContext& context) override;
     std::vector<int32_t> affected_lines() const override;
     std::string name() const override;
-    bool is_applicable(const MetadataContext& context) const override;
     
 private:
     std::unique_ptr<PALVITSGenerator> vits_gen_;
@@ -94,7 +93,6 @@ public:
     void apply(StructuredField& field, const MetadataContext& context) override;
     std::vector<int32_t> affected_lines() const override;
     std::string name() const override;
-    bool is_applicable(const MetadataContext& context) const override;
     
 private:
     std::unique_ptr<NTSCVITSGenerator> vits_gen_;

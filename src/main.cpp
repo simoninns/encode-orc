@@ -11,6 +11,7 @@
 #include "video_encoder_pipeline.h"
 #include "metadata_generator.h"
 #include "pipeline_generators.h"
+#include "vits_pipeline_generator.h"
 #include "video_parameters.h"
 #include "metadata.h"
 #include "logging.h"
@@ -369,6 +370,64 @@ int main(int argc, char* argv[]) {
                     else if (gen_config.type == "vits") {
                         generators.push_back(std::make_unique<VITSMetadataGenerator>(params));
                         ENCODE_ORC_LOG_DEBUG("Added VITS generator to pipeline");
+                    }
+                    else if (gen_config.type == "vits-pal") {
+                        // Parse VITS signal configuration from YAML
+                        std::vector<VITSSignalConfig> vits_signals;
+                        for (const auto& signal_yaml : gen_config.vits_signals) {
+                            VITSSignalConfig signal_cfg;
+                            
+                            // Line numbers in YAML are 1-indexed absolute (1-625 for PAL)
+                            // Convert to field number and field-relative 0-indexed line
+                            int32_t absolute_line_1indexed = signal_yaml.line;
+                            int32_t absolute_line_0indexed = absolute_line_1indexed - 1;
+                            
+                            // PAL: 625 lines total, 313 lines per field (field 1: 0-312, field 2: 313-624)
+                            if (absolute_line_0indexed < 313) {
+                                signal_cfg.field = 1;
+                                signal_cfg.line = absolute_line_0indexed;
+                            } else {
+                                signal_cfg.field = 2;
+                                signal_cfg.line = absolute_line_0indexed - 313;
+                            }
+                            
+                            if (!parse_vits_signal_type(signal_yaml.signal, signal_cfg.signal)) {
+                                ENCODE_ORC_LOG_WARN("Unknown VITS signal type '{}', skipping", signal_yaml.signal);
+                                continue;
+                            }
+                            vits_signals.push_back(signal_cfg);
+                        }
+                        generators.push_back(std::make_unique<PALVITSMetadataGenerator>(params, vits_signals));
+                        ENCODE_ORC_LOG_DEBUG("Added PAL VITS generator to pipeline with {} signals", vits_signals.size());
+                    }
+                    else if (gen_config.type == "vits-ntsc") {
+                        // Parse VITS signal configuration from YAML
+                        std::vector<VITSSignalConfig> vits_signals;
+                        for (const auto& signal_yaml : gen_config.vits_signals) {
+                            VITSSignalConfig signal_cfg;
+                            
+                            // Line numbers in YAML are 1-indexed absolute (1-525 for NTSC)
+                            // Convert to field number and field-relative 0-indexed line
+                            int32_t absolute_line_1indexed = signal_yaml.line;
+                            int32_t absolute_line_0indexed = absolute_line_1indexed - 1;
+                            
+                            // NTSC: 525 lines total, 263 lines per field (field 1: 0-262, field 2: 263-524)
+                            if (absolute_line_0indexed < 263) {
+                                signal_cfg.field = 1;
+                                signal_cfg.line = absolute_line_0indexed;
+                            } else {
+                                signal_cfg.field = 2;
+                                signal_cfg.line = absolute_line_0indexed - 263;
+                            }
+                            
+                            if (!parse_vits_signal_type(signal_yaml.signal, signal_cfg.signal)) {
+                                ENCODE_ORC_LOG_WARN("Unknown VITS signal type '{}', skipping", signal_yaml.signal);
+                                continue;
+                            }
+                            vits_signals.push_back(signal_cfg);
+                        }
+                        generators.push_back(std::make_unique<NTSCVITSMetadataGenerator>(params, vits_signals));
+                        ENCODE_ORC_LOG_DEBUG("Added NTSC VITS generator to pipeline with {} signals", vits_signals.size());
                     }
                     else if (gen_config.type == "biphase-vbi") {
                         // Parse lines if provided, otherwise use defaults

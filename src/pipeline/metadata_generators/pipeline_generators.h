@@ -73,6 +73,51 @@ private:
     VideoSystem system_;
 };
 
+// Forward declarations for VITS signal types (defined in vits_pipeline_generator.h)
+enum class VITSSignalType;
+struct VITSSignalConfig;
+bool parse_vits_signal_type(const std::string& str, VITSSignalType& type);
+
+/**
+ * @brief Pipeline-compatible PAL VITS generator with configurable signals
+ * 
+ * Adds PAL Vertical Interval Test Signals to configured lines/fields
+ */
+class PALVITSMetadataGenerator : public MetadataGenerator {
+public:
+    explicit PALVITSMetadataGenerator(const VideoParameters& params,
+                                      const std::vector<VITSSignalConfig>& signals);
+    
+    void apply(encode_orc::Field& field, const MetadataContext& context) override;
+    std::vector<int32_t> affected_lines() const override;
+    std::string name() const override { return "PAL-VITS"; }
+    
+private:
+    VideoParameters params_;
+    std::unique_ptr<PALVITSGenerator> generator_;
+    std::vector<VITSSignalConfig> signals_;
+};
+
+/**
+ * @brief Pipeline-compatible NTSC VITS generator with configurable signals
+ * 
+ * Adds NTSC Vertical Interval Test Signals to configured lines/fields
+ */
+class NTSCVITSMetadataGenerator : public MetadataGenerator {
+public:
+    explicit NTSCVITSMetadataGenerator(const VideoParameters& params,
+                                       const std::vector<VITSSignalConfig>& signals);
+    
+    void apply(encode_orc::Field& field, const MetadataContext& context) override;
+    std::vector<int32_t> affected_lines() const override;
+    std::string name() const override { return "NTSC-VITS"; }
+    
+private:
+    VideoParameters params_;
+    std::unique_ptr<NTSCVITSGenerator> generator_;
+    std::vector<VITSSignalConfig> signals_;
+};
+
 /**
  * @brief Pipeline-compatible biphase VBI generator
  * 

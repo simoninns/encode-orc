@@ -12,7 +12,6 @@
 
 #include "field_structure_generator.h"
 #include "metadata.h"
-#include "source_video_standard.h"
 #include <vector>
 #include <cstdint>
 #include <string>
@@ -33,9 +32,6 @@ struct MetadataContext {
     
     // VBI data (for LaserDisc)
     const VBIData* vbi_data = nullptr;  ///< Optional VBI frame numbers
-    
-    // Source video standard (determines which generators are active)
-    SourceVideoStandard source_standard = SourceVideoStandard::None;
 };
 
 /**

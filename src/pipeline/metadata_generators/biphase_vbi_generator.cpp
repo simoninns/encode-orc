@@ -53,13 +53,6 @@ std::string BiphaseVBIGenerator::name() const {
     return "BiphaseVBIGenerator";
 }
 
-bool BiphaseVBIGenerator::is_applicable(const MetadataContext& context) const {
-    // Only applicable for LaserDisc standards and when VBI data is present
-    return context.vbi_data != nullptr &&
-           (context.source_standard == SourceVideoStandard::IEC60856_1986 ||
-            context.source_standard == SourceVideoStandard::IEC60857_1986);
-}
-
 void BiphaseVBIGenerator::encode_biphase_on_line(uint16_t* line_buffer, int32_t vbi_value) const {
     // Extract bytes from 24-bit value
     uint8_t byte0 = (vbi_value >> 16) & 0xFF;

@@ -225,7 +225,6 @@ Field VideoEncoderPipeline::encode_field_from_yuv(const Field& field_yuv,
         ctx.is_first_field = is_first_field;
         ctx.system = system;
         ctx.vbi_data = vbi_data;
-        ctx.source_standard = SourceVideoStandard::None;
 
         for (auto& generator : generators_) {
             if (generator && generator->is_applicable(ctx)) {

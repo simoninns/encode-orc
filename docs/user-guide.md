@@ -55,7 +55,6 @@ output:
   format: "pal-composite"  # or ntsc-composite, pal-yc, ntsc-yc
 
 laserdisc:
-  standard: "iec60857-1986"  # Project-wide standard: iec60857-1986, iec60856-1986, consumer-tape, or none
   mode: "cav"                # Timecode mode: cav, clv, picture-numbers, or none
 
 sections:
@@ -198,265 +197,133 @@ sections:
 
 ---
 
-## Standards and Metadata Requirements
-
-The `laserdisc.standard` setting is a critical choice that **enforces specific VBI/VITS/VITC data generation** and **line placement rules**. You cannot selectively enable or disable the metadata that a standard requires—it's all-or-nothing per standard choice.
-
-### Standard Enforcement Overview
-
-Each standard automatically generates:
-
-```
-┌─────────────────────┬──────────┬──────────┬──────────┬─────────────────┐
-│ Standard            │ VBI Data │ VITS     │ VITC     │ What It Encodes │
-├─────────────────────┼──────────┼──────────┼──────────┼─────────────────┤
-│ iec60857-1986 (PAL) │ ✓ Auto   │ ✓ Auto   │ ✗        │ Picture #, Ch.# │
-│ iec60856-1986 (NTSC)│ ✓ Auto   │ ✓ Auto   │ ✗        │ Picture #, Ch.# │
-│ consumer-tape       │ ✗        │ ✗        │ ✓ Auto   │ Timecode only   │
-│ none                │ ✗        │ ✗        │ ✗        │ Nothing (clean) │
-└─────────────────────┴──────────┴──────────┴──────────┴─────────────────┘
-```
-
-### LaserDisc Standards (iec60857-1986 / iec60856-1986)
-
-When you select a LaserDisc standard, the application **automatically generates** both VBI and VITS according to IEC specifications. You cannot disable these—they are inherent to the standard.
-
-#### VBI (Vertical Blanking Interval) - Automatic Placement
-
-VBI data appears on **lines 16, 17, 18** (1-indexed, per field):
-
-```yaml
-laserdisc:
-  standard: "iec60857-1986"  # PAL LaserDisc - forces VBI on lines 16-18
-  # OR
-  standard: "iec60856-1986"  # NTSC LaserDisc - forces VBI on lines 16-18
-```
-
-**VBI Encodes:**
-- **CAV mode**: Picture numbers (1–79,999) on lines 16–18, increments per frame
-- **CLV mode**: Chapter number + timecode (HH:MM:SS:FF) on lines 16–18, increments per frame
-- **Programme/lead-in/lead-out markers**: Automatically determined by `disc_area` setting
-
-**Data Format:**
-- Manchester (biphase) encoding on lines 16–18
-- Automatic: no configuration needed, standard-driven entirely
-
-#### VITS (Vertical Interval Test Signals) - Automatic Placement
-
-VITS signals automatically appear on:
-- **PAL**: Lines 19, 20, 332, 333 (per field parity)
-- **NTSC**: Lines 19, 20, 282, 283 (per field parity)
-
-```yaml
-laserdisc:
-  standard: "iec60857-1986"  # Automatically adds PAL VITS
-```
-
-**VITS Includes (IEC Standard):**
-- Multiburst test signal (chroma response)
-- UK National Television test signal
-- Field synchronization markers
-- Amplitude calibration references
-
-**Data Format:**
-- Automatically formatted per IEC 60857 (PAL) or IEC 60856 (NTSC)
-- Cannot be customized; built-in waveforms only
-
-### Consumer Tape Standard (consumer-tape)
-
-Consumer video tape formats (VHS, Betamax, Video8) use **VITC (Vertical Interval Time Code)** instead of LaserDisc VBI/VITS:
-
-```yaml
-laserdisc:
-  standard: "consumer-tape"  # Disables VBI/VITS, enables VITC
-  mode: "cav"                # or "clv"
-```
-
-#### VITC (Vertical Interval Time Code) - Automatic Placement
-
-VITC timecode appears on fixed lines per video system:
-
-**NTSC VITC Placement:**
-- Lines 14 and 16 (1-indexed, per field)
-- Each frame encodes 4 VITC lines (2 lines × 2 fields)
-
-**PAL VITC Placement:**
-- Lines 19 and 21 (1-indexed, per field)
-- Each frame encodes 4 VITC lines (2 lines × 2 fields)
-
-**VITC Encodes:**
-- Timecode: HH:MM:SS:FF (hours:minutes:seconds:frames)
-- Frame-accurate, increments per frame
-- User bits: currently set to 0 (reserved for future use)
-
-**Data Format:**
-- Manchester (biphase) encoding
-- Sine-squared edge shaping (~50 ns rise/fall time)
-- Amplitude: 0–100 IRE (blanking to white)
-
-### No Standard (none)
-
-When you select `none`, all VBI, VITS, and VITC generation is disabled:
-
-```yaml
-laserdisc:
-  standard: "none"  # No automatic metadata
-  mode: "none"      # No picture numbers or timecode
-```
-
-**Result:**
-- Clean composite video without vertical interval data
-- Useful for test patterns, art, or archival where metadata is not required
-- Smallest file size
-
-### Standard Selection Table
-
-| Goal | Standard | Mode | Metadata |
-|------|----------|------|----------|
-| Encode LaserDisc (PAL) | `iec60857-1986` | `cav` or `clv` | VBI + VITS |
-| Encode LaserDisc (NTSC) | `iec60856-1986` | `cav` or `clv` | VBI + VITS |
-| Encode VHS/Betamax tape | `consumer-tape` | `cav` or `clv` | VITC only |
-| Create test patterns (no metadata) | `none` | `none` | None |
-
-### Important Notes: How Standards and Pipeline Configuration Work Together
-
-1. **Standards drive pipeline generator enablement**: The `laserdisc.standard` setting controls which pipeline generators are **applicable** via `is_applicable()` checks. For example:
-   - `iec60857-1986` makes `BiphaseVBIMetadataGenerator` and `VITSMetadataGenerator` applicable
-   - `consumer-tape` makes `VITCPipelineGenerator` applicable
-   - This is built into the C++ encoder logic, not configurable in YAML
-
-2. **Pipeline configuration customizes generator parameters**: The `pipeline.metadata.generators` YAML configuration allows you to customize **how** the applicable generators operate (which lines they use, what signals they generate, etc.). The configuration is **parsed and applied** by the encoder.
-
-3. **Both are needed but serve different purposes**:
-   - **Standard** = "What type of metadata does this content need?" (enforced rule)
-   - **Pipeline generators** = "How should each metadata type be implemented?" (customizable details)
-   
-   Example: If you choose `consumer-tape`, VITC generation is enabled by the standard. The `pipeline.metadata.generators` section lets you customize VITC line placement if needed.
-
-4. **Line placement has reasonable defaults but can be customized**: While each standard has default line placements (VBI on 16-18, VITS on specific PAL/NTSC lines, VITC on 14/16 or 19/21), the pipeline configuration allows limited customization of these lines through the `lines` parameter in generator configs. However, standards enforce which signals are generated—you cannot use pipeline config to override a standard's choices.
-
-5. **Section-level `biphase-vbi` only controls numbering, not signal type**: The `laserdisc.standard` sets the metadata **type** (LaserDisc VBI vs. VITC vs. none), while section-level `biphase-vbi` configuration (like `picture_start`, `chapter`, `timecode_start`) controls only the **numerical values** within that standard.
-
----
-
 ## Stage 5: Composite Encoding & Metadata
 
-### Color Burst (Always Enabled)
+The metadata generation (VBI, VITS, VITC, color burst) is configured entirely through the `pipeline.metadata.generators` list. Each generator you enable adds specific vertical interval signals to the output.
 
-Color burst reference signals are automatically added to enable proper chroma demodulation.
+### Available Metadata Generators
+
+#### Color Burst (Always Recommended)
+
+Adds color burst reference signal to enable proper chroma demodulation:
 
 ```yaml
 pipeline:
   metadata:
     generators:
       - type: "color-burst"
-        enabled: true   # Usually always enabled
+        enabled: true
 ```
 
-### VBI/VITS/VITC Metadata
+#### Biphase VBI (LaserDisc Picture Numbers / Timecode)
 
-The project-level `laserdisc.standard` determines which metadata is generated:
-
-| Standard | VBI | VITS | VITC | Use Case |
-|----------|-----|------|------|----------|
-| `iec60857-1986` | ✓ (PAL) | ✓ | ✗ | PAL LaserDisc discs |
-| `iec60856-1986` | ✓ (NTSC) | ✓ | ✗ | NTSC LaserDisc discs |
-| `consumer-tape` | ✗ | ✗ | ✓ | VHS, Betamax, consumer tape |
-| `none` | ✗ | ✗ | ✗ | Clean test signals only |
-
-### VBI (Vertical Blanking Interval) - LaserDisc
-
-VBI encodes picture numbers, chapter numbers, and timecodes on lines 16–18 in each field.
-
-**Configuration (PAL example):**
+Encodes picture numbers or timecode on lines 16, 17, 18 (1-indexed):
 
 ```yaml
-laserdisc:
-  standard: "iec60857-1986"  # Enables LaserDisc VBI
-  mode: "cav"                # CAV mode: picture numbers
-
-sections:
-  - name: "Content"
-    duration: 1000
-    biphase-vbi:
-      disc_area: "programme-area"  # lead-in, programme-area, or lead-out
-      picture_start: 1             # Starting picture number (optional, continues if omitted)
+pipeline:
+  metadata:
+    generators:
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [16, 17, 18]      # Default and standard placement
+        format: "picture-number" # or "timecode"
 ```
 
-**CAV Mode (Picture Numbers):**
+**VBI Encodes:**
+- **Picture numbers**: 1-frame increment per frame (CAV mode)
+- **Timecode**: HH:MM:SS:FF with chapter number (CLV mode)
+- Placed in VBI lines 16, 17, 18 per IEC LaserDisc standards
 
-Picture numbers increment by 1 per frame:
+**Configuration with sections:**
 
 ```yaml
 sections:
   - name: "Section 1"
     duration: 100
     biphase-vbi:
-      picture_start: 1         # Pictures 1–100
-  
-  - name: "Section 2"
-    duration: 50
-    biphase-vbi:
-      # picture_start omitted: continues as pictures 101–150
+      disc_area: "programme-area"
+      picture_start: 1     # CAV: start picture number
+      # OR for CLV:
+      # chapter: 1
+      # timecode_start: "00:00:00:00"
 ```
 
-**CLV Mode (Timecode & Chapter):**
+#### VITS (Vertical Interval Test Signals)
 
-Timecode increments according to video frame rate (25 fps PAL, 29.97 fps NTSC):
+Adds IEC-standard test signals on user-specified lines.
 
+**PAL VITS Configuration:**
 ```yaml
-laserdisc:
-  standard: "iec60857-1986"
-  mode: "clv"
-
-sections:
-  - name: "Chapter 1"
-    duration: 1500  # 60 seconds at 25fps
-    biphase-vbi:
-      chapter: 1
-      timecode_start: "00:00:00:00"  # HH:MM:SS:FF format
-  
-  - name: "Chapter 1 Continued"
-    duration: 750
-    biphase-vbi:
-      # chapter and timecode omitted: continues from 00:01:00:00
-  
-  - name: "Chapter 2"
-    duration: 1500
-    biphase-vbi:
-      chapter: 2  # New chapter
-      # timecode omitted: continues from previous timecode
+pipeline:
+  metadata:
+    generators:
+      - type: "vits-pal"
+        enabled: true
+        signals:
+          - line: 19           # Absolute line number (1-625 for PAL)
+            signal: "multiburst"
+          - line: 20
+            signal: "uk-national"
+          - line: 332          # Line 332 is in field 2 (automatically determined)
+            signal: "itu-composite"
+          - line: 333
+            signal: "itu-its"
 ```
 
-### VITS (Vertical Interval Test Signals)
+**Available PAL Signals:**
+- `"multiburst"` - ITU Multiburst Test Signal
+- `"uk-national"` - UK PAL National Test Signal #1
+- `"itu-its"` - ITU Combination ITS
+- `"itu-composite"` - ITU Composite Test Signal
 
-VITS signals are automatically added to lines 19/20 (PAL) or 19/20/282/283 (NTSC) when a LaserDisc standard is enabled:
+**NTSC VITS Configuration:**
+```yaml
+pipeline:
+  metadata:
+    generators:
+      - type: "vits-ntsc"
+        enabled: true
+        signals:
+          - line: 18           # Absolute line number (1-525 for NTSC)
+            signal: "itu-composite"
+          - line: 19
+            signal: "itu-its"
+          - line: 281          # Line 281 is in field 2 (automatically determined)
+            signal: "itu-composite"
+          - line: 282
+            signal: "itu-its"
+```
+
+**Available NTSC Signals:**
+- `"itu-composite"` - NTC-7 Composite Test Signal
+- `"itu-its"` - NTC-7 Combination Test Signal
+- `"multiburst"` - Multiburst (uses NTC-7 composite)
+
+**Line Numbering:**
+- Line numbers are 1-indexed and absolute (matching video specifications)
+- PAL: 1-625 (field 1: 1-313, field 2: 314-625)
+- NTSC: 1-525 (field 1: 1-263, field 2: 264-525)
+- The field is automatically determined from the line number
+
+#### VITC (Vertical Interval Time Code)
+
+Encodes timecode on lines for consumer tape formats:
 
 ```yaml
 pipeline:
   metadata:
     generators:
-      - type: "vits"
-        enabled: true   # Automatic for IEC standards
+      - type: "vitc"
+        enabled: true
+        lines: [19, 21]           # PAL: 19, 21; NTSC: 14, 16
+        start_frame_offset: 0     # Optional timecode offset
 ```
 
-VITS includes standard test waveforms (multiburst, UK national) per IEC specifications. Custom VITS is not currently supported.
-
-### VITC (Vertical Interval Time Code) - Consumer Tape
-
-VITC is used for consumer video formats (VHS, Betamax, etc.) instead of LaserDisc VBI:
-
-```yaml
-laserdisc:
-  standard: "consumer-tape"  # Enables VITC on lines 14/16 (NTSC) or 19/21 (PAL)
-  mode: "cav"                # or "clv"
-
-sections:
-  - name: "Consumer Tape"
-    duration: 1800
-    biphase-vbi:
-      picture_start: 1        # or chapter/timecode_start for CLV
-```
+**VITC Placement:**
+- **PAL**: Lines 19, 21 (1-indexed)
+- **NTSC**: Lines 14, 16 (1-indexed)
+- Encodes: HH:MM:SS:FF (hours:minutes:seconds:frames)
+- User bits: set to 0 (reserved)
 
 **VITC Placement:**
 - **NTSC**: Lines 14 and 16 (1-indexed)
@@ -475,16 +342,22 @@ output:
   format: "pal-composite"
 
 laserdisc:
-  standard: "iec60857-1986"  # PAL LaserDisc
   mode: "clv"                # CLV timecode mode
 
 pipeline:
   metadata:
     generators:
-      - type: "biphase-vbi"   # Automatically configured per mode
+      - type: "biphase-vbi"   # Configured per mode
         enabled: true
-      - type: "vits"          # VITS test signals
+        lines: [15, 16, 17]   # 0-indexed
+        format: "timecode"    # CLV uses timecode
+      - type: "vits-pal"      # PAL VITS test signals
         enabled: true
+        signals:
+          - { line: 19, signal: "multiburst" }
+          - { line: 20, signal: "uk-national" }
+          - { line: 332, signal: "itu-composite" }
+          - { line: 333, signal: "itu-its" }
       - type: "color-burst"   # Color reference (always recommended)
         enabled: true
 
@@ -739,7 +612,6 @@ output:
   format: "pal-composite"
 
 laserdisc:
-  standard: "iec60857-1986"
   mode: "cav"
 
 sections:
@@ -763,7 +635,6 @@ output:
   format: "pal-composite"
 
 laserdisc:
-  standard: "iec60857-1986"
   mode: "clv"
 
 pipeline:
@@ -775,8 +646,13 @@ pipeline:
     generators:
       - type: "color-burst"
         enabled: true
-      - type: "vits"
+      - type: "vits-pal"
         enabled: true
+        signals:
+          - { line: 19, signal: "multiburst" }
+          - { line: 20, signal: "uk-national" }
+          - { line: 332, signal: "itu-composite" }
+          - { line: 333, signal: "itu-its" }
 
 sections:
   - name: "Leader"
@@ -821,7 +697,6 @@ output:
   format: "ntsc-composite"
 
 laserdisc:
-  standard: "consumer-tape"  # VITC instead of LaserDisc VBI
   mode: "clv"
 
 pipeline:
@@ -874,7 +749,6 @@ output:
   mode: "separate-yc"  # Separate luma/chroma for archival
 
 laserdisc:
-  standard: "iec60857-1986"
   mode: "cav"
 
 pipeline:
@@ -889,8 +763,13 @@ pipeline:
     generators:
       - type: "color-burst"
         enabled: true
-      - type: "vits"
+      - type: "vits-pal"
         enabled: true
+        signals:
+          - { line: 19, signal: "multiburst" }
+          - { line: 20, signal: "uk-national" }
+          - { line: 332, signal: "itu-composite" }
+          - { line: 333, signal: "itu-its" }
 
 sections:
   - name: "Archive Material"
@@ -916,7 +795,6 @@ output:
   format: "ntsc-composite"
 
 laserdisc:
-  standard: "consumer-tape"
   mode: "clv"
 
 sections:
@@ -975,7 +853,6 @@ output:
   mode: "separate-yc"
 
 laserdisc:
-  standard: "iec60857-1986"
   mode: "cav"
 
 pipeline:
@@ -994,6 +871,244 @@ sections:
     biphase-vbi:
       picture_start: 1
 ```
+
+---
+
+## LaserDisc Format Configurations
+
+The four common LaserDisc formats each require specific metadata generator configurations:
+
+### PAL-CAV (IEC 60857-1986)
+
+**Format**: PAL LaserDisc with CAV picture numbering  
+**Use**: PAL region discs with still-frame capability
+
+```yaml
+output:
+  format: "pal-composite"
+
+laserdisc:
+  mode: "cav"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true         # 1.3 MHz chroma filter
+  
+  metadata:
+    generators:
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [15, 16, 17]   # Lines 16-18 (1-indexed): biphase VBI
+        format: "picture-number"
+      
+      - type: "vits-pal"      # PAL VITS test signals
+        enabled: true
+        signals:              # User-configured signals and placement
+          - line: 18          # Line 19 (1-indexed)
+            field: 1
+            signal: "multiburst"
+          - line: 19          # Line 20 (1-indexed)
+            field: 1
+            signal: "uk-national"
+          - line: 331         # Line 332 (1-indexed)
+            field: 2
+            signal: "itu-its"
+          - line: 332         # Line 333 (1-indexed)
+            field: 2
+            signal: "itu-composite"
+      
+      - type: "color-burst"
+        enabled: true
+
+sections:
+  - name: "Section 1"
+    biphase-vbi:
+      disc_area: "programme-area"
+      picture_start: 1        # Picture 1
+```
+
+**Metadata Lines**:
+- Lines 16-18: Biphase-encoded picture numbers (e.g., frame 1 = picture 1, 2, 3...)
+- Lines 19-20: VITS test signals (multiburst, UK National)
+- All active lines: Color burst reference
+
+---
+
+### PAL-CLV (IEC 60857-1986)
+
+**Format**: PAL LaserDisc with CLV timecode  
+**Use**: Extended play PAL discs (timecode, not picture numbers)
+
+```yaml
+output:
+  format: "pal-composite"
+
+laserdisc:
+  mode: "clv"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+  
+  metadata:
+    generators:
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [15, 16, 17]   # Lines 16-18 (1-indexed)
+        format: "timecode"    # CLV uses timecode
+      
+      - type: "vits-pal"
+        enabled: true
+        signals:
+          - { line: 19, signal: "multiburst" }
+          - { line: 20, signal: "uk-national" }
+          - { line: 332, signal: "itu-composite" }
+          - { line: 333, signal: "itu-its" }
+      
+      - type: "color-burst"
+        enabled: true
+
+sections:
+  - name: "Section 1"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+      timecode_start: "00:00:00:00"
+```
+
+**Metadata Lines**:
+- Lines 16-18: Biphase-encoded timecode and chapter markers
+- Lines 19-20: VITS test signals
+- All active lines: Color burst reference
+
+---
+
+### NTSC-CAV (IEC 60856-1986)
+
+**Format**: NTSC LaserDisc with CAV picture numbering  
+**Use**: NTSC region discs with still-frame capability
+
+```yaml
+output:
+  format: "ntsc-composite"
+
+laserdisc:
+  mode: "cav"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true         # 600 kHz chroma filter
+  
+  metadata:
+    generators:
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [15, 16, 17]   # Lines 16-18 (1-indexed)
+        format: "picture-number"
+      
+      - type: "vits-ntsc"     # NTSC VITS test signals
+        enabled: true
+        signals:              # User-configured signals and placement
+          - line: 18          # Field 1, line 18
+            signal: "itu-composite"
+          - line: 19          # Field 1, line 19
+            signal: "itu-its"
+          - line: 281         # Field 2, line 281 (auto-detected)
+            signal: "itu-composite"
+          - line: 282         # Field 2, line 282 (auto-detected)
+            signal: "itu-its"
+      
+      - type: "color-burst"
+        enabled: true
+
+sections:
+  - name: "Section 1"
+    biphase-vbi:
+      disc_area: "programme-area"
+      picture_start: 1
+```
+
+**Metadata Lines**:
+- Lines 16-18: Biphase-encoded picture numbers
+- Lines 19-20 (field 1) / 282-283 (field 2): VITS test signals (NTC-7)
+- All active lines: Color burst reference
+
+---
+
+### NTSC-CLV (IEC 60856-1986)
+
+**Format**: NTSC LaserDisc with CLV timecode  
+**Use**: Extended play NTSC discs (timecode, not picture numbers)
+
+```yaml
+output:
+  format: "ntsc-composite"
+
+laserdisc:
+  mode: "clv"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+  
+  metadata:
+    generators:
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [15, 16, 17]   # Lines 16-18 (1-indexed)
+        format: "timecode"
+      
+      - type: "vits-ntsc"
+        enabled: true
+        signals:
+          - { line: 18, signal: "itu-composite" }
+          - { line: 19, signal: "itu-its" }
+          - { line: 281, signal: "itu-composite" }
+          - { line: 282, signal: "itu-its" }
+      
+      - type: "color-burst"
+        enabled: true
+
+sections:
+  - name: "Section 1"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+      timecode_start: "00:00:00:00"
+```
+
+**Metadata Lines**:
+- Lines 16-18: Biphase-encoded timecode and chapter markers
+- Lines 19-20 (field 1) / 282-283 (field 2): VITS test signals
+- All active lines: Color burst reference
+
+---
+
+### Format Summary
+
+| Format | System | Mode | Lines 16-18 | VITS Signals (user-configurable) | Chroma Filter |
+|--------|--------|------|-------------|----------------------------------|---------------|
+| **PAL-CAV** | PAL | `cav` | Picture numbers | Multiburst, UK National, ITU signals | 1.3 MHz |
+| **PAL-CLV** | PAL | `clv` | Timecode/chapter | Multiburst, UK National, ITU signals | 1.3 MHz |
+| **NTSC-CAV** | NTSC | `cav` | Picture numbers | NTC-7 composite/combo | 600 kHz |
+| **NTSC-CLV** | NTSC | `clv` | Timecode/chapter | NTC-7 composite/combo | 600 kHz |
+
+**Note**: VITS signals and their line placement must be explicitly configured via the `signals` array in `vits-pal` or `vits-ntsc` generator configuration. Line numbers are 1-indexed absolute values (1-625 for PAL, 1-525 for NTSC) matching video specifications. The field is automatically determined from the line number. See examples above for standard LaserDisc placement.
+
+**All formats include**:
+- Color burst reference signal on all active video lines
+- Optional post-processing effects (noise, dropouts, phase errors)
+- Optional preprocessing filters (chroma/luma low-pass)
+
+For consumer tape formats (VHS, Betamax), see [metadata-standards-reference.md](metadata-standards-reference.md#consumer-tape-vhs-betamax-video8).
 
 ---
 
@@ -1021,7 +1136,6 @@ pipeline:
 
 ```yaml
 laserdisc:
-  standard: "consumer-tape"  # Not iec60857-1986 or iec60856-1986
 ```
 
 ### Picture Numbers Not Incrementing
@@ -1082,7 +1196,7 @@ pipeline:
 - **Frame Rate**: 25 fps
 - **Chroma Filter**: 1.3 MHz
 - **Standard**: `pal-composite` or `pal-yc`
-- **IEC Standard**: `iec60857-1986` (LaserDisc) or `consumer-tape` (VHS)
+- **Metadata**: See [metadata-standards-reference.md](metadata-standards-reference.md) for generator configurations
 - **VITC Lines**: 19, 21 (1-indexed)
 
 ### NTSC (National Television System Committee)
@@ -1090,7 +1204,7 @@ pipeline:
 - **Frame Rate**: 29.97 fps (or ~30 fps)
 - **Chroma Filter**: 600 kHz
 - **Standard**: `ntsc-composite` or `ntsc-yc`
-- **IEC Standard**: `iec60856-1986` (LaserDisc) or `consumer-tape` (VHS/Betamax)
+- **Metadata**: See [metadata-standards-reference.md](metadata-standards-reference.md) for generator configurations
 - **VITC Lines**: 14, 16 (1-indexed)
 
 ---

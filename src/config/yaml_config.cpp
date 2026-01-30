@@ -126,11 +126,10 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                                 for (const auto& sig_node : gen_node["signals"]) {
                                     PipelineGeneratorConfig::VITSSignal signal;
                                     
+                                    // Line numbers in YAML are 1-indexed and absolute (1-525 for NTSC, 1-625 for PAL)
+                                    // Store as-is; conversion happens in main.cpp when creating generators
                                     if (sig_node["line"]) {
                                         signal.line = sig_node["line"].as<int32_t>();
-                                    }
-                                    if (sig_node["field"]) {
-                                        signal.field = sig_node["field"].as<int32_t>();
                                     }
                                     if (sig_node["signal"]) {
                                         signal.signal = sig_node["signal"].as<std::string>();

@@ -14,6 +14,7 @@
 #include <sstream>
 #include <iostream>
 #include <cstring>
+#include <cmath>
 #include <algorithm>
 #include <cstdio>
 #include <array>
@@ -73,8 +74,17 @@ bool MP4Loader::load_frame(int32_t frame_index, FrameBuffer& output, std::string
 
 bool MP4Loader::load_frames(int32_t start, int32_t count, 
                              std::vector<FrameBuffer>& output, std::string& error) {
+    // Auto-detect video system from frame rate
     VideoParameters default_params;
-    default_params.system = VideoSystem::PAL;
+    if (frame_rate_ > 0.0) {
+        // Check if frame rate is closer to NTSC (~29.97 or ~23.976) or PAL (25.0)
+        double ntsc_diff = std::min(std::abs(frame_rate_ - 29.97), std::abs(frame_rate_ - 23.976));
+        double pal_diff = std::abs(frame_rate_ - 25.0);
+        default_params.system = (ntsc_diff < pal_diff) ? VideoSystem::NTSC : VideoSystem::PAL;
+    } else {
+        // Default to PAL if frame rate unknown
+        default_params.system = VideoSystem::PAL;
+    }
     
     return load_frames(start, count, width_, height_, default_params, output, error);
 }
