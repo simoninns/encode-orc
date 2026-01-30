@@ -29,6 +29,7 @@ struct MetadataContext {
     int32_t total_frame = 0;        ///< Absolute frame number (0-indexed)
     bool is_first_field = false;    ///< First or second field of the frame
     VideoSystem system = VideoSystem::PAL;  ///< Video system (PAL/NTSC)
+    bool is_c_field_for_yc = false; ///< True if this is C field for Y/C output
     
     // VBI data (for LaserDisc)
     const VBIData* vbi_data = nullptr;  ///< Optional VBI frame numbers

@@ -282,6 +282,7 @@ int main(int argc, char* argv[]) {
 
     // Handle filename for different output formats
     std::string output_filename = config.output.filename;
+    std::string base_filename = config.output.filename;  // Base name for metadata
     if (config.output.format == "pal-composite" || config.output.format == "ntsc-composite") {
         // Add .tbc extension if not already present
         if (output_filename.length() < 4 || output_filename.substr(output_filename.length() - 4) != ".tbc") {
@@ -713,7 +714,7 @@ int main(int argc, char* argv[]) {
     // Generate metadata for entire file (only for TBC writer, not standard writer)
     if (config.output.writer != "standard") {
         std::string meta_error;
-        std::string metadata_filename = output_filename + ".tbc.db";
+        std::string metadata_filename = base_filename + ".tbc.db";
         
         if (!generate_metadata(config, system, total_frames, metadata_filename, meta_error)) {
             ENCODE_ORC_LOG_ERROR("Metadata generation error: {}", meta_error);

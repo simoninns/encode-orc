@@ -182,7 +182,8 @@ void PALActiveEncoder::encode_active_line(uint16_t* line_buffer,
             y_buffer[sample] = clamp_to_16bit(luma_scaled);
         }
         if (c_buffer != nullptr) {
-            c_buffer[sample] = clamp_to_16bit(chroma_scaled + ((white_level_ - black_level_) / 2) + black_level_);
+            // Center pure chroma at 32768 (mid-16bit range) for Y/C output
+            c_buffer[sample] = clamp_to_16bit(chroma_scaled + 32768);
         }
 
         // Update phase using rotation matrix (more accurate than direct calculation)

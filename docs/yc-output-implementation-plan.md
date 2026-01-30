@@ -225,10 +225,11 @@ Used **Approach 1: Extract from Composite** for simplicity:
 **Changes for Y/C Output**:
 1. Metadata generators should only modify the Y field when Y/C output is active
 2. The C field should remain untouched by metadata
-3. This requires:
+3. Metadata database remains `.tbc.db` for all formats (describes entire capture, not just Y channel)
+4. This requires:
    - Passing output format to metadata generators
    - Or passing Y field specifically (after extraction)
-   - Metadata database associations with `.tbcy.db` for Y/C output
+   - Conditional metadata application based on Y/C output flag
 
 ---
 

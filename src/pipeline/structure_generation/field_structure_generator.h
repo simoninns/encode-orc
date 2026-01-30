@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <vector>
 #include <map>
+#include <optional>
 
 namespace encode_orc {
 
@@ -133,6 +134,43 @@ public:
         bool is_first_field,
         int32_t field_number,
         VideoSystem system);
+    
+    /**
+     * @brief Create field structure with sync/blanking only (no color burst)
+     * 
+     * For Y/C output, this creates the Y field with proper blanking and sync.
+     * Color burst should be added to C field separately using add_color_burst_to_field.
+     * 
+     * @param source_field Optional source field with YUV data (can be empty for structure-only)
+     * @param is_first_field true for first field (even lines), false for second (odd lines)
+     * @param field_number Field number (for phase calculations)
+     * @param system Video system (PAL or NTSC)
+     * @return Structured field with sync/blanking only
+     */
+    StructuredField create_field_structure_without_burst(
+        const Field& source_field,
+        bool is_first_field,
+        int32_t field_number,
+        VideoSystem system);
+    
+    /**
+     * @brief Add color burst to an existing field
+     * 
+     * For Y/C output, this adds color burst to the C field.
+     * The field should already have appropriate baseline levels set.
+     * 
+     * @param field Field to add color burst to
+     * @param field_number Field number (for phase calculations)
+     * @param is_first_field true for first field, false for second
+     * @param system Video system (PAL or NTSC)
+     * @param force_center_level Optional center level override (e.g., 32768 for Y/C C field)
+     */
+    void add_color_burst_to_field(
+        Field& field,
+        int32_t field_number,
+        bool is_first_field,
+        VideoSystem system,
+        std::optional<int32_t> force_center_level = std::nullopt);
     
 private:
     /**
@@ -271,6 +309,18 @@ private:
      */
     void add_color_burst(uint16_t* line_buffer, int32_t line_number, int32_t field_number,
                         bool is_first_field, VideoSystem system);
+    
+    /**
+     * @brief Add color burst with explicit center level
+     * @param line_buffer Pointer to line data
+     * @param line_number Line number within field
+     * @param field_number Field number for phase calculation
+     * @param is_first_field true for first field, false for second
+     * @param system Video system (PAL or NTSC)
+     * @param center_level Explicit center level for burst (e.g., 32768 for Y/C)
+     */
+    void add_color_burst_with_center(uint16_t* line_buffer, int32_t line_number, int32_t field_number,
+                                     bool is_first_field, VideoSystem system, int32_t center_level);
     
     /**
      * @brief Fill a line with blanking level

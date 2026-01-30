@@ -27,9 +27,25 @@ FieldStructureGenerator::FieldStructureGenerator(const VideoParameters& params)
 }
 
 StructuredField FieldStructureGenerator::create_field_structure(
-    const Field& /* source_field */,
+    const Field& source_field,
     bool is_first_field,
     int32_t field_number,
+    VideoSystem system) {
+    
+    // Create structure without burst
+    StructuredField result = create_field_structure_without_burst(
+        source_field, is_first_field, field_number, system);
+    
+    // Add color burst on top
+    add_color_burst_to_field(result.field_data, field_number, is_first_field, system);
+    
+    return result;
+}
+
+StructuredField FieldStructureGenerator::create_field_structure_without_burst(
+    const Field& /* source_field */,
+    bool is_first_field,
+    int32_t /* field_number */,
     VideoSystem system) {
     
     StructuredField result;
@@ -44,7 +60,7 @@ StructuredField FieldStructureGenerator::create_field_structure(
     // Create field with proper dimensions
     result.field_data = Field(params_.field_width, actual_field_height);
     
-    // Generate field structure line by line
+    // Generate field structure line by line (sync and blanking only, no color burst)
     for (int32_t line = 0; line < actual_field_height; ++line) {
         uint16_t* line_buffer = result.field_data.line_data(line);
         
@@ -63,9 +79,6 @@ StructuredField FieldStructureGenerator::create_field_structure(
         
         // Step 2: Add sync pulses
         generate_vsync_line(line_buffer, line, is_first_field, system);
-        
-        // Step 3: Add color burst on top
-        add_color_burst(line_buffer, line, field_number, is_first_field, system);
     }
     
     // Create line map
@@ -76,6 +89,31 @@ StructuredField FieldStructureGenerator::create_field_structure(
     result.active_video_range = determine_active_video_range(is_first_field, system);
     
     return result;
+}
+
+void FieldStructureGenerator::add_color_burst_to_field(
+    Field& field,
+    int32_t field_number,
+    bool is_first_field,
+    VideoSystem system,
+    std::optional<int32_t> force_center_level) {
+    
+    int32_t actual_field_height = is_first_field ? 
+                                  params_.field1_height : 
+                                  params_.field2_height;
+    
+    // Add color burst to all lines
+    for (int32_t line = 0; line < actual_field_height; ++line) {
+        uint16_t* line_buffer = field.line_data(line);
+        
+        if (force_center_level.has_value()) {
+            // Use forced center level (for Y/C C field)
+            add_color_burst_with_center(line_buffer, line, field_number, is_first_field, system, force_center_level.value());
+        } else {
+            // Use automatic center level (for composite)
+            add_color_burst(line_buffer, line, field_number, is_first_field, system);
+        }
+    }
 }
 
 void FieldStructureGenerator::generate_hsync_pulse(uint16_t* line_buffer, 
@@ -244,6 +282,12 @@ void FieldStructureGenerator::add_color_burst(uint16_t* line_buffer, int32_t lin
         center_level = sync_level_;
     }
     
+    add_color_burst_with_center(line_buffer, line_number, field_number, is_first_field, system, center_level);
+}
+
+void FieldStructureGenerator::add_color_burst_with_center(uint16_t* line_buffer, int32_t line_number, 
+                                                           int32_t field_number, bool /* is_first_field */, 
+                                                           VideoSystem system, int32_t center_level) {
     // Use ColorBurstGenerator for proper envelope shaping
     ColorBurstGenerator burst_gen(params_);
     int32_t luma_range = white_level_ - blanking_level_;

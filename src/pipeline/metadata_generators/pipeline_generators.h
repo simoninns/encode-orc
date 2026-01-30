@@ -25,6 +25,7 @@ public:
     void apply(encode_orc::Field& field, const MetadataContext& context) override;
     std::vector<int32_t> affected_lines() const override;
     std::string name() const override { return "ColorBurst"; }
+    bool applies_to_c_field_for_yc() const override { return true; }
     
 private:
     VideoParameters params_;

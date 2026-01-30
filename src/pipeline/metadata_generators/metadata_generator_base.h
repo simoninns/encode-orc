@@ -75,6 +75,19 @@ public:
         // Default: always applicable
         return true;
     }
+    
+    /**
+     * @brief Check if this generator should be applied to C field for Y/C output
+     * 
+     * For Y/C output, most generators apply to Y field (VITS, VBI, etc.)
+     * but some (like color burst) should apply to C field.
+     * 
+     * @return true if this generator applies to C field for Y/C output
+     */
+    virtual bool applies_to_c_field_for_yc() const {
+        // Default: apply to Y field
+        return false;
+    }
 };
 
 } // namespace encode_orc

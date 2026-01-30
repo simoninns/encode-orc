@@ -40,15 +40,19 @@ void ColorBurstMetadataGenerator::apply(Field& field, const MetadataContext& con
         static_cast<int32_t>((3.0 / 14.0) * luma_range) :
         static_cast<int32_t>((20.0 / 100.0) * luma_range);
     
+    // For Y/C output on C field, use 32768 as center level (mid-range chroma)
+    // For composite, use blanking level
+    int32_t center_level = context.is_c_field_for_yc ? 32768 : params_.blanking_16b_ire;
+    
     for (int32_t line = first_burst_line; line <= last_line; line++) {
         uint16_t* line_buffer = field.line_data(line);
         
         if (system_ == VideoSystem::PAL) {
             generator_->generate_pal_burst(line_buffer, line, context.field_number,
-                                          params_.blanking_16b_ire, burst_amplitude);
+                                          center_level, burst_amplitude);
         } else {
             generator_->generate_ntsc_burst(line_buffer, line, context.field_number,
-                                           params_.blanking_16b_ire, burst_amplitude);
+                                           center_level, burst_amplitude);
         }
     }
 }
