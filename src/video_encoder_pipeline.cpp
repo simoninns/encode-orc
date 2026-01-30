@@ -1,0 +1,211 @@
+/*
+ * File:        video_encoder_pipeline.cpp
+ * Module:      encode-orc
+ * Purpose:     Video encoder pipeline implementation (Phase 5)
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: 2026 Simon Inns
+ */
+
+#include "video_encoder_pipeline.h"
+#include "pal_active_encoder.h"
+#include "ntsc_active_encoder.h"
+#include "metadata.h"
+#include "logging.h"
+#include "field_structure_generator.h"
+#include <algorithm>
+
+namespace encode_orc {
+
+// Builder implementation
+VideoEncoderPipeline::Builder& VideoEncoderPipeline::Builder::set_system(VideoSystem system) {
+    system_ = system;
+    return *this;
+}
+
+VideoEncoderPipeline::Builder& VideoEncoderPipeline::Builder::set_parameters(const VideoParameters& params) {
+    params_ = params;
+    return *this;
+}
+
+VideoEncoderPipeline::Builder& VideoEncoderPipeline::Builder::enable_chroma_filter(bool enable) {
+    enable_chroma_filter_ = enable;
+    return *this;
+}
+
+VideoEncoderPipeline::Builder& VideoEncoderPipeline::Builder::enable_luma_filter(bool enable) {
+    enable_luma_filter_ = enable;
+    return *this;
+}
+
+VideoEncoderPipeline::Builder& VideoEncoderPipeline::Builder::add_metadata_generator(
+    std::unique_ptr<MetadataGenerator> generator) {
+    generators_.push_back(std::move(generator));
+    return *this;
+}
+
+VideoEncoderPipeline::Builder& VideoEncoderPipeline::Builder::set_metadata_generators(
+    std::vector<std::unique_ptr<MetadataGenerator>> generators) {
+    generators_ = std::move(generators);
+    return *this;
+}
+
+std::unique_ptr<VideoEncoderPipeline> VideoEncoderPipeline::Builder::build() {
+    // Create appropriate active video encoder based on system
+    std::unique_ptr<ActiveVideoEncoder> active_encoder;
+    
+    if (system_ == VideoSystem::PAL) {
+        active_encoder = std::make_unique<PALActiveEncoder>(params_, enable_chroma_filter_, enable_luma_filter_);
+    } else if (system_ == VideoSystem::NTSC) {
+        active_encoder = std::make_unique<NTSCActiveEncoder>(params_, enable_chroma_filter_, enable_luma_filter_);
+    } else {
+        // Unknown video system
+        return nullptr;
+    }
+    
+    // Create pipeline with the encoder
+    auto pipeline = std::unique_ptr<VideoEncoderPipeline>(
+        new VideoEncoderPipeline(params_, std::move(active_encoder))
+    );
+    
+    // Add metadata generators
+    pipeline->generators_ = std::move(generators_);
+    
+    return pipeline;
+}
+
+// VideoEncoderPipeline implementation
+VideoEncoderPipeline::VideoEncoderPipeline(const VideoParameters& params,
+                                          std::unique_ptr<ActiveVideoEncoder> active_encoder)
+    : params_(params),
+      active_encoder_(std::move(active_encoder)),
+      field_splitter_(std::make_unique<FieldSplitter>()),
+      structure_gen_(std::make_unique<FieldStructureGenerator>(params)) {
+}
+
+Frame VideoEncoderPipeline::encode_frame(const FrameBuffer& frame_buffer, int32_t field_number,
+                                        const VBIData* vbi_data) {
+    Frame frame(params_.field_width, params_.field_height);
+    
+    // Split frame into fields
+    auto field_pair = field_splitter_->split_frame(frame_buffer, field_number, params_);
+    
+    // Encode both fields
+    frame.field1() = encode_field_from_yuv(field_pair.field1, field_number, true, vbi_data);
+    frame.field2() = encode_field_from_yuv(field_pair.field2, field_number + 1, false, vbi_data);
+    
+    return frame;
+}
+
+Field VideoEncoderPipeline::encode_field(const FrameBuffer& frame_buffer, int32_t field_number,
+                                        bool is_first_field, const VBIData* vbi_data) {
+    // Split frame and extract appropriate field
+    auto field_pair = field_splitter_->split_frame(frame_buffer, field_number, params_);
+    const Field& field_yuv = is_first_field ? field_pair.field1 : field_pair.field2;
+    
+    // Encode the field
+    return encode_field_from_yuv(field_yuv, field_number, is_first_field, vbi_data);
+}
+
+Field VideoEncoderPipeline::encode_field_from_yuv(const Field& field_yuv,
+                                                  int32_t field_number,
+                                                  bool is_first_field,
+                                                  const VBIData* /* vbi_data */) {
+    // Get field height (field1: 312/262, field2: 313/263)
+    int32_t field_height = is_first_field ? params_.field1_height : params_.field2_height;
+    VideoSystem system = active_encoder_->get_video_system();
+    
+    // Get active lines boundaries based on system
+    int32_t active_lines_start, active_lines_end, vsync_lines;
+    if (system == VideoSystem::PAL) {
+        vsync_lines = 5;          // Lines 0-4
+        active_lines_start = 23;  // Line 23
+        active_lines_end = 310;   // Line 310
+    } else {
+        vsync_lines = 3;          // Lines 0-2
+        active_lines_start = 21;  // Line 21
+        active_lines_end = 261;   // Line 261
+    }
+    
+    // Stage 1: Generate field structure (sync, blanking, color burst)
+    StructuredField structured = structure_gen_->create_field_structure(
+        Field(),  // Empty source field - we'll fill it with our data
+        is_first_field,
+        field_number,
+        system
+    );
+    
+    Field field = std::move(structured.field_data);
+    
+    // Get YUV plane pointers (planar layout: Y, U, V)
+    int32_t field_width = field_yuv.width();
+    int32_t source_field_height = field_yuv.height() / 3;
+    
+    // Detect studio range input (≤1023) to preserve sub-black
+    const uint16_t* yuv_data = field_yuv.data().data();
+    const int32_t total_pixels = field_width * source_field_height;
+    uint16_t y_max = 0;
+    for (int32_t i = 0; i < total_pixels; ++i) {
+        if (yuv_data[i] > y_max) y_max = yuv_data[i];
+    }
+    const bool studio_range_input = (y_max <= 1023);
+    
+    // Extract plane pointers
+    const uint16_t* y_plane = yuv_data;
+    const uint16_t* u_plane = yuv_data + total_pixels;
+    const uint16_t* v_plane = yuv_data + (total_pixels * 2);
+    
+    // Process each line in the field
+    for (int32_t line = 0; line < field_height; ++line) {
+        uint16_t* line_buffer = field.line_data(line);
+        
+        // Skip VSYNC lines (already properly generated by structure generator)
+        if (line < vsync_lines) {
+            continue;
+        }
+        
+        // VBI and blanking lines
+        if (line < active_lines_start) {
+            // Metadata generators will be integrated in Phase 5b
+            // For now, structure generator has already set sync and color burst
+        }
+        // Active video lines
+        else if (line < active_lines_end) {
+            int32_t line_in_field = line - active_lines_start;
+            
+            if (line_in_field < source_field_height) {
+                // Get pointers to YUV line data
+                const uint16_t* y_line = y_plane + (line_in_field * field_width);
+                const uint16_t* u_line = u_plane + (line_in_field * field_width);
+                const uint16_t* v_line = v_plane + (line_in_field * field_width);
+                
+                // Stage 4: Encode active video
+                active_encoder_->encode_active_line(
+                    line_buffer, y_line, u_line, v_line,
+                    line, field_number, is_first_field,
+                    field_width, studio_range_input
+                );
+            }
+        }
+        // Post-video blanking lines
+        else {
+            // Already generated by structure generator
+        }
+    }
+    
+    return field;
+}
+
+void VideoEncoderPipeline::add_metadata_generator(std::unique_ptr<MetadataGenerator> generator) {
+    generators_.push_back(std::move(generator));
+}
+
+void VideoEncoderPipeline::clear_metadata_generators() {
+    generators_.clear();
+}
+
+bool VideoEncoderPipeline::has_metadata_generators() const {
+    return !generators_.empty();
+}
+
+}  // namespace encode_orc

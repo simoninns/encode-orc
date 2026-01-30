@@ -100,6 +100,10 @@ set(SOURCES
     src/vits_pipeline_generator.cpp
     src/biphase_vbi_generator.cpp
     src/pipeline_generators.cpp
+    # Phase 5: Active video encoding refactoring
+    src/pal_active_encoder.cpp
+    src/ntsc_active_encoder.cpp
+    src/video_encoder_pipeline.cpp
 )
 
 # Create executable
