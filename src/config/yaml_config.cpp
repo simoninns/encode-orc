@@ -435,6 +435,44 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
         return false;
     }
     
+    // Validate generators: ensure no two generators share the same field line
+    if (config.pipeline.metadata) {
+        const auto& generators = config.pipeline.metadata->generators;
+        std::map<int32_t, std::string> line_to_generator;  // Maps field line to generator type
+        
+        for (const auto& gen : generators) {
+            if (!gen.enabled) {
+                continue;  // Skip disabled generators
+            }
+            
+            std::vector<int32_t> gen_lines;
+            
+            // Extract field lines based on generator type
+            if (gen.type == "biphase-vbi" || gen.type == "vitc") {
+                // These generators use the 'lines' array
+                gen_lines = gen.lines;
+            } else if (gen.type == "vits-pal" || gen.type == "vits-ntsc") {
+                // VITS generators use 'signals' array - extract line numbers
+                for (const auto& signal : gen.vits_signals) {
+                    gen_lines.push_back(signal.line);
+                }
+            }
+            // color-burst doesn't use specific field lines
+            
+            // Check for conflicts with previously registered lines
+            for (int32_t line : gen_lines) {
+                auto existing = line_to_generator.find(line);
+                if (existing != line_to_generator.end()) {
+                    error_message = "Field line " + std::to_string(line) + " is used by both '" + 
+                                  existing->second + "' and '" + gen.type + "' generators. " +
+                                  "Each field line can only be used by one generator.";
+                    return false;
+                }
+                line_to_generator[line] = gen.type;
+            }
+        }
+    }
+    
     for (const auto& section : config.sections) {
         if (section.name.empty()) {
             error_message = "Section name is required";

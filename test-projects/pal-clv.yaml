@@ -24,13 +24,13 @@ pipeline:
       - type: "vits-pal"
         enabled: true
         signals:
-          - line: 19
+          - line: 13
             signal: "multiburst"
-          - line: 20
+          - line: 19
             signal: "uk-national"
-          - line: 332
-            signal: "itu-composite"
-          - line: 333
+          - line: 325
+            signal: "itu-combination"
+          - line: 331
             signal: "itu-composite"
       
       - type: "color-burst"

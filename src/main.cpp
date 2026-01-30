@@ -374,58 +374,105 @@ int main(int argc, char* argv[]) {
                     else if (gen_config.type == "vits-pal") {
                         // Parse VITS signal configuration from YAML
                         std::vector<VITSSignalConfig> vits_signals;
+                        bool has_errors = false;
+                        
                         for (const auto& signal_yaml : gen_config.vits_signals) {
                             VITSSignalConfig signal_cfg;
                             
-                            // Line numbers in YAML are 1-indexed absolute (1-625 for PAL)
+                            // Line numbers in YAML are 1-indexed absolute
                             // Convert to field number and field-relative 0-indexed line
                             int32_t absolute_line_1indexed = signal_yaml.line;
                             int32_t absolute_line_0indexed = absolute_line_1indexed - 1;
+                            int32_t total_lines = params.field1_height + params.field2_height;
+                            if (absolute_line_0indexed < 0 || absolute_line_0indexed >= total_lines) {
+                                ENCODE_ORC_LOG_ERROR("VITS line {} is out of range for this video system (valid: 1-{})", absolute_line_1indexed, total_lines);
+                                has_errors = true;
+                                continue;
+                            }
                             
-                            // PAL: 625 lines total, 313 lines per field (field 1: 0-312, field 2: 313-624)
-                            if (absolute_line_0indexed < 313) {
+                            if (absolute_line_0indexed < params.field1_height) {
                                 signal_cfg.field = 1;
                                 signal_cfg.line = absolute_line_0indexed;
                             } else {
                                 signal_cfg.field = 2;
-                                signal_cfg.line = absolute_line_0indexed - 313;
+                                signal_cfg.line = absolute_line_0indexed - params.field1_height;
                             }
                             
                             if (!parse_vits_signal_type(signal_yaml.signal, signal_cfg.signal)) {
                                 ENCODE_ORC_LOG_WARN("Unknown VITS signal type '{}', skipping", signal_yaml.signal);
                                 continue;
                             }
+                            
+                            // Validate that only PAL-specific signals are used
+                            if (signal_cfg.signal == VITSSignalType::VIR ||
+                                signal_cfg.signal == VITSSignalType::NTC7_COMPOSITE ||
+                                signal_cfg.signal == VITSSignalType::NTC7_COMBINATION) {
+                                ENCODE_ORC_LOG_ERROR("VITS signal '{}' is NTSC-specific and cannot be used in PAL projects", signal_yaml.signal);
+                                has_errors = true;
+                                continue;
+                            }
+                            
                             vits_signals.push_back(signal_cfg);
                         }
+                        
+                        if (has_errors) {
+                            ENCODE_ORC_LOG_ERROR("PAL VITS configuration has errors. Use only PAL-specific signals: itu-composite, uk-national, itu-combination, multiburst");
+                            return 1;
+                        }
+                        
                         generators.push_back(std::make_unique<PALVITSMetadataGenerator>(params, vits_signals));
                         ENCODE_ORC_LOG_DEBUG("Added PAL VITS generator to pipeline with {} signals", vits_signals.size());
                     }
                     else if (gen_config.type == "vits-ntsc") {
                         // Parse VITS signal configuration from YAML
                         std::vector<VITSSignalConfig> vits_signals;
+                        bool has_errors = false;
+                        
                         for (const auto& signal_yaml : gen_config.vits_signals) {
                             VITSSignalConfig signal_cfg;
                             
-                            // Line numbers in YAML are 1-indexed absolute (1-525 for NTSC)
+                            // Line numbers in YAML are 1-indexed absolute
                             // Convert to field number and field-relative 0-indexed line
                             int32_t absolute_line_1indexed = signal_yaml.line;
                             int32_t absolute_line_0indexed = absolute_line_1indexed - 1;
+                            int32_t total_lines = params.field1_height + params.field2_height;
+                            if (absolute_line_0indexed < 0 || absolute_line_0indexed >= total_lines) {
+                                ENCODE_ORC_LOG_ERROR("VITS line {} is out of range for this video system (valid: 1-{})", absolute_line_1indexed, total_lines);
+                                has_errors = true;
+                                continue;
+                            }
                             
-                            // NTSC: 525 lines total, 263 lines per field (field 1: 0-262, field 2: 263-524)
-                            if (absolute_line_0indexed < 263) {
+                            if (absolute_line_0indexed < params.field1_height) {
                                 signal_cfg.field = 1;
                                 signal_cfg.line = absolute_line_0indexed;
                             } else {
                                 signal_cfg.field = 2;
-                                signal_cfg.line = absolute_line_0indexed - 263;
+                                signal_cfg.line = absolute_line_0indexed - params.field1_height;
                             }
                             
                             if (!parse_vits_signal_type(signal_yaml.signal, signal_cfg.signal)) {
                                 ENCODE_ORC_LOG_WARN("Unknown VITS signal type '{}', skipping", signal_yaml.signal);
                                 continue;
                             }
+                            
+                            // Validate that only NTSC-specific signals are used
+                            if (signal_cfg.signal == VITSSignalType::UK_NATIONAL ||
+                                signal_cfg.signal == VITSSignalType::ITU_COMPOSITE ||
+                                signal_cfg.signal == VITSSignalType::ITU_ITS ||
+                                signal_cfg.signal == VITSSignalType::MULTIBURST) {
+                                ENCODE_ORC_LOG_ERROR("VITS signal '{}' is PAL-specific and cannot be used in NTSC projects", signal_yaml.signal);
+                                has_errors = true;
+                                continue;
+                            }
+                            
                             vits_signals.push_back(signal_cfg);
                         }
+                        
+                        if (has_errors) {
+                            ENCODE_ORC_LOG_ERROR("NTSC VITS configuration has errors. Use only NTSC-specific signals: vir, ntc7-composite, ntc7-combination");
+                            return 1;
+                        }
+                        
                         generators.push_back(std::make_unique<NTSCVITSMetadataGenerator>(params, vits_signals));
                         ENCODE_ORC_LOG_DEBUG("Added NTSC VITS generator to pipeline with {} signals", vits_signals.size());
                     }

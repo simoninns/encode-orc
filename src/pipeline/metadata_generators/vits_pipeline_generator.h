@@ -19,13 +19,19 @@
 namespace encode_orc {
 
 /**
- * @brief Signal type for VITS generation
+ * @brief Signal type for VITS generation (PAL and NTSC)
  */
 enum class VITSSignalType {
-    ITU_COMPOSITE,      ///< ITU Composite Test Signal
-    UK_NATIONAL,        ///< UK PAL National Test Signal #1
-    ITU_ITS,           ///< ITU Combination ITS
-    MULTIBURST         ///< ITU Multiburst Test Signal
+    // PAL-specific signals
+    ITU_COMPOSITE,      ///< ITU Composite Test Signal (PAL)
+    UK_NATIONAL,        ///< UK PAL National Test Signal #1 (PAL-only)
+    ITU_ITS,           ///< ITU Combination ITS (PAL)
+    MULTIBURST,        ///< ITU Multiburst Test Signal (PAL)
+    
+    // NTSC-specific signals
+    VIR,               ///< Vertical Interval Reference (NTSC)
+    NTC7_COMPOSITE,    ///< NTC-7 Composite Test Signal (NTSC)
+    NTC7_COMBINATION   ///< NTC-7 Combination Test Signal (NTSC)
 };
 
 /**

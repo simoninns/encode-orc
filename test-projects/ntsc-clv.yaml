@@ -24,14 +24,14 @@ pipeline:
       - type: "vits-ntsc"
         enabled: true
         signals:
+          - line: 13
+            signal: "ntc7-composite"
           - line: 19
-            signal: "itu-composite"
-          - line: 20
-            signal: "itu-its"
+            signal: "vir"
+          - line: 275
+            signal: "ntc7-combination"
           - line: 281
-            signal: "itu-composite"
-          - line: 282
-            signal: "itu-its"
+            signal: "vir"
       
       - type: "color-burst"
         enabled: true

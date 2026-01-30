@@ -209,6 +209,11 @@ void PALVITSMetadataGenerator::apply(Field& field, const MetadataContext& contex
             case VITSSignalType::MULTIBURST:
                 generator_->generate_multiburst(line_buffer, context.field_number);
                 break;
+            case VITSSignalType::VIR:
+            case VITSSignalType::NTC7_COMPOSITE:
+            case VITSSignalType::NTC7_COMBINATION:
+                ENCODE_ORC_LOG_WARN("NTSC-specific VITS signal type used in PAL project - this should have been caught during validation");
+                break;
         }
     }
 }
@@ -251,19 +256,20 @@ void NTSCVITSMetadataGenerator::apply(Field& field, const MetadataContext& conte
         uint16_t* line_buffer = field.line_data(signal_config.line);
         
         switch (signal_config.signal) {
-            case VITSSignalType::ITU_COMPOSITE:
+            case VITSSignalType::VIR:
+                generator_->generate_vir(line_buffer, context.field_number);
+                break;
+            case VITSSignalType::NTC7_COMPOSITE:
                 generator_->generate_ntc7_composite(line_buffer, context.field_number);
                 break;
-            case VITSSignalType::UK_NATIONAL:
-                // UK National is PAL-specific, not available for NTSC
-                ENCODE_ORC_LOG_WARN("UK National VITS signal is PAL-specific, skipping for NTSC");
-                break;
-            case VITSSignalType::ITU_ITS:
+            case VITSSignalType::NTC7_COMBINATION:
                 generator_->generate_ntc7_combination(line_buffer, context.field_number);
                 break;
+            case VITSSignalType::ITU_COMPOSITE:
+            case VITSSignalType::UK_NATIONAL:
+            case VITSSignalType::ITU_ITS:
             case VITSSignalType::MULTIBURST:
-                // NTSC doesn't have a standalone multiburst, use NTC7 composite which includes multiburst
-                generator_->generate_ntc7_composite(line_buffer, context.field_number);
+                ENCODE_ORC_LOG_WARN("PAL-specific VITS signal type used in NTSC project - this should have been caught during validation");
                 break;
         }
     }

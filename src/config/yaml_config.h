@@ -66,7 +66,7 @@ struct PipelineGeneratorConfig {
     // For vits-pal / vits-ntsc:
     struct VITSSignal {
         int32_t line = 0;         // Absolute line number (1-indexed in YAML, 1-525 for NTSC, 1-625 for PAL)
-        std::string signal;       // "itu-composite", "uk-national", "itu-its", "multiburst"
+        std::string signal;       // "itu-composite", "uk-national", "itu-combination", "multiburst"
     };
     std::vector<VITSSignal> vits_signals;
     

@@ -18,17 +18,29 @@ namespace encode_orc {
 // =============================================================================
 
 bool parse_vits_signal_type(const std::string& str, VITSSignalType& type) {
+    // PAL-specific signals
     if (str == "itu-composite") {
         type = VITSSignalType::ITU_COMPOSITE;
         return true;
     } else if (str == "uk-national") {
         type = VITSSignalType::UK_NATIONAL;
         return true;
-    } else if (str == "itu-its") {
+    } else if (str == "itu-combination" || str == "itu-its") {
         type = VITSSignalType::ITU_ITS;
         return true;
     } else if (str == "multiburst") {
         type = VITSSignalType::MULTIBURST;
+        return true;
+    }
+    // NTSC-specific signals
+    else if (str == "vir") {
+        type = VITSSignalType::VIR;
+        return true;
+    } else if (str == "ntc7-composite") {
+        type = VITSSignalType::NTC7_COMPOSITE;
+        return true;
+    } else if (str == "ntc7-combination") {
+        type = VITSSignalType::NTC7_COMBINATION;
         return true;
     }
     return false;
@@ -38,8 +50,11 @@ std::string vits_signal_type_to_string(VITSSignalType type) {
     switch (type) {
         case VITSSignalType::ITU_COMPOSITE: return "itu-composite";
         case VITSSignalType::UK_NATIONAL: return "uk-national";
-        case VITSSignalType::ITU_ITS: return "itu-its";
+        case VITSSignalType::ITU_ITS: return "itu-combination";
         case VITSSignalType::MULTIBURST: return "multiburst";
+        case VITSSignalType::VIR: return "vir";
+        case VITSSignalType::NTC7_COMPOSITE: return "ntc7-composite";
+        case VITSSignalType::NTC7_COMBINATION: return "ntc7-combination";
     }
     return "unknown";
 }
@@ -84,6 +99,11 @@ void PALVITSPipelineGenerator::apply(StructuredField& field, const MetadataConte
                 break;
             case VITSSignalType::MULTIBURST:
                 vits_gen_->generate_multiburst(line_buffer, context.field_number);
+                break;
+            case VITSSignalType::VIR:
+            case VITSSignalType::NTC7_COMPOSITE:
+            case VITSSignalType::NTC7_COMBINATION:
+                ENCODE_ORC_LOG_WARN("NTSC-specific VITS signal type used in PAL project - this should have been caught during validation");
                 break;
         }
     }
@@ -133,19 +153,20 @@ void NTSCVITSPipelineGenerator::apply(StructuredField& field, const MetadataCont
         uint16_t* line_buffer = field.field_data.line_data(signal_config.line);
         
         switch (signal_config.signal) {
-            case VITSSignalType::ITU_COMPOSITE:
+            case VITSSignalType::VIR:
+                vits_gen_->generate_vir(line_buffer, context.field_number);
+                break;
+            case VITSSignalType::NTC7_COMPOSITE:
                 vits_gen_->generate_ntc7_composite(line_buffer, context.field_number);
                 break;
-            case VITSSignalType::UK_NATIONAL:
-                // UK National is PAL-specific, not available for NTSC
-                ENCODE_ORC_LOG_WARN("UK National VITS signal is PAL-specific, skipping for NTSC");
-                break;
-            case VITSSignalType::ITU_ITS:
+            case VITSSignalType::NTC7_COMBINATION:
                 vits_gen_->generate_ntc7_combination(line_buffer, context.field_number);
                 break;
+            case VITSSignalType::ITU_COMPOSITE:
+            case VITSSignalType::UK_NATIONAL:
+            case VITSSignalType::ITU_ITS:
             case VITSSignalType::MULTIBURST:
-                // NTSC doesn't have a standalone multiburst, use NTC7 composite which includes multiburst
-                vits_gen_->generate_ntc7_composite(line_buffer, context.field_number);
+                ENCODE_ORC_LOG_WARN("PAL-specific VITS signal type used in NTSC project - this should have been caught during validation");
                 break;
         }
     }

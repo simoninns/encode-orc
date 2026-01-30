@@ -208,22 +208,42 @@ pipeline:
 
 #### Biphase VBI (LaserDisc Picture Numbers / Timecode)
 
-Encodes picture numbers or timecode on lines 16, 17, 18 (1-indexed):
+Encodes picture numbers or timecode on specified lines using two-field absolute line numbering.
 
+For consistency with VITS generators, biphase-vbi uses absolute frame line numbers (1-indexed in YAML):
+
+**NTSC Configuration:**
 ```yaml
 pipeline:
   metadata:
     generators:
       - type: "biphase-vbi"
         enabled: true
-        lines: [16, 17, 18]      # Default and standard placement
+        lines: [16, 17, 18, 278, 279, 280]  # Field 1 and Field 2 lines (1-indexed)
         format: "picture-number" # or "timecode"
 ```
+
+**PAL Configuration:**
+```yaml
+pipeline:
+  metadata:
+    generators:
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [17, 18, 19, 330, 331, 332]  # Field 1 and Field 2 lines (1-indexed)
+        format: "picture-number" # or "timecode"
+```
+
+**Line Numbering:**
+- Lines are specified as 1-indexed absolute frame line numbers
+- NTSC: 525 total lines (1-525), with Field 1 = lines 1-263, Field 2 = lines 264-525
+- PAL: 625 total lines (1-625), with Field 1 = lines 1-312, Field 2 = lines 313-625
+- Specify 3 lines per field for proper VBI encoding (vbi0, vbi1, vbi2 per field)
 
 **VBI Encodes:**
 - **Picture numbers**: 1-frame increment per frame (CAV mode)
 - **Timecode**: HH:MM:SS:FF with chapter number (CLV mode)
-- Placed in VBI lines 16, 17, 18 per IEC LaserDisc standards
+- Each field contains its own VBI data (separate picture number or timecode)
 
 **Configuration with sections:**
 
@@ -251,20 +271,20 @@ pipeline:
       - type: "vits-pal"
         enabled: true
         signals:
-          - line: 19           # Absolute line number (1-625 for PAL)
+          - line: 13
             signal: "multiburst"
-          - line: 20
+          - line: 19
             signal: "uk-national"
-          - line: 332          # Line 332 is in field 2 (automatically determined)
+          - line: 325
+            signal: "itu-combination"
+          - line: 331
             signal: "itu-composite"
-          - line: 333
-            signal: "itu-its"
 ```
 
 **Available PAL Signals:**
 - `"multiburst"` - ITU Multiburst Test Signal
 - `"uk-national"` - UK PAL National Test Signal #1
-- `"itu-its"` - ITU Combination ITS
+- `"itu-combination"` - ITU Combination ITS
 - `"itu-composite"` - ITU Composite Test Signal
 
 **NTSC VITS Configuration:**
@@ -275,19 +295,19 @@ pipeline:
       - type: "vits-ntsc"
         enabled: true
         signals:
-          - line: 18           # Absolute line number (1-525 for NTSC)
-            signal: "itu-composite"
+          - line: 13
+            signal: "ntc7-composite"
           - line: 19
-            signal: "itu-its"
-          - line: 281          # Line 281 is in field 2 (automatically determined)
-            signal: "itu-composite"
-          - line: 282
-            signal: "itu-its"
+            signal: "vir"
+          - line: 275
+            signal: "ntc7-combination"
+          - line: 281
+            signal: "vir"
 ```
 
 **Available NTSC Signals:**
 - `"itu-composite"` - NTC-7 Composite Test Signal
-- `"itu-its"` - NTC-7 Combination Test Signal
+- `"itu-combination"` - NTC-7 Combination Test Signal
 - `"multiburst"` - Multiburst (uses NTC-7 composite)
 
 **Line Numbering:**
@@ -345,10 +365,10 @@ pipeline:
       - type: "vits-pal"      # PAL VITS test signals
         enabled: true
         signals:
-          - { line: 19, signal: "multiburst" }
-          - { line: 20, signal: "uk-national" }
-          - { line: 332, signal: "itu-composite" }
-          - { line: 333, signal: "itu-its" }
+          - { line: 13, signal: "multiburst" }
+          - { line: 19, signal: "uk-national" }
+          - { line: 325, signal: "itu-combination" }
+          - { line: 331, signal: "itu-composite" }
       - type: "color-burst"   # Color reference (always recommended)
         enabled: true
 
@@ -640,10 +660,10 @@ pipeline:
       - type: "vits-pal"
         enabled: true
         signals:
-          - { line: 19, signal: "multiburst" }
-          - { line: 20, signal: "uk-national" }
-          - { line: 332, signal: "itu-composite" }
-          - { line: 333, signal: "itu-its" }
+          - { line: 13, signal: "multiburst" }
+          - { line: 19, signal: "uk-national" }
+          - { line: 325, signal: "itu-combination" }
+          - { line: 331, signal: "itu-composite" }
 
 sections:
   - name: "Leader"
@@ -757,10 +777,10 @@ pipeline:
       - type: "vits-pal"
         enabled: true
         signals:
-          - { line: 19, signal: "multiburst" }
-          - { line: 20, signal: "uk-national" }
-          - { line: 332, signal: "itu-composite" }
-          - { line: 333, signal: "itu-its" }
+          - { line: 13, signal: "multiburst" }
+          - { line: 19, signal: "uk-national" }
+          - { line: 325, signal: "itu-combination" }
+          - { line: 331, signal: "itu-composite" }
 
 sections:
   - name: "Archive Material"
@@ -905,7 +925,7 @@ pipeline:
             signal: "uk-national"
           - line: 331         # Line 332 (1-indexed)
             field: 2
-            signal: "itu-its"
+            signal: "itu-combination"
           - line: 332         # Line 333 (1-indexed)
             field: 2
             signal: "itu-composite"
@@ -955,11 +975,11 @@ pipeline:
       - type: "vits-pal"
         enabled: true
         signals:
-          - { line: 19, signal: "multiburst" }
-          - { line: 20, signal: "uk-national" }
-          - { line: 332, signal: "itu-composite" }
-          - { line: 333, signal: "itu-its" }
-      
+          - { line: 13, signal: "multiburst" }
+          - { line: 19, signal: "uk-national" }
+          - { line: 325, signal: "itu-combination" }
+          - { line: 331, signal: "itu-composite" }
+
       - type: "color-burst"
         enabled: true
 
@@ -1005,15 +1025,15 @@ pipeline:
       
       - type: "vits-ntsc"     # NTSC VITS test signals
         enabled: true
-        signals:              # User-configured signals and placement
-          - line: 18          # Field 1, line 18
-            signal: "itu-composite"
-          - line: 19          # Field 1, line 19
-            signal: "itu-its"
-          - line: 281         # Field 2, line 281 (auto-detected)
-            signal: "itu-composite"
-          - line: 282         # Field 2, line 282 (auto-detected)
-            signal: "itu-its"
+        signals:
+          - line: 13
+            signal: "ntc7-composite"
+          - line: 19
+            signal: "vir"
+          - line: 275
+            signal: "ntc7-combination"
+          - line: 281
+            signal: "vir"
       
       - type: "color-burst"
         enabled: true
@@ -1060,10 +1080,14 @@ pipeline:
       - type: "vits-ntsc"
         enabled: true
         signals:
-          - { line: 18, signal: "itu-composite" }
-          - { line: 19, signal: "itu-its" }
-          - { line: 281, signal: "itu-composite" }
-          - { line: 282, signal: "itu-its" }
+          - line: 13
+            signal: "ntc7-composite"
+          - line: 19
+            signal: "vir"
+          - line: 275
+            signal: "ntc7-combination"
+          - line: 281
+            signal: "vir"
       
       - type: "color-burst"
         enabled: true
