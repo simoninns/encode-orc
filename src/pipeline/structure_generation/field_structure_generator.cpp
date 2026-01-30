@@ -215,7 +215,7 @@ void FieldStructureGenerator::generate_sync_line(uint16_t* line_buffer,
     auto generate_pulse = [&](int32_t position, SyncPulseType type) {
         if (type == SyncPulseType::NONE) return;
         
-        int32_t duration;
+        int32_t duration = 0;
         switch (type) {
             case SyncPulseType::EQUALIZING:
                 duration = static_cast<int32_t>(eq_sync * 1e-6 / sample_duration);

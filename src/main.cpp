@@ -743,17 +743,26 @@ int main(int argc, char* argv[]) {
                     return 1;
                 }
 
-                for (int32_t i = 0; i < section_frames; ++i) {
-                    FrameBuffer frame_buffer;
-                    if (!mp4_loader.load_frame(start_frame + i, frame_buffer, load_error)) {
-                        ENCODE_ORC_LOG_ERROR("Failed to load MP4 frame {}: {}", start_frame + i, load_error);
+                // Batch decode frames in chunks to reduce ffmpeg overhead
+                constexpr int32_t BATCH_SIZE = 50;  // Decode 50 frames at a time
+                for (int32_t batch_start = 0; batch_start < section_frames; batch_start += BATCH_SIZE) {
+                    int32_t batch_count = std::min(BATCH_SIZE, section_frames - batch_start);
+                    
+                    std::vector<FrameBuffer> frame_buffers;
+                    if (!mp4_loader.load_frames(start_frame + batch_start, batch_count, frame_buffers, load_error)) {
+                        ENCODE_ORC_LOG_ERROR("Failed to load MP4 frames {}-{}: {}", 
+                                           start_frame + batch_start, 
+                                           start_frame + batch_start + batch_count - 1, 
+                                           load_error);
                         mp4_loader.close();
                         return 1;
                     }
 
-                    if (!encode_frame(frame_buffer, i)) {
-                        mp4_loader.close();
-                        return 1;
+                    for (int32_t i = 0; i < batch_count; ++i) {
+                        if (!encode_frame(frame_buffers[i], batch_start + i)) {
+                            mp4_loader.close();
+                            return 1;
+                        }
                     }
                 }
                 mp4_loader.close();

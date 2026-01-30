@@ -116,25 +116,16 @@ public:
             return false;
         }
         
-        // Write the field data
+        // Write the field data as a single block (much faster than byte-by-byte)
         const auto& data = field.data();
-        for (uint16_t sample : data) {
-            // Write low byte then high byte (little-endian)
-            uint8_t low = sample & 0xFF;
-            uint8_t high = (sample >> 8) & 0xFF;
-            file_.write(reinterpret_cast<const char*>(&low), 1);
-            file_.write(reinterpret_cast<const char*>(&high), 1);
-        }
+        file_.write(reinterpret_cast<const char*>(data.data()), data.size() * sizeof(uint16_t));
         
         // Apply padding to field1 if configured
         if (next_is_field1_ && padding_field_height_diff_ > 0) {
             int32_t padding_samples = padding_field_height_diff_ * padding_field_width_;
-            for (int32_t i = 0; i < padding_samples; ++i) {
-                uint8_t low = padding_blanking_value_ & 0xFF;
-                uint8_t high = (padding_blanking_value_ >> 8) & 0xFF;
-                file_.write(reinterpret_cast<const char*>(&low), 1);
-                file_.write(reinterpret_cast<const char*>(&high), 1);
-            }
+            // Write padding as a block too
+            std::vector<uint16_t> padding(padding_samples, padding_blanking_value_);
+            file_.write(reinterpret_cast<const char*>(padding.data()), padding.size() * sizeof(uint16_t));
         }
         
         // Toggle field indicator

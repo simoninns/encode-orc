@@ -87,21 +87,14 @@ void NoiseGenerator::apply(Field& field, const FieldEffectContext& context) {
     
     // Seed a local RNG so each field gets reproducible noise
     std::mt19937 rng(seed_ + context.field_number);
-    std::uniform_real_distribution<double> uniform(0.0, 1.0);
-    auto gaussian_random = [&]() {
-        // Box-Muller transform
-        double u1 = uniform(rng);
-        double u2 = uniform(rng);
-        if (u1 < 1e-10) u1 = 1e-10;
-        if (u2 < 1e-10) u2 = 1e-10;
-        return std::sqrt(-2.0 * std::log(u1)) * std::cos(2.0 * M_PI * u2);
-    };
+    
+    // Use std::normal_distribution which is much faster than manual Box-Muller
+    std::normal_distribution<double> gaussian_dist(0.0, noise_rms);
     
     // Add Gaussian noise to all samples
     auto& data = field.data();
     for (auto& sample : data) {
-        double gaussian = gaussian_random();
-        double noise = gaussian * noise_rms;
+        double noise = gaussian_dist(rng);
         
         // Add noise and clamp to valid range [0, 65535]
         double noisy_sample = static_cast<double>(sample) + noise;

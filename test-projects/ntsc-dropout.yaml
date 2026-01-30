@@ -53,6 +53,7 @@ pipeline:
 
 sections:
   - name: "Content"
+    duration: 100
     source:
       type: "mp4-file"
       file: "testcard-images/ntsc-mp4/ntsc-nynashamn.mp4"
