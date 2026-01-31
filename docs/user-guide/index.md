@@ -11,11 +11,11 @@ This guide covers common use cases and workflows for encode-orc.
 
 ## Sections
 
-- [Understanding encode-orc](understanding.md)
-- [Supported Video Formats](video-formats.md)
-- [Input Formats](input-formats.md)
-- [Output Formats](output-formats.md)
-- [Configuration Examples](examples.md)
-- [Command Line Usage](cli.md)
-- [Tips and Best Practices](tips.md)
-- [Troubleshooting](troubleshooting.md)
+- [Understanding encode-orc](understanding/)
+- [Supported Video Formats](video-formats/)
+- [Input Formats](input-formats/)
+- [Output Formats](output-formats/)
+- [Configuration Examples](examples/)
+- [Command Line Usage](cli/)
+- [Tips and Best Practices](tips/)
+- [Troubleshooting](troubleshooting/)

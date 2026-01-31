@@ -18,4 +18,4 @@ Separates luma and chroma:
 - `output.tbcc` - Chroma channel
 - `output.tbc.db` - SQLite metadata database
 
-For details, see [Output Formats](../technical/output-formats.md).
+For details, see [Output Formats](../technical/output-formats/).

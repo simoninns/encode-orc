@@ -12,7 +12,7 @@ This section contains technical details, file formats, and reference material.
 
 ## Pages
 
-- [Output Formats](output-formats.md)
-- [PAL and NTSC biphase code](biphase-vbi-data.md)
-- [LD-Decode Metadata Schema](ld-decode-metadata-schema.md)
-- [PAL Line Numbering](pal-line-numbering.md)
+- [Output Formats](output-formats/)
+- [PAL and NTSC biphase code](biphase-vbi-data/)
+- [LD-Decode Metadata Schema](ld-decode-metadata-schema/)
+- [PAL Line Numbering](pal-line-numbering/)

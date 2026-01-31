@@ -35,6 +35,7 @@ back_to_top_text: "Back to top"
 # Build settings
 markdown: kramdown
 plugins:
+  - jekyll-remote-theme
   - jekyll-seo-tag
 
 # Kramdown settings
