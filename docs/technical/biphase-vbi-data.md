@@ -1,3 +1,10 @@
+---
+title: PAL and NTSC biphase code
+layout: default
+parent: Technical Reference
+nav_order: 2
+---
+
 # PAL and NTSC biphase code
 
 Note: This is used for both PAL and NTSC appearing on field lines 16,17,18

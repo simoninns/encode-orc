@@ -1,4 +1,12 @@
-# LaserDisc PAL and NTSC Test Signals — Detailed Timing & Level Analysis
+---
+title: VITS Guide
+layout: default
+nav_order: 6
+---
+
+# VITS Guide
+
+# LaserDisc PAL and NTSC VITS — Detailed Timing & Level Analysis
 
 **Reference:**
 *Video Demystified, 5th Edition* — ISBN 978-0-750-68395-1
@@ -29,7 +37,7 @@ Assumptions unless stated otherwise:
 ---
 
 ## ITU Composite Test Signal for PAL (Figure 8.41)
-![Video Demystified P331 Figure 8.41](test-signals/ITU-Composite-PAL-with-IRE.png)
+![Video Demystified P331 Figure 8.41](assets/ITU-Composite-PAL-with-IRE.png)
 **VITS line:** 19
 
 ### Description
@@ -60,7 +68,7 @@ The 5-step modulated staircase signal consists of 5 luminance steps (whose IRE v
 ---
 
 ## United Kingdom PAL National Test Signal #1 (Figure 8.42)
-![Video Demystified P332 Figure 8.42](test-signals/UK-PAL-National.png)
+![Video Demystified P332 Figure 8.42](assets/UK-PAL-National.png)
 **VITS line:** 332
 
 ### Description
@@ -92,7 +100,7 @@ The 5-step modulated staircase signal consists of 5 luminance steps (whose IRE v
 ---
 
 ## ITU Combination ITS Test Signal for PAL (Figure 8.45)
-![Video Demystified P335 Figure 8.45](test-signals/ITU-Combination-ITS-PAL.png)
+![Video Demystified P335 Figure 8.45](assets/ITU-Combination-ITS-PAL.png)
 **VITS line:** 20
 
 ### Description
@@ -118,7 +126,7 @@ The ITU composite ITS may be present on line 331.
 ---
 
 ## ITU Multiburst Test Signal for PAL (Figure 8.38)
-![Video Demystified P329 Figure 8.38](test-signals/multiburst-PAL.png)
+![Video Demystified P329 Figure 8.38](assets/multiburst-PAL.png)
 **VITS line:** 333
 
 ### Description
@@ -158,7 +166,7 @@ The multiburst signals are used to test the frequency response of the system by 
 ---
 
 ## Vertical Interval Reference Signal (VIRS)
-![FCC Recommendation 73-699 and CCIR Recommendation 314-4](test-signals/virs-73-699.png)
+![FCC Recommendation 73-699 and CCIR Recommendation 314-4](assets/virs-73-699.png)
 **VITS lines:** 19 and 282
 
 ### Description
@@ -186,7 +194,7 @@ The VIR content shown spans **60 µs**, partitioned as:
 ---
 
 ## NTC-7 Combination Test Signal for NTSC (Figure 8.43)
-![Video Demystified P333 Figure 8.43](test-signals/NTC-7-Combination-NTSC.png)
+![Video Demystified P333 Figure 8.43](assets/NTC-7-Combination-NTSC.png)
 **VITS line:**  20
 
 ### Description
@@ -216,7 +224,7 @@ The NTC-7 combination test signal may be present on line 280.
 ---
 
 ## NTC-7 Composite Test Signal for NTSC (Figure 8.40)
-![Video Demystified P330 Figure 8.40](test-signals/NTC-7-Composite-NTSC.png)
+![Video Demystified P330 Figure 8.40](assets/NTC-7-Composite-NTSC.png)
 **VITS line:**  283
 
 ### Description

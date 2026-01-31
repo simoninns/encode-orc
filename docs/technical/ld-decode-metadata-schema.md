@@ -1,3 +1,11 @@
+---
+title: LD-Decode Metadata Schema
+layout: default
+parent: Technical Reference
+nav_order: 3
+---
+
+# LD-Decode Metadata Schema
 
 ```
 ------------------------------------------------------------------

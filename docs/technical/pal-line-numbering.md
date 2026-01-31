@@ -1,3 +1,10 @@
+---
+title: PAL Line Numbering
+layout: default
+parent: Technical Reference
+nav_order: 4
+---
+
 # PAL Frame Line to Field Parity and Line Translation
 
 ### Frame vs Field Lines
