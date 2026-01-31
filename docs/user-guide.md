@@ -441,15 +441,34 @@ pipeline:
   effects:
     - type: "dropout"
       enabled: true
-      density: 0.005         # 0.5% of samples affected per line
+      density: 0.005                       # Overall dropout density
+      multi_field_probability: 0.50        # 50% chance of multi-field (scratches)
+      single_field_probability: 0.01       # 1% chance of single-field (disc degradation)
       seed: 42
 ```
 
-**Density Guide:**
-- 0.001: 0.1% of samples per line affected
-- 0.005: 0.5% of samples per line affected
-- 0.01: 1% of samples per line affected
-- 0.05: 5% of samples per line affected
+**Parameter Guide:**
+
+- **density**: Overall proportion of samples affected per line
+  - 0.001: 0.1% of samples per line affected
+  - 0.005: 0.5% of samples per line affected
+  - 0.01: 1% of samples per line affected
+  - 0.05: 5% of samples per line affected
+
+- **multi_field_probability**: Relative weight for multi-field dropouts (scratches) (0.0–1.0)
+  - Represents scratches or longer damage that extends across field boundaries
+  - Combined with `single_field_probability` to determine dropout type ratio
+  - Example: `multi: 0.5, single: 0.5` → 50% multi-field, 50% single-field
+  - Example: `multi: 1.0, single: 1.0` → 50% multi-field, 50% single-field (equal ratio)
+  - Example: `multi: 1.0, single: 0.0` → 100% multi-field dropouts
+  - 0.0: No multi-field dropouts (only single-field, if enabled)
+
+- **single_field_probability**: Relative weight for single-field dropouts (disc degradation) (0.0–1.0)
+  - Represents minor disc degradation or single-field defects
+  - Combined with `multi_field_probability` to determine dropout type ratio
+  - Example: `single: 0.1, multi: 0.9` → ~90% multi-field, ~10% single-field
+  - Example: `single: 1.0, multi: 0.0` → 100% single-field dropouts
+  - 0.0: No single-field dropouts (only multi-field, if enabled)
 
 ### Phase Error (VCR Wobble)
 

@@ -43,7 +43,7 @@ pipeline:
       snr_db: 25.0
       seed: 12345
     
-    # Random dropouts to simulate tape damage and scratches
+    # Random dropouts to simulate disc damage and scratches
     - type: "dropout"
       enabled: true
       density: 0.00001
@@ -53,7 +53,7 @@ pipeline:
 
 sections:
   - name: "Content"
-    duration: 100
+    duration: 20
     source:
       type: "mp4-file"
       file: "testcard-images/ntsc-mp4/ntsc-nynashamn.mp4"
