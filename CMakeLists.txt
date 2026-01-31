@@ -34,7 +34,7 @@ find_package(spdlog REQUIRED)
 # Get git commit hash
 execute_process(
     COMMAND git rev-parse --short HEAD
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     OUTPUT_VARIABLE GIT_COMMIT_HASH
     OUTPUT_STRIP_TRAILING_WHITESPACE
     ERROR_QUIET
@@ -43,7 +43,7 @@ execute_process(
 # Check if git repo is dirty (has uncommitted changes)
 execute_process(
     COMMAND git diff-index --quiet HEAD --
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     RESULT_VARIABLE GIT_IS_DIRTY
     ERROR_QUIET
 )
@@ -60,27 +60,27 @@ endif()
 
 # Generate version header
 configure_file(
-    ${CMAKE_SOURCE_DIR}/src/config/version.h.in
-    ${CMAKE_BINARY_DIR}/generated/version.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/config/version.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/generated/version.h
     @ONLY
 )
 
 # Include directories
-include_directories(${PROJECT_SOURCE_DIR}/src)
-include_directories(${PROJECT_SOURCE_DIR}/src/config)
-include_directories(${PROJECT_SOURCE_DIR}/src/utils)
-include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/loaders)
-include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/field_splitting)
-include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/preprocessing)
-include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/structure_generation)
-include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/metadata_generators)
-include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/metadata_generators/encoders)
-include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/active_encoding)
-include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/effects)
-include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/writers)
-include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/orchestrator)
-include_directories(${PROJECT_SOURCE_DIR}/src/pipeline/common)
-include_directories(${CMAKE_BINARY_DIR}/generated)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/config)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/utils)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/pipeline/loaders)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/pipeline/field_splitting)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/pipeline/preprocessing)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/pipeline/structure_generation)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/pipeline/metadata_generators)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/pipeline/metadata_generators/encoders)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/pipeline/active_encoding)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/pipeline/effects)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/pipeline/writers)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/pipeline/orchestrator)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/pipeline/common)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/generated)
 
 # Source files
 set(SOURCES
