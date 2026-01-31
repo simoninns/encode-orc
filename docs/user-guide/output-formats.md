@@ -7,28 +7,71 @@ nav_order: 4
 
 # Output Formats
 
-encode-orc generates video files in TBC (Time Base Corrected) format, compatible with decode-orc and other video decoding tools.
+encode-orc generates video files in two main output types: TBC (Time Base Corrected) format with metadata, or Standard format without metadata.
 
-## TBC Format Overview
+## Output Types
 
-TBC files are field-based video files containing raw video data. Each field is stored sequentially without compression.
+### TBC Format (Default)
+
+TBC files are field-based video files with metadata database support, compatible with decode-orc and other video decoding tools. Each field is stored sequentially without compression.
+
+**Features:**
+- Includes SQLite metadata database (.tbc.db)
+- VBI data support
+- Frame/field numbering and timecode
+- Dropout detection metadata
+- Compatible with decode-orc workflow
+
+**Usage:**
+```yaml
+output:
+  type: "tbc"  # or omit, as TBC is default
+```
+
+### Standard Format
+
+Standard format outputs raw 16-bit signed field data without any metadata or padding. Fields are written exactly as generated with asymmetric sizes.
+
+**Features:**
+- Raw 16-bit signed samples (little-endian)
+- No metadata database
+- No padding between fields
+- Smaller file sizes
+- Useful for direct video processing tools
+
+**Usage:**
+```yaml
+output:
+  type: "standard"
+```
+
+## Video Modes
+
+Both TBC and Standard output types support two video modes:
 
 ### File Specifications
 
-| Aspect | Value |
-|--------|-------|
-| Bit Depth | 8-bit per component |
-| Field Order | Top field first (for most formats) |
-| Color Space | YUV 4:2:2 |
-| No Compression | Raw video data |
+| Aspect | TBC Format | Standard Format |
+|--------|-----------|-----------------|
+| Bit Depth | 8-bit per component | 16-bit signed |
+| Byte Order | N/A | Little-endian |
+| Field Order | Top field first | Top field first |
+| Metadata | SQLite database | None |
+| Padding | Yes (symmetric fields) | No (asymmetric fields) |
+| Compression | None | None |
 
 ## Composite Mode
 
 Generates traditional composite video representation.
 
 ### Output Files
-- `output.tbc` - Composite field-based video file
+
+**TBC Format:**
+- `output.tbc` - Composite field-based video file (8-bit)
 - `output.tbc.db` - SQLite metadata database
+
+**Standard Format:**
+- `output.tbc` - Composite field-based video file (16-bit signed)
 
 ### File Structure
 
@@ -47,17 +90,24 @@ Generates traditional composite video representation.
 - Single file containing video
 - Simpler file organization
 - Smaller file sizes than Y/C mode
-- Traditional video representation
-
-### Usage
-```yaml
-output:
+- type: "tbc"      # or "standard"
   format: "composite"
 ```
 
 ## Y/C Mode (S-Video)
 
 Separates luma (brightness) and chroma (color) components, simulating S-Video output.
+
+### Output Files
+
+**TBC Format:**
+- `output.tbcy` - Luma (Y) component (8-bit)
+- `output.tbcc` - Chroma (C) component (8-bit)
+- `output.tbc.db` - SQLite metadata database
+
+**Standard Format:**
+- `output.tbcy` - Luma (Y) component (16-bit signed)
+- `output.tbcc` - Chroma (C) component (16-bit signed)r) components, simulating S-Video output.
 
 ### Output Files
 - `output.tbcy` - Luma (Y) component
@@ -82,10 +132,11 @@ Separates luma (brightness) and chroma (color) components, simulating S-Video ou
 
 ### Characteristics
 - Better separation of color components
-- Improved color accuracy
-- Larger file sizes than composite
-- More closely simulates S-Video hardware
+- type: "tbc"      # or "standard"
+  format: "yc"
+```
 
+## Metadata Database Format (TBC Only)
 ### Usage
 ```yaml
 output:
@@ -115,11 +166,15 @@ SELECT * FROM vbi_data WHERE field_number > 100;
 ## File Size Reference
 
 Approximate sizes for different configurations:
+Type | Mode | PAL (1 hour) | NTSC (1 hour) |
+|------|------|--------------|---------------|
+| TBC | Composite | ~1.8 GB | ~1.6 GB |
+| TBC | Y/C | ~2.7 GB | ~2.4 GB |
+| TBC | Metadata DB | ~50 MB | ~50 MB |
+| Standard | Composite | ~3.6 GB | ~3.2 GB |
+| Standard | Y/C | ~5.4 GB | ~4.8 GB |
 
-| Format | PAL (1 hour) | NTSC (1 hour) |
-|--------|--------------|---------------|
-| Composite | ~1.8 GB | ~1.6 GB |
-| Y/C Mode | ~2.7 GB | ~2.4 GB |
+*Standard format files are larger due to 16-bit samples vs 8-bit*
 | Metadata DB | ~50 MB | ~50 MB |
 
 ## Working with Output Files
