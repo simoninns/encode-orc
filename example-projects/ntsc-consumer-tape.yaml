@@ -2,7 +2,7 @@ name: "NTSC Consumer Tape"
 description: "NTSC Consumer VHS tape with separate YC output and VITC timecodes"
 
 output:
-  filename: "test-output/ntsc-consumer-tape"
+  filename: "example-output/ntsc-consumer-tape"
   format: "ntsc-yc"
 
 pipeline:

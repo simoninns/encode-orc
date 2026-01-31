@@ -2,7 +2,7 @@ name: "NTSC Loader Types Demo - CAV"
 description: "NTSC LaserDisc with CAV picture numbering - demonstrates supported loader types"
 
 output:
-  filename: "test-output/ntsc-loaders"
+  filename: "example-output/ntsc-loaders"
   format: "ntsc-composite"
 
 laserdisc:

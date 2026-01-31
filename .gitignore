@@ -36,8 +36,6 @@ _deps/
 .DS_Store
 
 # Testing output
-Testing/
-test-output/
 *.tbc
 *.tbc.db
 *.tbcy
@@ -55,9 +53,6 @@ vcpkg_installed/
 *.tmp
 *.log
 
-# Test output TBCs
-test-output/
+# Example output TBCs
+example-output/
 tmp/
-
-# Local test projects
-local-projects/

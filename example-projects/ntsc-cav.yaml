@@ -2,7 +2,7 @@ name: "NTSC-CAV Standard"
 description: "NTSC LaserDisc with CAV picture numbering (IEC 60856-1986)"
 
 output:
-  filename: "test-output/ntsc-cav"
+  filename: "example-output/ntsc-cav"
   format: "ntsc-composite"
 
 laserdisc:

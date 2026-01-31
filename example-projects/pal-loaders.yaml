@@ -2,7 +2,7 @@ name: "PAL Loader Types Demo - CAV"
 description: "PAL LaserDisc with CAV picture numbering - demonstrates all supported loader types"
 
 output:
-  filename: "test-output/pal-loaders"
+  filename: "example-output/pal-loaders"
   format: "pal-composite"
 
 laserdisc:

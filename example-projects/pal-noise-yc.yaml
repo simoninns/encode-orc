@@ -1,8 +1,8 @@
-name: "PAL Consumer Tape"
-description: "PAL Consumer VHS tape with separate YC output and VITC timecodes"
+name: "PAL Noise YC"
+description: "PAL test signal with Gaussian noise and separate YC output"
 
 output:
-  filename: "test-output/pal-consumer-tape"
+  filename: "example-output/pal-noise-yc"
   format: "pal-yc"
 
 pipeline:
@@ -20,6 +20,12 @@ pipeline:
       
       - type: "color-burst"
         enabled: true
+
+  effects:
+    - type: "noise"
+      enabled: true
+      snr_db: 35.0
+      seed: 42
 
 sections:
   - name: "Lead-in"

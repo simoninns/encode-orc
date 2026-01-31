@@ -18,8 +18,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR"
 
 # Directories
-TEST_PROJECTS_DIR="$PROJECT_ROOT/test-projects"
-TEST_OUTPUT_DIR="$PROJECT_ROOT/test-output"
+TEST_PROJECTS_DIR="$PROJECT_ROOT/example-projects"
+TEST_OUTPUT_DIR="$PROJECT_ROOT/example-output"
 BUILD_DIR="$PROJECT_ROOT/build"
 
 # Build directory

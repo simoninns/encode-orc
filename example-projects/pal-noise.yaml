@@ -1,8 +1,8 @@
-name: "PAL-Dropout Test"
-description: "PAL test signal with line dropouts for tape damage simulation"
+name: "PAL-Noise Test"
+description: "PAL test signal with Gaussian noise simulation for tape hiss testing"
 
 output:
-  filename: "test-output/pal-dropout"
+  filename: "example-output/pal-noise"
   format: "pal-composite"
 
 laserdisc:
@@ -37,19 +37,11 @@ pipeline:
         enabled: true
   
   effects:
-    # Random dropouts to simulate disc damage and scratches
-    - type: "dropout"
-      enabled: true
-      density: 0.001                   # Targets >=20 dropouts/frame
-      multi_field_probability: 0.30    # 30% chance of multi-field (scratches)
-      single_field_probability: 0.70   # 70% chance of single-field (disc degradation)
-      seed: 42
-
-    # Noise simulation
+    # Gaussian noise to simulate tape hiss
     - type: "noise"
       enabled: true
-      snr_db: 18.0
-      seed: 12345
+      snr_db: 20.0
+      seed: 42         # For reproducible results
 
 sections:
   - name: "Lead-in"
