@@ -13,7 +13,7 @@ Welcome to the **encode-orc** project documentation. This site provides guides a
 - **[User Guide](user-guide/)** - Detailed documentation and examples
 - **[Technical Reference](technical/)** - File formats and technical details
 - **[Testcards](testcards/)** - Testcard assets and usage
-- **[Output Formats](technical/output-formats/)** - Supported TBC and metadata formats
+- **[Output Formats](technical/output-formats)** - Supported TBC and metadata formats
 
 ## What is encode-orc?
 

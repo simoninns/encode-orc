@@ -11,8 +11,8 @@ Documentation and usage notes for the included testcard image assets.
 
 ## Pages
 
-- [PNG Testcard Images](png-testcard-images/)
-- [Raw Testcard Images](raw-testcard-images/)
+- [PNG Testcard Images](png-testcard-images)
+- [Raw Testcard Images](raw-testcard-images)
 
 ## Testcard File Structure
 
