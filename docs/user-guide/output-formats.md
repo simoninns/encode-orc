@@ -163,31 +163,6 @@ The `.tbc.db` SQLite database contains:
 SELECT * FROM vbi_data WHERE field_number > 100;
 ```
 
-## File Size Reference
-
-Approximate sizes for different configurations:
-Type | Mode | PAL (1 hour) | NTSC (1 hour) |
-|------|------|--------------|---------------|
-| TBC | Composite | ~1.8 GB | ~1.6 GB |
-| TBC | Y/C | ~2.7 GB | ~2.4 GB |
-| TBC | Metadata DB | ~50 MB | ~50 MB |
-| Standard | Composite | ~3.6 GB | ~3.2 GB |
-| Standard | Y/C | ~5.4 GB | ~4.8 GB |
-
-*Standard format files are larger due to 16-bit samples vs 8-bit*
-| Metadata DB | ~50 MB | ~50 MB |
-
-## Working with Output Files
-
-### Using with decode-orc
-```bash
-# Decode composite TBC file
-decode-orc output.tbc --output decoded.mov
-
-# Decode Y/C TBC files
-decode-orc output.tbcy output.tbcc --output decoded.mov
-```
-
 ### Inspecting Metadata
 ```bash
 # Query metadata database
