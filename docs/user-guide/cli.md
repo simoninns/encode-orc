@@ -11,12 +11,14 @@ nav_order: 6
 # Basic usage
 ./encode-orc project.yaml
 
-# Output to specific directory
-./encode-orc project.yaml --output /path/to/output
+Note: The specification of all input files and output targets is contained in the YAML project file.
 
 # Verbose logging
-./encode-orc project.yaml --verbose
+./encode-orc project.yaml --log-level debug --log-file /tmp/encore-orc.log
 
 # Help information
 ./encode-orc --help
+
+# Version information
+./encode-orc --version
 ```

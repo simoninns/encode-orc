@@ -10,7 +10,6 @@ Welcome to the **encode-orc** project documentation. This site provides guides a
 
 ## Quick Links
 
-- **[Getting Started](getting-started/)** - Installation and first steps
 - **[User Guide](user-guide/)** - Detailed documentation and examples
 - **[Technical Reference](technical/)** - File formats and technical details
 - **[Testcards](testcards/)** - Testcard assets and usage
@@ -30,8 +29,7 @@ encode-orc is a C++17 command-line application that generates test data for [dec
 
 ## Getting Help
 
-- Check the [User Guide](user-guide/) for common tasks
-- Review the [User Guide](user-guide/) for YAML syntax
+- Check the [User Guide](user-guide/)
 - See example projects in the repository's `example-projects/` directory
 
 ---

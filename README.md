@@ -4,6 +4,8 @@
 
 Encode-Orc is a PAL and NTSC encoder capable of producing ld-decode and vhs-decode compatible TBC files (and SQLite metadata) to assist with testing.
 
+Please see the [Encode-Orc Documentation](https://simoninns.github.io/encode-orc) for details.
+
 ## Overview
 
 encode-orc is a C++17 command-line application that generates test data for [decode-orc](https://github.com/simoninns/decode-orc). It produces field-based video files in the TBC (Time Base Corrected) format along with accompanying metadata, simulating the output of RF decoding applications such as ld-decode and vhs-decode used in the LaserDisc and analog video preservation community.
@@ -31,10 +33,6 @@ Contributions are welcome! Please discuss in the Domesday86 discord, raise issue
 ## License
 
 See [LICENSE](LICENSE) file for details.
-
-## Documentation
-
-- [Encode-Orc Documentation](https://simoninns.github.io/encode-orc) - Github pages documentation site
 
 ## Related Projects
 

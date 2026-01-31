@@ -1,0 +1,940 @@
+---
+title: YAML Project Configuration
+layout: default
+parent: User Guide
+nav_order: 2
+---
+
+# YAML Project Configuration
+
+encode-orc uses YAML files to define encoding projects. This document describes all available configuration options.
+
+## Quick Example
+
+```yaml
+name: "My Project"
+description: "A simple PAL encoding example"
+
+output:
+  filename: "output/my-video"
+  format: "pal-composite"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+  metadata:
+    generators:
+      - type: "color-burst"
+        enabled: true
+
+sections:
+  - name: "Content"
+    duration: 10
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+```
+
+---
+
+## Top-Level Fields
+
+### `name` (required)
+**Type:** String
+
+Project name for identification and logging.
+
+```yaml
+name: "PAL Test Pattern"
+```
+
+### `description` (required)
+**Type:** String
+
+Human-readable description of the project purpose.
+
+```yaml
+description: "PAL composite output with test pattern for decoder validation"
+```
+
+### `output` (required)
+**Type:** Object
+
+Defines output file configuration. See [Output Configuration](#output-configuration).
+
+### `pipeline` (required)
+**Type:** Object
+
+Configures the encoding pipeline stages. See [Pipeline Configuration](#pipeline-configuration).
+
+### `sections` (required)
+**Type:** Array
+
+List of video sections to encode. See [Sections Configuration](#sections-configuration).
+
+### `laserdisc` (optional)
+**Type:** Object
+
+LaserDisc-specific metadata configuration.
+
+```yaml
+laserdisc:
+  mode: "cav"  # or "clv"
+```
+
+**Fields:**
+- `mode`: Either `"cav"` (Constant Angular Velocity with picture numbers) or `"clv"` (Constant Linear Velocity with timecode)
+
+---
+
+## Output Configuration
+
+The `output` section defines how the encoded video is written to disk.
+
+### `filename` (required)
+**Type:** String
+
+Output file path (without extension). Extensions are added automatically based on format.
+
+```yaml
+output:
+  filename: "output/my-video"
+```
+
+Results in:
+- Composite: `my-video.tbc` + `my-video.tbc.json`
+- Y/C: `my-video.tbcy`, `my-video.tbcc` + `my-video.tbc.json`
+
+### `format` (required)
+**Type:** String  
+**Values:** `"pal-composite"` | `"ntsc-composite"` | `"pal-yc"` | `"ntsc-yc"`
+
+Output format and video system.
+
+**Composite formats:**
+- `"pal-composite"` - PAL composite video (625 lines, 50 Hz)
+- `"ntsc-composite"` - NTSC composite video (525 lines, 59.94 Hz)
+
+**Y/C (S-Video) formats:**
+- `"pal-yc"` - PAL with separate luma/chroma channels
+- `"ntsc-yc"` - NTSC with separate luma/chroma channels
+
+### `mode` (optional)
+**Type:** String  
+**Default:** `"combined"`  
+**Values:** `"combined"` | `"separate-yc"`
+
+For Y/C formats, controls file output mode:
+- `"combined"` - Single interleaved file
+- `"separate-yc"` - Separate `.tbcy` (luma) and `.tbcc` (chroma) files
+
+### `writer` (optional)
+**Type:** String  
+**Default:** `"tbc"`  
+**Values:** `"tbc"` | `"standard"`
+
+Output writer type:
+- `"tbc"` - TBC format (8-bit per sample, field-based)
+- `"standard"` - Standard writer (alternative format)
+
+### `metadata_decoder` (optional)
+**Type:** String  
+**Default:** `"encode-orc"`
+
+Decoder identification string written to SQLite metadata.
+
+### `sound_format` (optional)
+**Type:** String  
+**Values:** `"pcm"` | `"wav"`
+
+Audio output format. Only required if sections include `sound` configuration.
+
+```yaml
+output:
+  filename: "output/video-with-audio"
+  format: "pal-composite"
+  sound_format: "pcm"
+```
+
+### `video_levels` (optional)
+**Type:** Object
+
+Override default video signal levels (advanced).
+
+```yaml
+output:
+  video_levels:
+    blanking_16b_ire: 4096    # 16-bit blanking level
+    black_16b_ire: 7168       # 16-bit black level
+    white_16b_ire: 52428      # 16-bit white level
+```
+
+**Fields:**
+- `blanking_16b_ire`: Blanking level (0-65535)
+- `black_16b_ire`: Black level (0-65535)
+- `white_16b_ire`: White/peak level (0-65535)
+
+---
+
+## Pipeline Configuration
+
+The `pipeline` section configures encoding stages and metadata generation.
+
+### `preprocessing` (optional)
+**Type:** Object
+
+Configures input preprocessing and filtering.
+
+#### `preprocessing.filters`
+
+Control chroma and luma filtering.
+
+```yaml
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true   # Enable chroma low-pass filter
+      luma:
+        enabled: false  # Disable luma filtering
+```
+
+**Chroma Filter:**
+- **Default:** Enabled
+- **Purpose:** Prevents chroma artifacts during subcarrier modulation
+- **Filter type:** Automatic based on video system
+  - PAL: 1.3 MHz Gaussian filter (13 taps)
+  - NTSC: 1.3 MHz filter (9 taps) or narrowband Q filter (23 taps)
+
+**Luma Filter:**
+- **Default:** Disabled
+- **Purpose:** Smooths luma transitions
+- **When to use:** For stylized looks or specific test scenarios
+
+### `metadata` (required)
+**Type:** Object
+
+Configures metadata generators that embed information into the video signal.
+
+#### `metadata.generators`
+
+Array of generator configurations. Each generator embeds specific metadata into VBI lines or active video.
+
+```yaml
+pipeline:
+  metadata:
+    generators:
+      - type: "color-burst"
+        enabled: true
+      
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [16, 17, 18, 328, 329, 330]
+        format: "picture-number"
+      
+      - type: "vitc"
+        enabled: true
+        lines: [19, 331]
+        start_frame_offset: 0
+```
+
+### Generator Types
+
+#### `color-burst` Generator
+
+Adds color burst reference signal for color decoders.
+
+```yaml
+- type: "color-burst"
+  enabled: true
+```
+
+**Required for:** All color video encoding  
+**No additional configuration needed**
+
+---
+
+#### `biphase-vbi` Generator
+
+Encodes LaserDisc metadata (picture numbers or timecode) using biphase modulation.
+
+```yaml
+- type: "biphase-vbi"
+  enabled: true
+  lines: [16, 17, 18, 328, 329, 330]  # Field 1 and Field 2 VBI lines
+  format: "picture-number"              # or "timecode"
+```
+
+**Fields:**
+- `enabled`: Enable/disable generator
+- `lines`: Array of absolute line numbers (0-indexed) to encode VBI data
+  - PAL: Lines 16-18 (field 1), 328-330 (field 2)
+  - NTSC: Lines 16-18 (field 1), 278-280 (field 2)
+- `format`: Data format
+  - `"picture-number"` - CAV frame numbering
+  - `"timecode"` - CLV timecode (HH:MM:SS:FF)
+
+**Used with:** LaserDisc encoding projects  
+**See also:** Section-level `biphase-vbi` configuration
+
+---
+
+#### `vitc` Generator
+
+Vertical Interval Timecode - embeds frame numbers and timecode in VBI.
+
+```yaml
+- type: "vitc"
+  enabled: true
+  lines: [19, 331]           # VBI lines for VITC
+  start_frame_offset: 0      # Starting frame number
+```
+
+**Fields:**
+- `enabled`: Enable/disable generator
+- `lines`: Array of absolute line numbers for VITC encoding
+- `start_frame_offset`: Starting frame number for timecode calculation
+
+**Common line numbers:**
+- PAL: Lines 19, 20, 331, 332
+- NTSC: Lines 14, 19, 276, 281
+
+---
+
+#### `vits-pal` Generator
+
+PAL Vertical Interval Test Signals - embeds standard test patterns in VBI.
+
+```yaml
+- type: "vits-pal"
+  enabled: true
+  signals:
+    - line: 13
+      signal: "multiburst"
+    - line: 19
+      signal: "uk-national"
+    - line: 325
+      signal: "itu-combination"
+    - line: 331
+      signal: "itu-composite"
+```
+
+**Fields:**
+- `enabled`: Enable/disable generator
+- `signals`: Array of signal configurations
+  - `line`: Absolute line number (1-625 for PAL)
+  - `signal`: Test signal type
+
+**PAL Signal Types:**
+- `"multiburst"` - Multiple frequency bursts for bandwidth testing
+- `"uk-national"` - UK national standard test signal
+- `"itu-combination"` - ITU combination test signal
+- `"itu-composite"` - ITU composite test signal
+
+**Use case:** Decoder testing and calibration
+
+---
+
+#### `vits-ntsc` Generator
+
+NTSC Vertical Interval Test Signals.
+
+```yaml
+- type: "vits-ntsc"
+  enabled: true
+  signals:
+    - line: 13
+      signal: "ntc7-composite"
+    - line: 19
+      signal: "vir"
+    - line: 275
+      signal: "ntc7-combination"
+    - line: 281
+      signal: "vir"
+```
+
+**Fields:**
+- `enabled`: Enable/disable generator
+- `signals`: Array of signal configurations
+  - `line`: Absolute line number (1-525 for NTSC)
+  - `signal`: Test signal type
+
+**NTSC Signal Types:**
+- `"ntc7-composite"` - NTC-7 composite test signal
+- `"ntc7-combination"` - NTC-7 combination test signal
+- `"vir"` - Vertical Interval Reference (VIR) signal for color stability
+- `"multiburst"` - Frequency burst pattern
+
+**Use case:** NTSC decoder testing and color reference
+
+---
+
+### `effects` (optional)
+**Type:** Object
+
+Simulates analog artifacts and signal degradation.
+
+```yaml
+pipeline:
+  effects:
+    - type: "noise"
+      enabled: true
+      snr_db: 42.0
+      seed: 42
+    
+    - type: "dropout"
+      enabled: true
+      density: 0.001
+      multi_field_probability: 0.30
+      single_field_probability: 0.70
+      seed: 123
+```
+
+### Effect Types
+
+#### `noise` Effect
+
+Adds Gaussian noise to simulate tape hiss or RF noise.
+
+```yaml
+- type: "noise"
+  enabled: true
+  snr_db: 42.0           # Signal-to-noise ratio in dB
+  seed: 42               # Random seed for reproducibility
+```
+
+**Fields:**
+- `enabled`: Enable/disable effect
+- `snr_db`: Signal-to-noise ratio in decibels
+  - Higher values = less noise (cleaner signal)
+  - Typical ranges: 35-50 dB (good quality), 18-30 dB (degraded)
+- `noise_level_db` (alternative): Direct noise level in dB
+- `seed`: Random seed (optional, for reproducible results)
+
+**Use case:** Simulating tape wear, RF interference, or playback quality
+
+---
+
+#### `dropout` Effect
+
+Simulates missing data from tape damage, scratches, or read errors.
+
+```yaml
+- type: "dropout"
+  enabled: true
+  density: 0.001                    # Overall dropout density
+  multi_field_probability: 0.30     # Probability of multi-field dropouts
+  single_field_probability: 0.70    # Probability of single-field dropouts
+  seed: 42
+```
+
+**Fields:**
+- `enabled`: Enable/disable effect
+- `density`: Fraction of video samples affected (0.0-1.0)
+  - 0.001 = ~0.1% dropout rate
+  - Typical: 0.0001-0.01 for light to moderate damage
+- `multi_field_probability`: Probability (0.0-1.0) of vertical scratches affecting multiple fields
+- `single_field_probability`: Probability (0.0-1.0) of single-field dropouts (disc degradation)
+- `seed`: Random seed (optional)
+
+**Use case:** Testing dropout compensation and error correction algorithms
+
+---
+
+#### `phase-error` Effect (Not implemented yet)
+
+Simulates phase instability in color signal (not yet implemented).
+
+```yaml
+- type: "phase-error"
+  enabled: true
+  phase_jitter_samples: 2.0    # Maximum phase deviation
+  frequency_hz: 50.0           # Modulation frequency
+  seed: 42
+```
+
+**Status:** Reserved for future implementation
+
+---
+
+## Sections Configuration
+
+The `sections` array defines video segments to encode. Each section represents a portion of the output video with specific source material and settings.
+
+### Section Fields
+
+```yaml
+sections:
+  - name: "Lead-in"
+    duration: 1
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "lead-in"
+```
+
+### `name` (required)
+**Type:** String
+
+Section identifier for logging and debugging.
+
+### `duration` (required for some source types)
+**Type:** Integer
+
+Duration in **frames** (not seconds).
+
+**Required for:**
+- `yuv422-image` sources (static images)
+- `png-image` sources (static images)
+
+**Optional/ignored for:**
+- `mov-file` sources (duration determined by video file)
+- `mp4-file` sources (duration determined by video file)
+
+**Frame counts:**
+- PAL: 25 frames/second
+- NTSC: ~29.97 frames/second (~30)
+
+Example: 10 seconds PAL = 250 frames
+
+### `source` (required)
+**Type:** Object
+
+Defines input media source. See [Source Types](#source-types).
+
+### `sound` (optional)
+**Type:** Array
+
+Audio sources for this section. See [Sound Configuration](#sound-configuration).
+
+### `biphase-vbi` (optional)
+**Type:** Object
+
+Section-specific LaserDisc metadata. See [Biphase VBI Configuration](#biphase-vbi-configuration).
+
+---
+
+## Source Types
+
+The `source` object defines input media format and location.
+
+### YUV422 Raw Image
+
+Static raw YUV422 image (10-bit or 8-bit per component).
+
+```yaml
+source:
+  type: "yuv422-image"
+  file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+```
+
+**Requirements:**
+- File must be raw YUV422 format
+- Resolution must match video system:
+  - PAL: 720×576 (or 702×576)
+  - NTSC: 720×480 (or 702×480)
+- Section must specify `duration`
+
+---
+
+### PNG Image
+
+Lossless PNG image file.
+
+```yaml
+source:
+  type: "png-image"
+  file: "testcard-images/pal-png/test-pattern.png"
+```
+
+**Requirements:**
+- Standard PNG format (RGB or RGBA)
+- Resolution should match target video system
+- Section must specify `duration`
+
+**Advantages:** Easy to create, widely supported
+
+---
+
+### MOV File
+
+QuickTime container with video codec.
+
+```yaml
+source:
+  type: "mov-file"
+  file: "testcard-images/pal-mov/video.mov"
+  start_frame: 0    # Optional: starting frame (0-indexed)
+```
+
+**Fields:**
+- `file`: Path to MOV file
+- `start_frame` (optional): Frame offset to begin reading (default: 0)
+
+**Supported codecs:**
+- ProRes
+- H.264
+- Other ffmpeg-compatible codecs
+
+**Duration:** Determined by video file length
+
+---
+
+### MP4 File
+
+MPEG-4 container with video codec.
+
+```yaml
+source:
+  type: "mp4-file"
+  file: "testcard-images/ntsc-mp4/video.mp4"
+  start_frame: 0    # Optional: starting frame (0-indexed)
+```
+
+**Fields:**
+- `file`: Path to MP4 file
+- `start_frame` (optional): Frame offset to begin reading (default: 0)
+
+**Supported codecs:**
+- H.264
+- H.265 (HEVC)
+- Other ffmpeg-compatible codecs
+
+**Duration:** Determined by video file length
+
+---
+
+## Sound Configuration
+
+Add audio to video sections. Multiple sound sources can be layered.
+
+```yaml
+sections:
+  - name: "Audio Test"
+    duration: 100
+    source:
+      type: "yuv422-image"
+      file: "testcard.raw"
+    sound:
+      - type: "sine"
+        start_freq_hz: 1000
+        end_freq_hz: 1000
+        hz_per_field: 0
+      
+      - type: "wav"
+        file: "audio/music.wav"
+```
+
+### Sine Wave Generator
+
+Generates synthetic sine wave tones.
+
+```yaml
+- type: "sine"
+  start_freq_hz: 440       # Starting frequency in Hz
+  end_freq_hz: 880         # Ending frequency in Hz
+  hz_per_field: 2          # Frequency change per field
+```
+
+**Fields:**
+- `start_freq_hz`: Initial frequency (Hz)
+- `end_freq_hz`: Final frequency (Hz)
+- `hz_per_field`: Frequency change per field (Hz/field)
+  - Positive = frequency sweep up
+  - Negative = frequency sweep down
+  - Zero = constant tone
+
+**Use cases:**
+- Constant tones for calibration
+- Frequency sweeps for testing
+- Multi-tone mixing
+
+---
+
+### WAV File
+
+Plays PCM audio from WAV file.
+
+```yaml
+- type: "wav"
+  file: "audio/soundtrack.wav"
+```
+
+**Fields:**
+- `file`: Path to WAV file
+
+**Requirements:**
+- Standard WAV format (PCM)
+- Sample rate: 48 kHz recommended
+- Channels: Mono or stereo
+- Audio loops if video is longer than audio file
+
+---
+
+## Biphase VBI Configuration
+
+Section-level LaserDisc metadata configuration. Used with `biphase-vbi` generator.
+
+```yaml
+sections:
+  - name: "Programme Content"
+    duration: 250
+    source:
+      type: "yuv422-image"
+      file: "testcard.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      picture_start: 1
+```
+
+### `disc_area` (required)
+**Type:** String  
+**Values:** `"lead-in"` | `"programme-area"` | `"lead-out"`
+
+LaserDisc disc region identifier.
+
+- `"lead-in"` - Start of disc (before content)
+- `"programme-area"` - Main content area
+- `"lead-out"` - End of disc (after content)
+
+### CAV Mode Fields
+
+For Constant Angular Velocity (CAV) discs with picture numbering.
+
+```yaml
+biphase-vbi:
+  disc_area: "programme-area"
+  picture_start: 1            # Starting frame number
+```
+
+**Fields:**
+- `picture_start`: First picture/frame number for this section
+
+Picture numbers increment automatically: frame 1, 2, 3, etc.
+
+### CLV Mode Fields
+
+For Constant Linear Velocity (CLV) discs with timecode.
+
+```yaml
+biphase-vbi:
+  disc_area: "programme-area"
+  chapter: 1                        # Chapter number
+  timecode_start: "00:00:00:00"     # Starting timecode (HH:MM:SS:FF)
+```
+
+**Fields:**
+- `chapter`: Chapter/track number
+- `timecode_start`: Starting timecode in format `HH:MM:SS:FF`
+  - HH: Hours (00-99)
+  - MM: Minutes (00-59)
+  - SS: Seconds (00-59)
+  - FF: Frames (00-24 PAL, 00-29 NTSC)
+
+Timecode increments automatically based on frame rate.
+
+---
+
+## Complete Examples
+
+### Basic PAL Composite
+
+```yaml
+name: "Simple PAL Test"
+description: "Basic PAL composite encoding"
+
+output:
+  filename: "output/pal-basic"
+  format: "pal-composite"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+  metadata:
+    generators:
+      - type: "color-burst"
+        enabled: true
+
+sections:
+  - name: "Content"
+    duration: 250  # 10 seconds at 25fps
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+```
+
+### NTSC with Effects
+
+```yaml
+name: "NTSC with Noise and Dropouts"
+description: "Simulates degraded VHS tape"
+
+output:
+  filename: "output/ntsc-degraded"
+  format: "ntsc-composite"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+  
+  metadata:
+    generators:
+      - type: "color-burst"
+        enabled: true
+      - type: "vitc"
+        enabled: true
+        lines: [14, 276]
+        start_frame_offset: 0
+  
+  effects:
+    - type: "noise"
+      enabled: true
+      snr_db: 30.0
+      seed: 42
+    
+    - type: "dropout"
+      enabled: true
+      density: 0.005
+      multi_field_probability: 0.20
+      single_field_probability: 0.80
+      seed: 123
+
+sections:
+  - name: "Test Pattern"
+    duration: 300  # ~10 seconds at ~30fps
+    source:
+      type: "png-image"
+      file: "testcard-images/ntsc-png/smpte-bars.png"
+```
+
+### PAL LaserDisc CAV with VITS
+
+```yaml
+name: "PAL LaserDisc CAV"
+description: "LaserDisc with test signals and frame numbering"
+
+output:
+  filename: "output/laserdisc-cav"
+  format: "pal-composite"
+
+laserdisc:
+  mode: "cav"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+  
+  metadata:
+    generators:
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [16, 17, 18, 328, 329, 330]
+        format: "picture-number"
+      
+      - type: "vits-pal"
+        enabled: true
+        signals:
+          - line: 13
+            signal: "multiburst"
+          - line: 19
+            signal: "uk-national"
+          - line: 325
+            signal: "itu-combination"
+      
+      - type: "color-burst"
+        enabled: true
+
+sections:
+  - name: "Lead-in"
+    duration: 1
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "lead-in"
+  
+  - name: "Content"
+    duration: 500
+    source:
+      type: "mov-file"
+      file: "video/content.mov"
+      start_frame: 0
+    biphase-vbi:
+      disc_area: "programme-area"
+      picture_start: 1
+  
+  - name: "Lead-out"
+    duration: 1
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "lead-out"
+```
+
+### Y/C Output with Audio
+
+```yaml
+name: "PAL Y/C with Audio"
+description: "Separate luma/chroma output with soundtrack"
+
+output:
+  filename: "output/yc-audio"
+  format: "pal-yc"
+  sound_format: "pcm"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+  
+  metadata:
+    generators:
+      - type: "vitc"
+        enabled: true
+        lines: [19, 20, 331, 332]
+        start_frame_offset: 0
+      - type: "color-burst"
+        enabled: true
+
+sections:
+  - name: "Intro"
+    duration: 125  # 5 seconds
+    source:
+      type: "png-image"
+      file: "images/title.png"
+    sound:
+      - type: "sine"
+        start_freq_hz: 1000
+        end_freq_hz: 1000
+        hz_per_field: 0
+  
+  - name: "Main Content"
+    duration: 500  # 20 seconds
+    source:
+      type: "mp4-file"
+      file: "video/main.mp4"
+      start_frame: 0
+    sound:
+      - type: "wav"
+        file: "audio/soundtrack.wav"
+```
+
+---
+
+## See Also
+
+- [Examples](examples/) - Real-world YAML configurations
+- [Input Formats](input-formats/) - Detailed source format information
+- [Output Formats](output-formats/) - TBC file specifications
+- [Video Formats](video-formats/) - PAL/NTSC technical details
