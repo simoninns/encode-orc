@@ -94,6 +94,11 @@ private:
      * @brief Write vbi table
      */
     bool write_vbi(const CaptureMetadata& metadata);
+
+    /**
+     * @brief Write pcm_audio_parameters table
+     */
+    bool write_audio_params(const CaptureMetadata& metadata);
     
     /**
      * @brief Write drop_outs table

@@ -168,6 +168,11 @@ Field VideoEncoderPipeline::encode_field_from_yuv(const Field& field_yuv,
     );
     
     Field field = std::move(structured.field_data);
+
+    // Preserve any audio attached to the input field
+    if (field_yuv.has_audio()) {
+        field.set_audio(field_yuv.audio());
+    }
     
     // Get YUV plane info early (needed for field_width)
     int32_t field_width = field_yuv.width();

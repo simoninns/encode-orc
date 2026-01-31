@@ -88,6 +88,7 @@ set(SOURCES
     src/utils/logging.cpp
     src/config/yaml_config.cpp
     src/pipeline/writers/metadata_writer.cpp
+    src/pipeline/writers/audio_writer.cpp
     src/pipeline/metadata_generators/metadata_generator.cpp
     src/pipeline/metadata_generators/color_burst_generator.cpp
     src/pipeline/field_splitting/field_splitter.cpp

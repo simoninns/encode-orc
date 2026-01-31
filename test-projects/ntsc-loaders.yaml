@@ -46,6 +46,16 @@ sections:
       disc_area: "programme-area"
       picture_start: 1
 
+  - name: "MOV File Loader"
+    duration: 5
+    source:
+      type: "mov-file"
+      file: "testcard-images/ntsc-mov/525_5994_MOVING_ZONE_2H.mov"
+      start_frame: 0
+    biphase-vbi:
+      disc_area: "programme-area"
+      picture_start: 6
+
   - name: "PNG Image Loader"
     duration: 5
     source:
@@ -53,7 +63,7 @@ sections:
       file: "testcard-images/ntsc-wrwetzel-png/NTSC-720x480-Color-One-White.png"
     biphase-vbi:
       disc_area: "programme-area"
-      picture_start: 6
+      picture_start: 11
 
   - name: "MP4 File Loader"
     duration: 10
@@ -63,4 +73,4 @@ sections:
       start_frame: 0
     biphase-vbi:
       disc_area: "programme-area"
-      picture_start: 11
+      picture_start: 16

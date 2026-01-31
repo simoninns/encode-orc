@@ -51,6 +51,21 @@ bool generate_metadata(const YAMLProjectConfig& config,
         combined.initialize(system, total_fields);
         combined.video_params = params;
         combined.video_params.number_of_sequential_fields = total_fields;
+
+        // Configure PCM audio metadata if sound is enabled
+        if (config.output.sound_format.has_value()) {
+            PCMAudioParameters audio_params;
+            audio_params.bits = 16;
+            audio_params.is_signed = true;
+            audio_params.is_little_endian = true;
+            audio_params.sample_rate = 44100.0;
+            combined.audio_params = audio_params;
+
+            int32_t samples_per_field = (system == VideoSystem::PAL) ? 882 : 735;  // 44.1 kHz / (fields per second)
+            for (auto& field : combined.fields) {
+                field.audio_samples = samples_per_field;
+            }
+        }
         
         // Determine if VBI data is needed from pipeline configuration
         bool include_vbi = false;

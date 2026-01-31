@@ -206,6 +206,21 @@ struct MP4FileSource {
 };
 
 /**
+ * @brief Sound configuration for a section
+ */
+struct SoundConfig {
+    std::string type;  // "sine" or "wav"
+
+    // For sine:
+    std::optional<double> start_freq_hz;
+    std::optional<double> end_freq_hz;
+    std::optional<double> hz_per_field;
+
+    // For wav:
+    std::optional<std::string> file;
+};
+
+/**
  * @brief Video section configuration
  */
 struct VideoSection {
@@ -219,6 +234,9 @@ struct VideoSection {
     std::optional<MP4FileSource> mp4_file_source;
     
     std::optional<FilterConfig> filters;  // Optional filter settings
+
+    // Optional sound configuration
+    std::vector<SoundConfig> sound;
     
     // Generator-specific metadata (matches pipeline generator types)
     std::optional<BiphaseVBIConfig> biphase_vbi;  // For biphase-vbi generator (LaserDisc)
@@ -243,6 +261,7 @@ struct OutputConfig {
     std::string writer = "tbc";  // tbc (default), standard
     std::string metadata_decoder = "encode-orc";  // decoder string in metadata (default: encode-orc)
     std::optional<VideoLevelsConfig> video_levels;  // Optional: override video signal levels
+    std::optional<std::string> sound_format;  // Optional: "pcm" or "wav"
 };
 
 /**

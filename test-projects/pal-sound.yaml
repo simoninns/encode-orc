@@ -1,0 +1,71 @@
+name: "PAL Sound Test"
+description: "PAL project to test analogue sound output with WAV input"
+
+output:
+  filename: "test-output/pal-sound"
+  format: "pal-composite"
+  sound_format: "pcm"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+  metadata:
+    generators:
+      - type: "color-burst"
+        enabled: true
+
+sections:
+  - name: "WAV Test"
+    duration: 10
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    sound:
+      - type: "wav"
+        file: "testcard-images/sound/organ.wav"
+
+  - name: "Low Tone"
+    duration: 10
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    sound:
+      - type: "sine"
+        start_freq_hz: 100
+        end_freq_hz: 100
+        hz_per_field: 0
+
+  - name: "High Tone"
+    duration: 10
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    sound:
+      - type: "sine"
+        start_freq_hz: 8000
+        end_freq_hz: 8000
+        hz_per_field: 0
+
+  - name: "Sweep Up"
+    duration: 20
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    sound:
+      - type: "sine"
+        start_freq_hz: 20
+        end_freq_hz: 20000
+        hz_per_field: 5
+
+  - name: "Sweep Down"
+    duration: 20
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    sound:
+      - type: "sine"
+        start_freq_hz: 20000
+        end_freq_hz: 20
+        hz_per_field: -5

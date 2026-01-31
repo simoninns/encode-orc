@@ -44,6 +44,9 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
             if (output["metadata_decoder"]) {
                 config.output.metadata_decoder = output["metadata_decoder"].as<std::string>();
             }
+            if (output["sound_format"]) {
+                config.output.sound_format = output["sound_format"].as<std::string>();
+            }
             
             // Parse optional video levels override
             if (output["video_levels"]) {
@@ -320,6 +323,34 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                     
                     section.filters = fc;
                 }
+
+                // Parse sound configuration
+                if (sec_node["sound"] && sec_node["sound"].IsSequence()) {
+                    for (const auto& sound_node : sec_node["sound"]) {
+                        SoundConfig sound_cfg;
+                        if (sound_node["type"]) {
+                            sound_cfg.type = sound_node["type"].as<std::string>();
+                        }
+
+                        if (sound_cfg.type == "sine") {
+                            if (sound_node["start_freq_hz"]) {
+                                sound_cfg.start_freq_hz = sound_node["start_freq_hz"].as<double>();
+                            }
+                            if (sound_node["end_freq_hz"]) {
+                                sound_cfg.end_freq_hz = sound_node["end_freq_hz"].as<double>();
+                            }
+                            if (sound_node["hz_per_field"]) {
+                                sound_cfg.hz_per_field = sound_node["hz_per_field"].as<double>();
+                            }
+                        } else if (sound_cfg.type == "wav") {
+                            if (sound_node["file"]) {
+                                sound_cfg.file = sound_node["file"].as<std::string>();
+                            }
+                        }
+
+                        section.sound.push_back(sound_cfg);
+                    }
+                }
                 
                 // Parse section-level biphase VBI configuration
                 // Support both "biphase-vbi:" (new) and "laserdisc:" (legacy)
@@ -422,6 +453,14 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
         error_message = "Invalid output writer: " + config.output.writer + " (must be 'tbc' or 'standard')";
         return false;
     }
+
+    if (config.output.sound_format.has_value()) {
+        const auto& sound_format = config.output.sound_format.value();
+        if (sound_format != "pcm" && sound_format != "wav") {
+            error_message = "Invalid sound_format: " + sound_format + " (must be 'pcm' or 'wav')";
+            return false;
+        }
+    }
     
     if (config.sections.empty()) {
         error_message = "At least one section is required";
@@ -520,6 +559,30 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
             }
             // Note: duration is optional - if omitted, all frames from start_frame to end will be used
             // However, this requires file probing at runtime
+        }
+
+        // Validate sound configuration
+        for (const auto& sound_cfg : section.sound) {
+            if (!config.output.sound_format.has_value()) {
+                error_message = "output.sound_format is required when sound is configured (section: " + section.name + ")";
+                return false;
+            }
+            if (sound_cfg.type != "sine" && sound_cfg.type != "wav") {
+                error_message = "Invalid sound type '" + sound_cfg.type + "' in section: " + section.name;
+                return false;
+            }
+            if (sound_cfg.type == "sine") {
+                if (!sound_cfg.start_freq_hz.has_value() || !sound_cfg.end_freq_hz.has_value() || !sound_cfg.hz_per_field.has_value()) {
+                    error_message = "Sound type 'sine' requires start_freq_hz, end_freq_hz, and hz_per_field in section: " + section.name;
+                    return false;
+                }
+            }
+            if (sound_cfg.type == "wav") {
+                if (!sound_cfg.file.has_value()) {
+                    error_message = "Sound type 'wav' requires file in section: " + section.name;
+                    return false;
+                }
+            }
         }
         
         // Validate Biphase VBI picture numbers if specified

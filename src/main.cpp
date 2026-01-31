@@ -24,11 +24,245 @@
 #include "tbc_writer.h"
 #include "yc_tbc_writer.h"
 #include "standard_writer.h"
+#include "audio_writer.h"
 #include "version.h"
 #include <iostream>
 #include <fstream>
 #include <cstdio>
 #include <memory>
+#include <array>
+#include <sstream>
+#include <cstring>
+#include <cmath>
+#include <filesystem>
+#include <chrono>
+
+namespace {
+
+struct AudioSource {
+    enum class Type { Sine, PCM };
+    Type type = Type::Sine;
+
+    // Sine parameters
+    double current_freq = 0.0;
+    double end_freq = 0.0;
+    double hz_per_field = 0.0;
+    double phase = 0.0;
+
+    // PCM data
+    std::vector<int16_t> pcm;
+    size_t cursor = 0;
+};
+
+int16_t clamp_int16(int32_t value) {
+    if (value > 32767) return 32767;
+    if (value < -32768) return -32768;
+    return static_cast<int16_t>(value);
+}
+
+std::vector<int16_t> generate_field_audio(std::vector<AudioSource>& sources,
+                                          int32_t samples_per_field,
+                                          int32_t sample_rate) {
+    const int32_t sample_values = samples_per_field * 2;  // Stereo interleaved
+    std::vector<int32_t> mix(sample_values, 0);
+
+    if (sources.empty()) {
+        return std::vector<int16_t>(sample_values, 0);
+    }
+
+    constexpr double kAmplitude = 0.8 * 32767.0;
+    constexpr double kTwoPi = 6.28318530717958647692;
+
+    for (auto& source : sources) {
+        if (source.type == AudioSource::Type::Sine) {
+            double freq = source.current_freq;
+            double phase = source.phase;
+            double phase_step = kTwoPi * freq / static_cast<double>(sample_rate);
+
+            for (int32_t i = 0; i < samples_per_field; ++i) {
+                int32_t sample = static_cast<int32_t>(std::sin(phase) * kAmplitude);
+                mix[i * 2] += sample;
+                mix[i * 2 + 1] += sample;
+                phase += phase_step;
+                if (phase >= kTwoPi) {
+                    phase -= kTwoPi;
+                }
+            }
+
+            source.phase = phase;
+
+            // Update frequency for next field
+            if (source.hz_per_field != 0.0) {
+                double next_freq = source.current_freq + source.hz_per_field;
+                if (source.hz_per_field > 0.0) {
+                    source.current_freq = (next_freq > source.end_freq) ? source.end_freq : next_freq;
+                } else {
+                    source.current_freq = (next_freq < source.end_freq) ? source.end_freq : next_freq;
+                }
+            }
+        } else {
+            for (int32_t i = 0; i < samples_per_field; ++i) {
+                int16_t left = 0;
+                int16_t right = 0;
+                if (source.cursor + 1 < source.pcm.size()) {
+                    left = source.pcm[source.cursor++];
+                    right = source.pcm[source.cursor++];
+                }
+                mix[i * 2] += left;
+                mix[i * 2 + 1] += right;
+            }
+        }
+    }
+
+    std::vector<int16_t> output(sample_values, 0);
+    for (int32_t i = 0; i < sample_values; ++i) {
+        output[i] = clamp_int16(mix[i]);
+    }
+    return output;
+}
+
+bool read_file_to_pcm(const std::string& filename, std::vector<int16_t>& out_pcm, std::string& error_message) {
+    std::ifstream file(filename, std::ios::binary);
+    if (!file.is_open()) {
+        error_message = "Failed to open audio file: " + filename;
+        return false;
+    }
+
+    file.seekg(0, std::ios::end);
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    if (size <= 0 || size % sizeof(int16_t) != 0) {
+        error_message = "Invalid PCM file size: " + filename;
+        return false;
+    }
+
+    out_pcm.resize(static_cast<size_t>(size / sizeof(int16_t)));
+    file.read(reinterpret_cast<char*>(out_pcm.data()), size);
+    return file.good();
+}
+
+bool load_wav_file(const std::string& filename, std::vector<int16_t>& out_pcm, std::string& error_message) {
+    std::ifstream file(filename, std::ios::binary);
+    if (!file.is_open()) {
+        error_message = "Failed to open WAV file: " + filename;
+        return false;
+    }
+
+    char riff[4];
+    uint32_t riff_size = 0;
+    char wave[4];
+
+    file.read(riff, 4);
+    file.read(reinterpret_cast<char*>(&riff_size), 4);
+    file.read(wave, 4);
+
+    if (std::memcmp(riff, "RIFF", 4) != 0 || std::memcmp(wave, "WAVE", 4) != 0) {
+        error_message = "Invalid WAV header: " + filename;
+        return false;
+    }
+
+    (void)riff_size;
+
+    uint16_t audio_format = 0;
+    uint16_t channels = 0;
+    uint32_t sample_rate = 0;
+    uint16_t bits_per_sample = 0;
+    bool found_fmt = false;
+    bool found_data = false;
+    uint32_t data_size = 0;
+    std::streampos data_pos = 0;
+
+    while (file && (!found_fmt || !found_data)) {
+        char chunk_id[4];
+        uint32_t chunk_size = 0;
+        file.read(chunk_id, 4);
+        file.read(reinterpret_cast<char*>(&chunk_size), 4);
+        if (!file) break;
+
+        if (std::memcmp(chunk_id, "fmt ", 4) == 0) {
+            found_fmt = true;
+            file.read(reinterpret_cast<char*>(&audio_format), 2);
+            file.read(reinterpret_cast<char*>(&channels), 2);
+            file.read(reinterpret_cast<char*>(&sample_rate), 4);
+            uint32_t byte_rate = 0;
+            uint16_t block_align = 0;
+            file.read(reinterpret_cast<char*>(&byte_rate), 4);
+            file.read(reinterpret_cast<char*>(&block_align), 2);
+            file.read(reinterpret_cast<char*>(&bits_per_sample), 2);
+
+            (void)byte_rate;
+            (void)block_align;
+
+            if (chunk_size > 16) {
+                file.seekg(chunk_size - 16, std::ios::cur);
+            }
+        } else if (std::memcmp(chunk_id, "data", 4) == 0) {
+            found_data = true;
+            data_size = chunk_size;
+            data_pos = file.tellg();
+            file.seekg(chunk_size, std::ios::cur);
+        } else {
+            file.seekg(chunk_size, std::ios::cur);
+        }
+    }
+
+    if (!found_fmt || !found_data) {
+        error_message = "Missing fmt or data chunk in WAV file: " + filename;
+        return false;
+    }
+
+    if (audio_format != 1 || channels != 2 || sample_rate != 44100 || bits_per_sample != 16) {
+        error_message = "WAV must be 44.1kHz 16-bit stereo PCM: " + filename;
+        return false;
+    }
+
+    if (data_size % sizeof(int16_t) != 0) {
+        error_message = "Invalid WAV data size: " + filename;
+        return false;
+    }
+
+    out_pcm.resize(data_size / sizeof(int16_t));
+    file.seekg(data_pos, std::ios::beg);
+    file.read(reinterpret_cast<char*>(out_pcm.data()), data_size);
+    return file.good();
+}
+
+bool extract_mp4_audio_pcm(const std::string& filename, std::vector<int16_t>& out_pcm, std::string& error_message) {
+    std::filesystem::path temp_dir = std::filesystem::temp_directory_path();
+    auto timestamp = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+    std::filesystem::path temp_file = temp_dir / ("encode_orc_audio_" + std::to_string(timestamp) + ".pcm");
+
+    std::ostringstream cmd;
+    cmd << "ffmpeg -v error -i \"" << filename << "\" "
+        << "-vn -ac 2 -ar 44100 -f s16le -acodec pcm_s16le -y \""
+        << temp_file.string() << "\" 2>&1";
+
+    std::array<char, 256> buffer;
+    std::string ffmpeg_output;
+    FILE* pipe = popen(cmd.str().c_str(), "r");
+    if (!pipe) {
+        error_message = "Failed to run ffmpeg for audio extraction";
+        return false;
+    }
+
+    while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+        ffmpeg_output += buffer.data();
+    }
+
+    int return_code = pclose(pipe);
+    if (return_code != 0) {
+        error_message = "ffmpeg audio extraction failed: " + ffmpeg_output;
+        return false;
+    }
+
+    bool ok = read_file_to_pcm(temp_file.string(), out_pcm, error_message);
+    std::error_code ec;
+    std::filesystem::remove(temp_file, ec);
+    return ok;
+}
+
+} // namespace
 
 int main(int argc, char* argv[]) {
     using namespace encode_orc;
@@ -296,6 +530,29 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Open audio writer if sound output is enabled
+    std::unique_ptr<AudioWriter> audio_writer;
+    bool sound_enabled = config.output.sound_format.has_value();
+    int32_t samples_per_field = (system == VideoSystem::PAL) ? 882 : 735;
+    if (sound_enabled) {
+        std::string audio_base = output_filename;
+        if (audio_base.size() >= 4 && audio_base.substr(audio_base.size() - 4) == ".tbc") {
+            audio_base = audio_base.substr(0, audio_base.size() - 4);
+        }
+        std::string audio_ext = (config.output.sound_format.value() == "wav") ? ".wav" : ".pcm";
+        std::string audio_filename = audio_base + audio_ext;
+
+        audio_writer = std::make_unique<AudioWriter>();
+        AudioWriter::Format audio_format = (config.output.sound_format.value() == "wav")
+            ? AudioWriter::Format::WAV
+            : AudioWriter::Format::PCM;
+
+        if (!audio_writer->open(audio_filename, audio_format, 44100, 2, 16)) {
+            ENCODE_ORC_LOG_ERROR("Could not open audio output file: {}", audio_filename);
+            return 1;
+        }
+    }
+
     // Open output writer
     std::unique_ptr<Writer> writer;
     std::unique_ptr<YCTBCWriter> yc_writer;
@@ -359,6 +616,42 @@ int main(int argc, char* argv[]) {
 
     for (const auto& section : config.sections) {
         ENCODE_ORC_LOG_INFO("Encoding section: {}", section.name);
+
+        // Prepare audio sources for this section
+        std::vector<AudioSource> audio_sources;
+        if (sound_enabled) {
+            if (!section.sound.empty()) {
+                for (const auto& sound_cfg : section.sound) {
+                    if (sound_cfg.type == "sine") {
+                        AudioSource src;
+                        src.type = AudioSource::Type::Sine;
+                        src.current_freq = sound_cfg.start_freq_hz.value();
+                        src.end_freq = sound_cfg.end_freq_hz.value();
+                        src.hz_per_field = sound_cfg.hz_per_field.value();
+                        src.phase = 0.0;
+                        audio_sources.push_back(std::move(src));
+                    } else if (sound_cfg.type == "wav") {
+                        AudioSource src;
+                        src.type = AudioSource::Type::PCM;
+                        std::string wav_error;
+                        if (!load_wav_file(sound_cfg.file.value(), src.pcm, wav_error)) {
+                            ENCODE_ORC_LOG_ERROR("Failed to load WAV audio for section '{}': {}", section.name, wav_error);
+                            return 1;
+                        }
+                        audio_sources.push_back(std::move(src));
+                    }
+                }
+            } else if (section.mp4_file_source) {
+                AudioSource src;
+                src.type = AudioSource::Type::PCM;
+                std::string mp4_error;
+                if (!extract_mp4_audio_pcm(section.mp4_file_source->file, src.pcm, mp4_error)) {
+                    ENCODE_ORC_LOG_ERROR("Failed to extract MP4 audio for section '{}': {}", section.name, mp4_error);
+                    return 1;
+                }
+                audio_sources.push_back(std::move(src));
+            }
+        }
 
         // Track actual number of frames encoded in this section
         int32_t section_frames = 0;
@@ -606,7 +899,7 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
 
-            auto encode_frame = [&](const FrameBuffer& frame_buffer, int32_t section_frame) -> bool {
+            auto encode_frame = [&](FrameBuffer& frame_buffer, int32_t section_frame) -> bool {
                 int32_t global_frame = frame_offset + section_frame;
                 int32_t field_number = global_frame * 2;
 
@@ -614,6 +907,18 @@ int main(int argc, char* argv[]) {
                 if (needs_vbi_data && field_number < static_cast<int32_t>(pre_metadata.vbi_data.size()) &&
                     pre_metadata.vbi_data[field_number].has_value()) {
                     vbi_data = &pre_metadata.vbi_data[field_number].value();
+                }
+
+                // Attach audio to the frame (if enabled)
+                if (sound_enabled) {
+                    auto field1_audio = generate_field_audio(audio_sources, samples_per_field, 44100);
+                    auto field2_audio = generate_field_audio(audio_sources, samples_per_field, 44100);
+
+                    std::vector<int16_t> frame_audio;
+                    frame_audio.reserve(field1_audio.size() + field2_audio.size());
+                    frame_audio.insert(frame_audio.end(), field1_audio.begin(), field1_audio.end());
+                    frame_audio.insert(frame_audio.end(), field2_audio.begin(), field2_audio.end());
+                    frame_buffer.set_audio(std::move(frame_audio));
                 }
 
                 Frame encoded_frame = pipeline->encode_frame(frame_buffer, field_number, vbi_data);
@@ -643,6 +948,15 @@ int main(int argc, char* argv[]) {
                     // Write composite fields normally
                     if (!writer->write_field(encoded_frame.field1()) || !writer->write_field(encoded_frame.field2())) {
                         ENCODE_ORC_LOG_ERROR("Failed to write encoded fields for frame {}", global_frame);
+                        return false;
+                    }
+                }
+
+                // Write audio samples (if enabled)
+                if (sound_enabled && audio_writer) {
+                    if (!audio_writer->write_samples(encoded_frame.field1().audio()) ||
+                        !audio_writer->write_samples(encoded_frame.field2().audio())) {
+                        ENCODE_ORC_LOG_ERROR("Failed to write audio for frame {}", global_frame);
                         return false;
                     }
                 }
@@ -801,6 +1115,9 @@ int main(int argc, char* argv[]) {
     }
     if (writer) {
         writer->close();
+    }
+    if (audio_writer) {
+        audio_writer->close();
     }
     
     // Generate metadata for entire file (only for TBC writer, not standard writer)

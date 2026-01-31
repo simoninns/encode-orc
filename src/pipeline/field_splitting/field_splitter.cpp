@@ -102,6 +102,22 @@ FieldSplitter::FieldPair FieldSplitter::split_frame(const FrameBuffer& frame,
     std::memcpy(field2_data, field2_y.data(), field2_pixel_count * sizeof(uint16_t));
     std::memcpy(field2_data + field2_pixel_count, field2_u.data(), field2_pixel_count * sizeof(uint16_t));
     std::memcpy(field2_data + (field2_pixel_count * 2), field2_v.data(), field2_pixel_count * sizeof(uint16_t));
+
+    // Split audio (if present) into field audio samples
+    if (frame.has_audio()) {
+        const auto& frame_audio = frame.audio();
+        int32_t samples_per_field = (params.system == VideoSystem::PAL) ? 882 : 735;
+        int32_t samples_per_frame = samples_per_field * 2;  // Two fields per frame
+        int32_t required_audio_values = samples_per_frame * 2;  // Stereo interleaved
+
+        if (static_cast<int32_t>(frame_audio.size()) >= required_audio_values) {
+            std::vector<int16_t> field1_audio(frame_audio.begin(), frame_audio.begin() + samples_per_field * 2);
+            std::vector<int16_t> field2_audio(frame_audio.begin() + samples_per_field * 2,
+                                              frame_audio.begin() + samples_per_field * 4);
+            result.field1.set_audio(std::move(field1_audio));
+            result.field2.set_audio(std::move(field2_audio));
+        }
+    }
     
     return result;
 }

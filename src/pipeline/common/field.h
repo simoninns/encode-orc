@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <vector>
 #include <memory>
+#include <utility>
 
 namespace encode_orc {
 
@@ -39,6 +40,48 @@ public:
      */
     Field(int32_t width, int32_t height)
         : width_(width), height_(height), data_(width * height, 0) {}
+
+    /**
+     * @brief Check if this field has audio samples attached
+     */
+    bool has_audio() const {
+        return !audio_.empty();
+    }
+
+    /**
+     * @brief Get audio samples (interleaved stereo, 16-bit PCM)
+     */
+    std::vector<int16_t>& audio() {
+        return audio_;
+    }
+
+    /**
+     * @brief Get audio samples (const)
+     */
+    const std::vector<int16_t>& audio() const {
+        return audio_;
+    }
+
+    /**
+     * @brief Set audio samples (copy)
+     */
+    void set_audio(const std::vector<int16_t>& audio) {
+        audio_ = audio;
+    }
+
+    /**
+     * @brief Set audio samples (move)
+     */
+    void set_audio(std::vector<int16_t>&& audio) {
+        audio_ = std::move(audio);
+    }
+
+    /**
+     * @brief Clear audio samples
+     */
+    void clear_audio() {
+        audio_.clear();
+    }
     
     /**
      * @brief Check if this field has separate Y/C representations
@@ -176,6 +219,9 @@ private:
     int32_t width_ = 0;
     int32_t height_ = 0;
     std::vector<uint16_t> data_;
+
+    // Optional interleaved stereo PCM audio samples (16-bit)
+    std::vector<int16_t> audio_;
     
     // Optional separate Y and C representations (for Y/C output)
     // Using unique_ptr to avoid forward declaration issues

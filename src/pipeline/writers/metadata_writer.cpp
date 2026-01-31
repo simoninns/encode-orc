@@ -60,6 +60,7 @@ bool MetadataWriter::create_schema() {
     const char* drop_sql = R"(
         DROP TABLE IF EXISTS drop_outs;
         DROP TABLE IF EXISTS vbi;
+        DROP TABLE IF EXISTS pcm_audio_parameters;
         DROP TABLE IF EXISTS field_record;
         DROP TABLE IF EXISTS capture;
     )";
@@ -92,6 +93,15 @@ bool MetadataWriter::create_schema() {
             black_16b_ire INTEGER,
             blanking_16b_ire INTEGER,
             capture_notes TEXT
+        );
+
+        CREATE TABLE pcm_audio_parameters (
+            capture_id INTEGER PRIMARY KEY
+                REFERENCES capture(capture_id) ON DELETE CASCADE,
+            bits INTEGER,
+            is_signed INTEGER CHECK (is_signed IN (0,1)),
+            is_little_endian INTEGER CHECK (is_little_endian IN (0,1)),
+            sample_rate REAL
         );
         
         CREATE TABLE field_record (
@@ -272,6 +282,27 @@ bool MetadataWriter::write_vbi(const CaptureMetadata& metadata) {
     return execute_sql("COMMIT;");
 }
 
+bool MetadataWriter::write_audio_params(const CaptureMetadata& metadata) {
+    if (!metadata.audio_params.has_value()) {
+        return true;  // No audio params to write
+    }
+
+    const auto& audio = metadata.audio_params.value();
+    std::ostringstream sql;
+    sql.precision(17);
+    sql << "INSERT INTO pcm_audio_parameters ("
+        << "capture_id, bits, is_signed, is_little_endian, sample_rate"
+        << ") VALUES ("
+        << metadata.capture_id << ", "
+        << audio.bits << ", "
+        << (audio.is_signed ? 1 : 0) << ", "
+        << (audio.is_little_endian ? 1 : 0) << ", "
+        << audio.sample_rate
+        << ");";
+
+    return execute_sql(sql.str().c_str());
+}
+
 bool MetadataWriter::write_dropouts(const CaptureMetadata& metadata) {
     if (metadata.dropouts.empty()) {
         return true;  // No dropouts to write
@@ -308,6 +339,11 @@ bool MetadataWriter::write_metadata(const CaptureMetadata& metadata) {
     
     // Write capture record
     if (!write_capture(metadata)) {
+        return false;
+    }
+
+    // Write PCM audio parameters if present
+    if (!write_audio_params(metadata)) {
         return false;
     }
     

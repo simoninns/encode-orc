@@ -66,6 +66,69 @@ The three top-level blocks (`output`, `laserdisc`, `sections`) are required. All
 
 ---
 
+## Analogue Sound (PCM/WAV)
+
+encode-orc can generate analogue sound as **44.1 kHz, 16-bit stereo PCM** and optionally write a WAV header.
+
+Enable audio output in the `output` block:
+
+```yaml
+output:
+  filename: "output.tbc"
+  format: "pal-composite"
+  sound_format: "wav"   # "pcm" or "wav"
+```
+
+Audio file naming:
+- If `sound_format: "pcm"`, output is `output.pcm`
+- If `sound_format: "wav"`, output is `output.wav`
+
+If audio is enabled and **no sound is defined for a section**, encode-orc generates **silence** by default.
+The exception is MP4 sources, where the audio track is extracted automatically if no `sound` block is present.
+
+### Section Sound Configuration
+
+Each section can define a `sound` list. Supported types:
+
+#### 1) Sine generator
+
+Generates a sine tone or sweep. Frequency can change **per field**.
+
+```yaml
+sections:
+  - name: "Tone Sweep"
+    duration: 100
+    source:
+      type: "png-image"
+      file: "colorbars.png"
+    sound:
+      - type: "sine"
+        start_freq_hz: 20
+        end_freq_hz: 20000
+        hz_per_field: 5
+```
+
+#### 2) WAV input
+
+Use a WAV file as the audio source. The WAV file **must** be:
+- 44.1 kHz
+- 16-bit
+- Stereo PCM
+
+```yaml
+sections:
+  - name: "WAV Audio"
+    duration: 100
+    source:
+      type: "mov-file"
+      file: "video.mov"
+    sound:
+      - type: "wav"
+        file: "audio.wav"
+```
+
+---
+
 ## Stage 1: Source Loading
 
 Configure video input sources in each section.

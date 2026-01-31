@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <vector>
 #include <stdexcept>
+#include <utility>
 
 namespace encode_orc {
 
@@ -66,6 +67,38 @@ public:
         : width_(width), height_(height), format_(format) {
         resize(width, height, format);
     }
+
+    /**
+     * @brief Check if audio samples are attached
+     */
+    bool has_audio() const {
+        return !audio_.empty();
+    }
+
+    /**
+     * @brief Get audio samples (interleaved stereo, 16-bit PCM)
+     */
+    std::vector<int16_t>& audio() { return audio_; }
+
+    /**
+     * @brief Get audio samples (const)
+     */
+    const std::vector<int16_t>& audio() const { return audio_; }
+
+    /**
+     * @brief Set audio samples (copy)
+     */
+    void set_audio(const std::vector<int16_t>& audio) { audio_ = audio; }
+
+    /**
+     * @brief Set audio samples (move)
+     */
+    void set_audio(std::vector<int16_t>&& audio) { audio_ = std::move(audio); }
+
+    /**
+     * @brief Clear audio samples
+     */
+    void clear_audio() { audio_.clear(); }
     
     /**
      * @brief Get frame width in pixels
@@ -206,6 +239,7 @@ private:
     int32_t height_ = 0;
     Format format_ = Format::RGB48;
     std::vector<uint16_t> data_;
+    std::vector<int16_t> audio_;
 };
 
 } // namespace encode_orc
