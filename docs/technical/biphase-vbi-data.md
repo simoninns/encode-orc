@@ -1,7 +1,7 @@
 ---
 title: PAL and NTSC biphase code
 layout: default
-parent: Technical Reference
+parent: Technical
 nav_order: 2
 ---
 

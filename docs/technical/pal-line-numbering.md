@@ -1,7 +1,7 @@
 ---
 title: PAL Line Numbering
 layout: default
-parent: Technical Reference
+parent: Technical
 nav_order: 4
 ---
 

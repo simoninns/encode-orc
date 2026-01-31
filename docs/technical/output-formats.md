@@ -1,7 +1,7 @@
 ---
 title: Output Formats
 layout: default
-parent: Technical Reference
+parent: Technical
 nav_order: 1
 ---
 
