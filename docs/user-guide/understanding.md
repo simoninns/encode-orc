@@ -96,14 +96,11 @@ Optional filtering stage to condition the encoded signal.
 
 ### Stage 7: Field Effects
 
-Simulates tape artifacts and signal degradation commonly found in analog recordings.
+Simulates artifacts and signal degradation commonly found in analog recordings.
 
 **Available Effects:**
 - **Noise generator** - White or colored Gaussian noise at configurable SNR
 - **Dropout simulator** - Simulates missing or corrupted data (dropouts)
-- **Head clog effect** - Creates patterns resembling tape head issues
-- **Phase error** - Introduces phase instability in color signal
-- **Time base error** - Simulates mechanical wobble and timing variations
 
 Effects are applied after active encoding, allowing realistic simulation of playback degradation and mechanical artifacts.
 
