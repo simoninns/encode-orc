@@ -53,8 +53,8 @@ Both TBC and Standard output types support two video modes:
 
 | Aspect | TBC Format | Standard Format |
 |--------|-----------|-----------------|
-| Bit Depth | 8-bit per component | 16-bit signed |
-| Byte Order | N/A | Little-endian |
+| Bit Depth | Unsigned 16-bit | 16-bit signed |
+| Byte Order | Little-endian | Little-endian |
 | Field Order | Top field first | Top field first |
 | Metadata | SQLite database | None |
 | Padding | Yes (symmetric fields) | No (asymmetric fields) |
@@ -67,7 +67,7 @@ Generates traditional composite video representation.
 ### Output Files
 
 **TBC Format:**
-- `output.tbc` - Composite field-based video file (8-bit)
+- `output.tbc` - Composite field-based video file (unsigned 16-bit)
 - `output.tbc.db` - SQLite metadata database
 
 **Standard Format:**
@@ -76,9 +76,9 @@ Generates traditional composite video representation.
 ### File Structure
 
 **TBC File:**
-- Stores composite video as 8-bit grayscale
+- Stores composite video as unsigned 16-bit grayscale
 - Each field stored sequentially
-- One byte per pixel
+- Two bytes per pixel (little-endian)
 
 **Metadata Database:**
 - VBI (Vertical Blanking Interval) data
@@ -101,13 +101,13 @@ Separates luma (brightness) and chroma (color) components, simulating S-Video ou
 ### Output Files
 
 **TBC Format:**
-- `output.tbcy` - Luma (Y) component (8-bit)
-- `output.tbcc` - Chroma (C) component (8-bit)
+- `output.tbcy` - Luma (Y) component (unsigned 16-bit)
+- `output.tbcc` - Chroma (C) component (unsigned 16-bit)
 - `output.tbc.db` - SQLite metadata database
 
 **Standard Format:**
 - `output.tbcy` - Luma (Y) component (16-bit signed)
-- `output.tbcc` - Chroma (C) component (16-bit signed)r) components, simulating S-Video output.
+- `output.tbcc` - Chroma (C) component (16-bit signed)
 
 ### Output Files
 - `output.tbcy` - Luma (Y) component
@@ -117,12 +117,12 @@ Separates luma (brightness) and chroma (color) components, simulating S-Video ou
 ### File Structure
 
 **Luma File (.tbcy):**
-- 8-bit grayscale image data
+- Unsigned 16-bit grayscale image data
 - Full resolution (720×480 or 720×576)
 - Higher quality brightness information
 
 **Chroma File (.tbcc):**
-- 8-bit chroma data
+- Unsigned 16-bit chroma data
 - 4:2:2 chroma subsampling
 - Color information separate from brightness
 
