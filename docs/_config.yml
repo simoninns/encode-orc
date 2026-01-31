@@ -8,7 +8,6 @@ url: "https://simoninns.github.io"
 baseurl: "/encode-orc"
 
 # just-the-docs theme settings
-color_scheme: auto
 search_enabled: true
 search:
   heading_level: 2
