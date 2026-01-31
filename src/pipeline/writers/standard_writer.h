@@ -21,7 +21,8 @@ namespace encode_orc {
 /**
  * @brief Writer for standard raw field files (no padding, no metadata)
  * 
- * Outputs raw field-based video data as 16-bit unsigned samples in little-endian format.
+ * Outputs raw field-based video data as 16-bit signed samples in little-endian format.
+ * Unsigned samples are converted to signed by subtracting 32767 (e.g., 0 → -32767).
  * Fields are written exactly as generated (asymmetric sizes), with no padding or metadata.
  * 
  * This is useful for:
@@ -91,6 +92,7 @@ public:
      * @brief Write a field to the file
      * 
      * Writes the field exactly as-is without any padding.
+     * Unsigned samples are converted to signed by subtracting 32767.
      * Fields will have asymmetric sizes (field1 shorter than field2).
      * 
      * @param field Field data to write
@@ -101,12 +103,15 @@ public:
             return false;
         }
         
-        // Write 16-bit samples in little-endian format
+        // Convert unsigned samples to signed and write in little-endian format
         const auto& data = field.data();
         for (uint16_t sample : data) {
+            // Convert unsigned to signed by subtracting 32767
+            int16_t signed_sample = static_cast<int16_t>(sample - 32767);
+            
             // Write low byte then high byte (little-endian)
-            uint8_t low = sample & 0xFF;
-            uint8_t high = (sample >> 8) & 0xFF;
+            uint8_t low = signed_sample & 0xFF;
+            uint8_t high = (signed_sample >> 8) & 0xFF;
             file_.write(reinterpret_cast<const char*>(&low), 1);
             file_.write(reinterpret_cast<const char*>(&high), 1);
         }
