@@ -272,6 +272,19 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                         section.source_type = source["type"].as<std::string>();
                     }
                     
+                    // Validate source type
+                    if (!section.source_type.empty()) {
+                        if (section.source_type != "yuv422-image" && 
+                            section.source_type != "png-image" && 
+                            section.source_type != "mov-file" && 
+                            section.source_type != "mp4-file") {
+                            error_message = "Invalid source type '" + section.source_type + 
+                                          "' in section '" + section.name + "'. " +
+                                          "Valid types are: yuv422-image, png-image, mov-file, mp4-file";
+                            return false;
+                        }
+                    }
+                    
                     if (section.source_type == "yuv422-image" && source["file"]) {
                         YUV422ImageSource yuv422;
                         yuv422.file = source["file"].as<std::string>();
