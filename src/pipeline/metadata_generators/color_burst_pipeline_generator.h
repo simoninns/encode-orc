@@ -45,7 +45,7 @@ public:
 private:
     std::unique_ptr<ColorBurstGenerator> burst_gen_;
     VideoParameters params_;
-    Config config_;
+    [[maybe_unused]] Config config_;
 };
 
 } // namespace encode_orc

@@ -32,7 +32,7 @@ jobs:
       
       - name: Install dependencies (Fedora)
         run: |
-          dnf install -y gcc gcc-c++ make cmake sqlite-devel yaml-cpp-devel libpng-devel spdlog-devel ffmpeg-free-devel
+          dnf install -y gcc gcc-c++ make cmake sqlite-devel yaml-cpp-devel libpng-devel spdlog-devel ffmpeg-devel
       
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
