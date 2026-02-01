@@ -32,6 +32,7 @@ jobs:
       
       - name: Install dependencies (Fedora)
         run: |
+          dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
           dnf install -y gcc gcc-c++ make cmake sqlite-devel yaml-cpp-devel libpng-devel spdlog-devel ffmpeg-devel
       
       - name: Configure CMake
@@ -53,45 +54,6 @@ jobs:
           name: test-output-fedora-release
           path: test-output/
           retention-days: 7
-  
-  # Build check on Ubuntu
-  build-ubuntu:
-    name: Build on Ubuntu
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-          submodules: recursive
-      
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            cmake \
-            pkg-config \
-            libspdlog-dev \
-            libsqlite3-dev \
-            libyaml-cpp-dev \
-            libpng-dev \
-            libavcodec-dev \
-            libavformat-dev \
-            libavutil-dev \
-            libswscale-dev
-      
-      - name: Configure
-        run: |
-          cmake -B build \
-            -DCMAKE_BUILD_TYPE=Release
-      
-      - name: Build
-        run: cmake --build build -j$(nproc)
-      
-      - name: Run tests
-        run: bash run-tests.sh
   
   # Build check on macOS
   build-macos:
@@ -229,7 +191,7 @@ jobs:
   dev-packages:
     name: Development Packages
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-    needs: [build-linux, build-ubuntu, build-macos, build-windows, flatpak]
+    needs: [build-linux, build-macos, build-windows, flatpak]
     uses: ./.github/workflows/package-builds.yml
     with:
       version: 'dev'

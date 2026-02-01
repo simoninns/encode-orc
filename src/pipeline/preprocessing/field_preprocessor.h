@@ -114,7 +114,7 @@ public:
     
 private:
     bool enabled_ = true;
-    FilterType type_;
+    [[maybe_unused]] FilterType type_;
     std::vector<double> coefficients_;
     
     /**
@@ -189,7 +189,7 @@ public:
     
 private:
     bool enabled_ = false;  // Luma filtering disabled by default
-    FilterType type_;
+    [[maybe_unused]] FilterType type_;
     std::vector<double> coefficients_;
     
     /**

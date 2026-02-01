@@ -11,6 +11,14 @@ if(MSVC)
     add_compile_options(/W4 /WX)
 else()
     add_compile_options(-Wall -Wextra -Wpedantic -Werror)
+    # Additional warnings to match macOS strictness
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        # Clang-specific warnings
+        add_compile_options(-Wunused-private-field)
+    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        # GCC-specific warnings
+        add_compile_options(-Wunused-but-set-variable)
+    endif()
 endif()
 
 # Enable all spdlog levels at compile time (runtime filtering still applies)

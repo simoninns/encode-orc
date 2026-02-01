@@ -377,11 +377,9 @@ void DropoutSimulator::apply(Field& field, const FieldEffectContext& context) {
 
         // Calculate spread left and right from center
         int32_t left_extent = current_length / 2;
-        int32_t right_extent = current_length - left_extent;
 
         int32_t start = mfd.center_x - left_extent;
         if (start < 0) {
-            right_extent += start;  // Reduce right if hitting boundary
             start = 0;
         }
         if (start + current_length > width) {
