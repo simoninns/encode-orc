@@ -7,6 +7,12 @@
  * SPDX-FileCopyrightText: 2026 Simon Inns
  */
 
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#define popen _popen
+#define pclose _pclose
+#endif
+
 #include "yaml_config.h"
 #include "video_encoder_pipeline.h"
 #include "metadata_generator.h"

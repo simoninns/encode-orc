@@ -7,12 +7,17 @@
  * SPDX-FileCopyrightText: 2026 Simon Inns
  */
 
+#define _USE_MATH_DEFINES
 #include "vitc_generator.h"
 #include "logging.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <vector>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 namespace encode_orc {
 

@@ -7,6 +7,10 @@
  * SPDX-FileCopyrightText: 2026 Simon Inns
  */
 
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "metadata_generator.h"
 #include "metadata_writer.h"
 #include "metadata.h"

@@ -20,7 +20,6 @@
 #include <array>
 #include <memory>
 #include <filesystem>
-#include <unistd.h>
 
 namespace encode_orc {
 

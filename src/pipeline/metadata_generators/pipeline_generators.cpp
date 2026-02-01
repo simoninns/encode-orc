@@ -350,10 +350,10 @@ void BiphaseVBIMetadataGenerator::apply(Field& field, const MetadataContext& con
             continue;
         }
         
-        // Get the appropriate VBI byte
-        uint8_t vbi_byte = (byte_index == 0) ? context.vbi_data->vbi0 : 
-                          (byte_index == 1) ? context.vbi_data->vbi1 : 
-                                              context.vbi_data->vbi2;
+        // Get the appropriate VBI byte (with explicit cast to avoid C4244 on MSVC)
+        uint8_t vbi_byte = (byte_index == 0) ? static_cast<uint8_t>(context.vbi_data->vbi0) : 
+                          (byte_index == 1) ? static_cast<uint8_t>(context.vbi_data->vbi1) : 
+                                              static_cast<uint8_t>(context.vbi_data->vbi2);
         
         uint16_t* line_buffer = field.line_data(field_relative_line);
         

@@ -7,11 +7,16 @@
  * SPDX-FileCopyrightText: 2026 Simon Inns
  */
 
+#define _USE_MATH_DEFINES
 #include "field_effect.h"
 #include <cmath>
 #include <algorithm>
 #include <random>
 #include <cstring>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 namespace encode_orc {
 

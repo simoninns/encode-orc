@@ -106,13 +106,21 @@ jobs:
           lfs: true
           submodules: recursive
       
+      - name: Setup vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: C:/vcpkg/archives
+          key: vcpkg-binary-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}
+          restore-keys: |
+            vcpkg-binary-${{ runner.os }}-
+      
       - name: Setup vcpkg cache
         uses: actions/cache@v4
         with:
           path: |
             C:/vcpkg/installed
             C:/vcpkg/packages
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json', '.github/workflows/ci.yml') }}
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}
           restore-keys: |
             vcpkg-${{ runner.os }}-
       
@@ -125,6 +133,8 @@ jobs:
             libpng `
             pkgconf `
             "ffmpeg[x264,x265,vpx,gpl]"
+        env:
+          VCPKG_BINARY_SOURCES: "clear;files,C:/vcpkg/archives,readwrite"
       
       - name: Configure
         run: |

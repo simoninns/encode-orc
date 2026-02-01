@@ -7,6 +7,12 @@
  * SPDX-FileCopyrightText: 2026 Simon Inns
  */
 
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#pragma warning(push)
+#pragma warning(disable: 4611)  // interaction between '_setjmp' and C++ object destruction
+#endif
+
 #include "png_loader.h"
 #include "video_loader_base.h"
 #include "color_conversion.h"
@@ -292,3 +298,7 @@ void PNGLoader::rgb_to_yuv444p16(const uint8_t* rgb_data, int32_t width, int32_t
 }
 
 } // namespace encode_orc
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
