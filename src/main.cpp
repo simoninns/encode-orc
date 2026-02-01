@@ -150,7 +150,8 @@ EncodedResult encode_single_frame(
     encode_orc::VideoEncoderPipeline* pipeline,
     bool sound_enabled,
     std::vector<AudioSource>& audio_sources,
-    int32_t samples_per_field)
+    int32_t samples_per_field,
+    bool parallel_fields = false)
 {
     EncodedResult result;
     result.section_frame = task.section_frame;
@@ -172,7 +173,27 @@ EncodedResult encode_single_frame(
             task.frame_buffer.set_audio(std::move(frame_audio));
         }
 
-        result.encoded_frame = pipeline->encode_frame(task.frame_buffer, task.field_number, task.vbi_data);
+        if (parallel_fields) {
+            // Encode both fields in parallel using std::async
+            encode_orc::Frame frame(pipeline->get_parameters().field_width,
+                                   pipeline->get_parameters().field_height);
+            
+            auto future1 = std::async(std::launch::async, [&]() {
+                return pipeline->encode_field(task.frame_buffer, task.field_number, true, task.vbi_data);
+            });
+            
+            auto future2 = std::async(std::launch::async, [&]() {
+                return pipeline->encode_field(task.frame_buffer, task.field_number + 1, false, task.vbi_data);
+            });
+            
+            frame.field1() = future1.get();
+            frame.field2() = future2.get();
+            result.encoded_frame = std::move(frame);
+        } else {
+            // Sequential field encoding (default)
+            result.encoded_frame = pipeline->encode_frame(task.frame_buffer, task.field_number, task.vbi_data);
+        }
+        
         result.success = true;
     } catch (const std::exception& e) {
         result.error_message = std::string("Exception during encoding: ") + e.what();
@@ -704,6 +725,15 @@ int main(int argc, char* argv[]) {
         thread_pool = std::make_unique<ThreadPool>(num_threads);
         ENCODE_ORC_LOG_DEBUG("Thread pool created with {} worker threads", num_threads);
     }
+    
+    // Determine whether to use parallel field encoding (Phase 2)
+    // Auto-enable on systems with 8+ hardware threads to avoid oversubscription on smaller systems
+    bool parallel_fields = (hw_threads >= 8);
+    if (parallel_fields) {
+        ENCODE_ORC_LOG_INFO("Field-level parallelism: AUTO-ENABLED ({} hardware threads detected)", hw_threads);
+    } else {
+        ENCODE_ORC_LOG_DEBUG("Field-level parallelism: AUTO-DISABLED ({} hardware threads < 8)", hw_threads);
+    }
 
     int32_t frame_offset = 0;
 
@@ -1118,8 +1148,8 @@ int main(int argc, char* argv[]) {
                         FrameBuffer fb_copy = frame_buffer;  // Copy frame buffer for each task
                         EncodingTask task = prepare_task(std::move(fb_copy), i);
                         
-                        thread_pool->enqueue([task, i, &result_queue, &pipeline, &audio_sources, sound_enabled, samples_per_field]() mutable {
-                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field);
+                        thread_pool->enqueue([task, i, &result_queue, &pipeline, &audio_sources, sound_enabled, samples_per_field, parallel_fields]() mutable {
+                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields);
                             result_queue.push(i, std::move(result));
                         });
                     }
@@ -1141,7 +1171,7 @@ int main(int argc, char* argv[]) {
                     for (int32_t i = 0; i < section_frames; ++i) {
                         FrameBuffer fb_copy = frame_buffer;
                         EncodingTask task = prepare_task(std::move(fb_copy), i);
-                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field);
+                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields);
                         if (!write_encoded_frame(result)) {
                             return 1;
                         }
@@ -1175,8 +1205,8 @@ int main(int argc, char* argv[]) {
                         FrameBuffer fb_copy = frame_buffer;
                         EncodingTask task = prepare_task(std::move(fb_copy), i);
                         
-                        thread_pool->enqueue([task, i, &result_queue, &pipeline, &audio_sources, sound_enabled, samples_per_field]() mutable {
-                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field);
+                        thread_pool->enqueue([task, i, &result_queue, &pipeline, &audio_sources, sound_enabled, samples_per_field, parallel_fields]() mutable {
+                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields);
                             result_queue.push(i, std::move(result));
                         });
                     }
@@ -1198,7 +1228,7 @@ int main(int argc, char* argv[]) {
                     for (int32_t i = 0; i < section_frames; ++i) {
                         FrameBuffer fb_copy = frame_buffer;
                         EncodingTask task = prepare_task(std::move(fb_copy), i);
-                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field);
+                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields);
                         if (!write_encoded_frame(result)) {
                             return 1;
                         }
@@ -1231,8 +1261,8 @@ int main(int argc, char* argv[]) {
 
                         EncodingTask task = prepare_task(std::move(frame_buffer), i);
                         
-                        thread_pool->enqueue([task, i, &result_queue, &pipeline, &audio_sources, sound_enabled, samples_per_field]() mutable {
-                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field);
+                        thread_pool->enqueue([task, i, &result_queue, &pipeline, &audio_sources, sound_enabled, samples_per_field, parallel_fields]() mutable {
+                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields);
                             result_queue.push(i, std::move(result));
                         });
                     }
@@ -1261,7 +1291,7 @@ int main(int argc, char* argv[]) {
                         }
 
                         EncodingTask task = prepare_task(std::move(frame_buffer), i);
-                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field);
+                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields);
                         if (!write_encoded_frame(result)) {
                             mov_loader.close();
                             return 1;
@@ -1305,8 +1335,8 @@ int main(int argc, char* argv[]) {
                             int32_t frame_index = batch_start + i;
                             EncodingTask task = prepare_task(std::move(frame_buffers[i]), frame_index);
                             
-                            thread_pool->enqueue([task, frame_index, &result_queue, &pipeline, &audio_sources, sound_enabled, samples_per_field]() mutable {
-                                EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field);
+                            thread_pool->enqueue([task, frame_index, &result_queue, &pipeline, &audio_sources, sound_enabled, samples_per_field, parallel_fields]() mutable {
+                                EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields);
                                 result_queue.push(frame_index, std::move(result));
                             });
                         }
@@ -1343,7 +1373,7 @@ int main(int argc, char* argv[]) {
                         for (int32_t i = 0; i < batch_count; ++i) {
                             int32_t frame_index = batch_start + i;
                             EncodingTask task = prepare_task(std::move(frame_buffers[i]), frame_index);
-                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field);
+                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields);
                             if (!write_encoded_frame(result)) {
                                 mp4_loader.close();
                                 return 1;
