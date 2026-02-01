@@ -33,7 +33,9 @@ jobs:
       - name: Install dependencies (Fedora)
         run: |
           dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
-          dnf install -y gcc gcc-c++ make cmake sqlite-devel yaml-cpp-devel libpng-devel spdlog-devel ffmpeg-devel
+          dnf install -y https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+          dnf install -y gcc gcc-c++ make cmake sqlite-devel yaml-cpp-devel libpng-devel spdlog-devel
+          dnf install -y ffmpeg ffmpeg-devel --allowerasing
       
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release

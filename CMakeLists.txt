@@ -33,6 +33,11 @@ find_package(SQLite3 REQUIRED)
 # Find yaml-cpp
 find_package(yaml-cpp REQUIRED)
 
+# Create an alias if yaml-cpp::yaml-cpp doesn't exist (for compatibility)
+if(TARGET yaml-cpp AND NOT TARGET yaml-cpp::yaml-cpp)
+    add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
+endif()
+
 # Find libpng
 find_package(PNG REQUIRED)
 
@@ -146,7 +151,7 @@ add_executable(encode-orc ${SOURCES})
 # Link libraries
 target_link_libraries(encode-orc PRIVATE 
     SQLite::SQLite3 
-    yaml-cpp 
+    yaml-cpp::yaml-cpp 
     PNG::PNG 
     spdlog::spdlog
     PkgConfig::FFMPEG
