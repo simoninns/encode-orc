@@ -21,6 +21,13 @@
 #include <memory>
 #include <filesystem>
 
+#ifdef _WIN32
+#include <process.h>
+#define getpid _getpid
+#else
+#include <unistd.h>
+#endif
+
 namespace encode_orc {
 
 bool MOVLoader::open(const std::string& filename, std::string& error_message) {
