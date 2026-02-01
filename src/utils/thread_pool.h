@@ -56,7 +56,7 @@ public:
      */
     template<typename F, typename... Args>
     auto enqueue(F&& f, Args&&... args) 
-        -> std::future<typename std::result_of<F(Args...)>::type>;
+        -> std::future<typename std::invoke_result<F, Args...>::type>;
     
     /**
      * @brief Wait for all currently queued tasks to complete
