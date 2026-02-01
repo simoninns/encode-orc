@@ -26,6 +26,15 @@ This tool enables developers and testers to create synthetic test data for valid
 
 First release
 
+## Build Status
+
+[![Build and Test](https://github.com/simoninns/encode-orc/actions/workflows/ci.yml/badge.svg)](https://github.com/simoninns/encode-orc/actions/workflows/ci.yml)
+[![Release](https://github.com/simoninns/encode-orc/actions/workflows/release.yml/badge.svg)](https://github.com/simoninns/encode-orc/actions/workflows/release.yml)
+
+Continuous integration builds and tests for Windows, macOS, and Linux (Fedora/Ubuntu/Flatpak) are run automatically on every commit. Release packages (MSI, DMG, and Flatpak) are automatically generated when version tags are pushed.
+
+See [BUILD_SYSTEM.md](docs/BUILD_SYSTEM.md) for detailed build and packaging documentation.
+
 ## Contributing
 
 Contributions are welcome! Please discuss in the Domesday86 discord, raise issues or submit PRs.

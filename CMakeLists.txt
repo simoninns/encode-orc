@@ -31,6 +31,15 @@ find_package(PNG REQUIRED)
 # Find spdlog
 find_package(spdlog REQUIRED)
 
+# Find FFmpeg (for MOV/MP4 video loading)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
+    libavcodec
+    libavformat
+    libavutil
+    libswscale
+)
+
 # Get git commit hash
 execute_process(
     COMMAND git rev-parse --short HEAD
@@ -127,7 +136,120 @@ set(SOURCES
 add_executable(encode-orc ${SOURCES})
 
 # Link libraries
-target_link_libraries(encode-orc PRIVATE SQLite::SQLite3 yaml-cpp PNG::PNG spdlog::spdlog)
+target_link_libraries(encode-orc PRIVATE 
+    SQLite::SQLite3 
+    yaml-cpp 
+    PNG::PNG 
+    spdlog::spdlog
+    PkgConfig::FFMPEG
+)
 
 # Install target
 install(TARGETS encode-orc DESTINATION bin)
+
+# Install example projects
+install(DIRECTORY example-projects/
+    DESTINATION share/encode-orc/example-projects
+    FILES_MATCHING PATTERN "*.yaml"
+)
+
+# Install testcard images
+install(DIRECTORY testcard-images/
+    DESTINATION share/encode-orc/testcard-images
+    FILES_MATCHING 
+        PATTERN "*.png"
+        PATTERN "*.yuv"
+        PATTERN "*.mov"
+        PATTERN "*.mp4"
+        PATTERN "*.pcm"
+)
+
+# Install documentation
+install(FILES README.md LICENSE
+    DESTINATION share/doc/encode-orc
+)
+
+# On Windows, install vcpkg DLLs alongside the executable
+if(WIN32)
+    # Install script to copy vcpkg DLLs during installation
+    install(CODE "
+        # Copy vcpkg runtime DLLs
+        set(VCPKG_BIN_DIR \"C:/vcpkg/installed/x64-windows/bin\")
+        if(EXISTS \"\${VCPKG_BIN_DIR}\")
+            message(STATUS \"Installing vcpkg runtime dependencies...\")
+            
+            # List of required DLL patterns
+            set(DLL_PATTERNS
+                yaml-cpp
+                spdlog
+                libpng16
+                sqlite3
+                zlib1
+                avcodec
+                avformat
+                avutil
+                swscale
+                swresample
+                x264
+                x265
+            )
+            
+            foreach(DLL_PATTERN \${DLL_PATTERNS})
+                file(GLOB DLL_FILES \"\${VCPKG_BIN_DIR}/\${DLL_PATTERN}*.dll\")
+                foreach(DLL_FILE \${DLL_FILES})
+                    get_filename_component(DLL_NAME \"\${DLL_FILE}\" NAME)
+                    message(STATUS \"  Installing \${DLL_NAME}\")
+                    file(INSTALL \"\${DLL_FILE}\" DESTINATION \"\${CMAKE_INSTALL_PREFIX}/bin\")
+                endforeach()
+            endforeach()
+            
+            message(STATUS \"vcpkg DLLs installed successfully\")
+        else()
+            message(WARNING \"vcpkg bin directory not found at: \${VCPKG_BIN_DIR}\")
+            message(WARNING \"DLLs may need to be copied manually\")
+        endif()
+    " COMPONENT Runtime)
+endif()
+
+# =============================================================================
+# CPack configuration for installer generation
+# =============================================================================
+
+set(CPACK_PACKAGE_NAME "Encode Orc")
+set(CPACK_PACKAGE_VENDOR "Simon Inns")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "TBC encoder for LaserDisc and tape mastering workflows")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
+set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "EncodeOrc")
+set(CPACK_PACKAGE_EXECUTABLES "encode-orc;Encode Orc")
+
+# License and readme
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+
+# WiX specific settings for MSI generation on Windows
+if(WIN32)
+    set(CPACK_GENERATOR "WIX")
+    set(CPACK_WIX_UPGRADE_GUID "A1B2C3D4-E5F6-7890-A1B2-C3D4E5F67890")
+    set(CPACK_WIX_PRODUCT_GUID "*") # Generate new GUID for each version
+    
+    # Set license in RTF format (created by GitHub Actions workflow)
+    set(CPACK_WIX_LICENSE_RTF "${CMAKE_BINARY_DIR}/LICENSE.rtf")
+    
+    set(CPACK_WIX_PROGRAM_MENU_FOLDER "Encode Orc")
+    
+    # Create start menu shortcuts
+    set(CPACK_PACKAGE_EXECUTABLES "encode-orc;Encode Orc")
+    
+    # Add to Programs and Features
+    set(CPACK_WIX_PROPERTY_ARPURLINFOABOUT "https://github.com/simoninns/encode-orc")
+    set(CPACK_WIX_PROPERTY_ARPHELPLINK "https://simoninns.github.io/encode-orc/")
+    
+    # Generate RTF license from plain text LICENSE file
+    # Note: This will be created by the GitHub Actions workflow
+    # This will be done in the GitHub Actions workflow
+endif()
+
+include(CPack)

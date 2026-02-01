@@ -1,83 +1,227 @@
-name: CI
+name: Build and Test
 
 on:
   push:
     branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
 
 jobs:
-  build-and-test:
+  # Quick build check on Linux
+  build-linux:
+    name: Build on Linux (Fedora)
     runs-on: ubuntu-latest
     container:
       image: fedora:latest
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install dependencies (Fedora)
-      run: |
-        dnf install -y gcc gcc-c++ make cmake sqlite-devel yaml-cpp-devel libpng-devel spdlog-devel ffmpeg
-    
-    - name: Configure CMake
-      run: cmake -B build -DCMAKE_BUILD_TYPE=Release
-    
-    - name: Build
-      run: cmake --build build --config Release
-    
-    - name: Run Tests
-      run: bash run-tests.sh
-    
-    - name: Verify executable
-      run: ./build/encode-orc --version
-    
-    - name: Upload test artifacts
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-output-fedora-release
-        path: test-output/
-        retention-days: 7
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          submodules: recursive
+      
+      - name: Install dependencies (Fedora)
+        run: |
+          dnf install -y gcc gcc-c++ make cmake sqlite-devel yaml-cpp-devel libpng-devel spdlog-devel
+      
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      
+      - name: Build
+        run: cmake --build build --config Release -j$(nproc)
+      
+      - name: Run Tests
+        run: bash run-tests.sh
+      
+      - name: Verify executable
+        run: ./build/encode-orc --version
+      
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output-fedora-release
+          path: test-output/
+          retention-days: 7
   
-  code-quality:
+  # Build check on Ubuntu
+  build-ubuntu:
+    name: Build on Ubuntu
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          submodules: recursive
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            pkg-config \
+            libspdlog-dev \
+            libsqlite3-dev \
+            libyaml-cpp-dev \
+            libpng-dev
+      
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release
+      
+      - name: Build
+        run: cmake --build build -j$(nproc)
+      
+      - name: Run tests
+        run: bash run-tests.sh
+  
+  # Build check on macOS
+  build-macos:
+    name: Build on macOS
+    runs-on: macos-latest
     
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y cmake build-essential libsqlite3-dev libspdlog-dev libyaml-cpp-dev libpng-dev clang-format
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          submodules: recursive
+      
+      - name: Install dependencies
+        run: |
+          brew update || true
+          brew install \
+            cmake \
+            pkg-config \
+            spdlog \
+            sqlite \
+            yaml-cpp \
+            libpng \
+            ffmpeg 2>&1 | grep -v "is already installed" || true
+      
+      - name: Configure
+        run: |
+          export HOMEBREW_PREFIX=$(brew --prefix)
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$HOMEBREW_PREFIX"
+      
+      - name: Build
+        run: cmake --build build -j$(sysctl -n hw.ncpu)
+      
+      - name: Run tests
+        run: bash run-tests.sh
+  
+  # Build check on Windows
+  build-windows:
+    name: Build on Windows
+    runs-on: windows-latest
     
-    - name: Check code formatting (if .clang-format exists)
-      run: |
-        if [ -f .clang-format ]; then
-          find src include -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror
-        else
-          echo "No .clang-format file found, skipping format check"
-        fi
-      continue-on-error: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          submodules: recursive
+      
+      - name: Setup vcpkg cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            C:/vcpkg/installed
+            C:/vcpkg/packages
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json', '.github/workflows/ci.yml') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+      
+      - name: Install dependencies
+        run: |
+          vcpkg install --triplet x64-windows --recurse `
+            spdlog `
+            sqlite3 `
+            yaml-cpp `
+            libpng `
+            pkgconf `
+            "ffmpeg[x264,x265,vpx,gpl]"
+      
+      - name: Configure
+        run: |
+          cmake -B build `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+      
+      - name: Build
+        run: cmake --build build --config Release -j $env:NUMBER_OF_PROCESSORS
+      
+      - name: Run tests
+        run: bash run-tests.sh
+        shell: bash
 
+  # Code quality check
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libsqlite3-dev libspdlog-dev libyaml-cpp-dev libpng-dev clang-format
+      
+      - name: Check code formatting (if .clang-format exists)
+        run: |
+          if [ -f .clang-format ]; then
+            find src include -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror
+          else
+            echo "No .clang-format file found, skipping format check"
+          fi
+        continue-on-error: true
+
+  # Flatpak build test
   flatpak:
+    name: Flatpak Build
     runs-on: ubuntu-latest
     container:
-      image: bilelmoussaoui/flatpak-github-actions:freedesktop-23.08
+      image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.8
       options: --privileged
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Build Flatpak
-      uses: flatpak/flatpak-github-actions/flatpak-builder@v6
-      with:
-        bundle: encode-orc.flatpak
-        manifest-path: io.github.simoninns.encode-orc.yml
-        cache-key: flatpak-builder-${{ github.sha }}
-    
-    - name: Upload Flatpak artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: encode-orc-flatpak
-        path: encode-orc.flatpak
-        retention-days: 7
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          submodules: recursive
+      
+      - name: Build Flatpak
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: encode-orc.flatpak
+          manifest-path: io.github.simoninns.encode-orc.yml
+          cache-key: flatpak-builder-${{ github.sha }}
+      
+      - name: Upload Flatpak artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: encode-orc-flatpak-dev
+          path: encode-orc.flatpak
+          retention-days: 7
+
+  # Development package builds (on push to main/develop)
+  dev-packages:
+    name: Development Packages
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    needs: [build-linux, build-ubuntu, build-macos, build-windows, flatpak]
+    uses: ./.github/workflows/package-builds.yml
+    with:
+      version: 'dev'
