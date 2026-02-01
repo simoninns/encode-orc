@@ -21,6 +21,15 @@
 namespace encode_orc {
 
 /**
+ * @brief Type of field being processed (for YC separation)
+ */
+enum class FieldType {
+    Composite,  ///< Single composite field
+    Y,          ///< Luminance (Y) field in YC mode
+    C           ///< Chrominance (C) field in YC mode
+};
+
+/**
  * @brief Context passed to field effects during application
  */
 struct FieldEffectContext {
@@ -29,6 +38,7 @@ struct FieldEffectContext {
     bool is_first_field = true;    ///< Is this the first (odd) or second (even) field?
     double signal_level_white = 0.0;  ///< White level in current signal (for SNR calculation)
     double signal_level_black = 0.0;  ///< Black level in current signal (for SNR calculation)
+    FieldType field_type = FieldType::Composite;  ///< Type of field (Composite, Y, or C)
 };
 
 /**
@@ -231,6 +241,23 @@ private:
     int32_t last_processed_field_ = -1;
     std::vector<std::tuple<int32_t, int32_t, int32_t>> last_field_dropouts_; ///< (line, startx, endx)
     std::map<int32_t, std::vector<std::tuple<int32_t, int32_t, int32_t>>> field_dropouts_; ///< Dropouts per field
+    
+    // For YC mode: cache dropout decisions from Y field to apply to C field
+    struct CachedDropout {
+        int32_t line;
+        int32_t start;
+        int32_t length;
+        double base_excursion;
+        double amplitude;
+        int32_t edge_len;
+    };
+    std::vector<CachedDropout> cached_y_dropouts_;  ///< Cached dropouts from Y field for YC mode
+    int32_t cached_y_field_number_ = -1;             ///< Field number of cached Y dropouts
+    
+    /**
+     * @brief Apply cached dropouts from Y field to C field
+     */
+    void apply_cached_dropouts(Field& field, const FieldEffectContext& context);
 };
 
 

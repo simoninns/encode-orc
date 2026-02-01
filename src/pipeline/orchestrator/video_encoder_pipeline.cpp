@@ -321,9 +321,16 @@ Field VideoEncoderPipeline::encode_field_from_yuv(const Field& field_yuv,
     for (auto& effect : effects_) {
         if (effect && effect->is_enabled()) {
             if (enable_yc_output_ && y_field_ptr && c_field_ptr) {
+                // Apply to Y field first
+                effect_context.field_type = FieldType::Y;
                 effect->apply(*y_field_ptr, effect_context);
+                
+                // Then apply to C field (will reuse dropout decisions from Y field)
+                effect_context.field_type = FieldType::C;
                 effect->apply(*c_field_ptr, effect_context);
             } else {
+                // Composite mode
+                effect_context.field_type = FieldType::Composite;
                 effect->apply(field, effect_context);
             }
         }

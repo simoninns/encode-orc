@@ -1,0 +1,35 @@
+name: "PAL Dropout YC Test"
+description: "PAL test signal with dropout effects and separate YC output to verify Y/C synchronization"
+
+output:
+  filename: "example-output/test-pal-dropout-yc"
+  format: "pal-yc"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+  
+  metadata:
+    generators:
+      - type: "vitc"
+        enabled: true
+        lines: [15, 16, 17, 18, 19, 20, 328, 329, 330, 331, 332, 333]
+        start_frame_offset: 0
+      
+      - type: "color-burst"
+        enabled: true
+
+  effects:
+    - type: "dropout"
+      enabled: true
+      density: 0.05
+      seed: 12345
+
+sections:
+  - name: "Test Content"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
