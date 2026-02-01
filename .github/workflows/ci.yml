@@ -21,6 +21,10 @@ jobs:
       image: fedora:latest
     
     steps:
+      - name: Install git and git-lfs
+        run: |
+          dnf install -y git git-lfs
+      
       - uses: actions/checkout@v4
         with:
           lfs: true
@@ -28,7 +32,7 @@ jobs:
       
       - name: Install dependencies (Fedora)
         run: |
-          dnf install -y gcc gcc-c++ make cmake sqlite-devel yaml-cpp-devel libpng-devel spdlog-devel
+          dnf install -y gcc gcc-c++ make cmake sqlite-devel yaml-cpp-devel libpng-devel spdlog-devel ffmpeg-free-devel
       
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -72,7 +76,11 @@ jobs:
             libspdlog-dev \
             libsqlite3-dev \
             libyaml-cpp-dev \
-            libpng-dev
+            libpng-dev \
+            libavcodec-dev \
+            libavformat-dev \
+            libavutil-dev \
+            libswscale-dev
       
       - name: Configure
         run: |

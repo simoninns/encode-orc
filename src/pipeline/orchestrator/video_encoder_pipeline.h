@@ -27,7 +27,7 @@
 namespace encode_orc {
 
 // Forward declarations
-class VBIData;
+struct VBIData;
 
 /**
  * @brief Video encoder pipeline with composable stages (Phase 5)
