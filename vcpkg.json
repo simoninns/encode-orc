@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "encode-orc",
+  "version-string": "1.0.0",
+  "dependencies": [
+    "spdlog",
+    "sqlite3",
+    "yaml-cpp",
+    "libpng",
+    "pkgconf",
+    {
+      "name": "ffmpeg",
+      "features": ["x264", "x265", "vpx", "gpl"]
+    }
+  ]
+}

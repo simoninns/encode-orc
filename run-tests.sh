@@ -32,10 +32,21 @@ if [ ! -d "$BUILD_DIR" ]; then
     cd "$PROJECT_ROOT"
 fi
 
-ENCODE_ORC="$BUILD_DIR/encode-orc"
-
-if [ ! -f "$ENCODE_ORC" ]; then
+# Determine executable location based on platform
+# On Windows with MSVC, the executable is in build/Release/encode-orc.exe
+# On Unix-like systems, it's in build/encode-orc
+if [ -f "$BUILD_DIR/Release/encode-orc.exe" ]; then
+    ENCODE_ORC="$BUILD_DIR/Release/encode-orc.exe"
+elif [ -f "$BUILD_DIR/encode-orc.exe" ]; then
+    ENCODE_ORC="$BUILD_DIR/encode-orc.exe"
+elif [ -f "$BUILD_DIR/encode-orc" ]; then
+    ENCODE_ORC="$BUILD_DIR/encode-orc"
+else
     echo -e "${RED}Error: encode-orc executable not found. Build may have failed.${NC}"
+    echo -e "${RED}Checked:${NC}"
+    echo -e "${RED}  - $BUILD_DIR/Release/encode-orc.exe${NC}"
+    echo -e "${RED}  - $BUILD_DIR/encode-orc.exe${NC}"
+    echo -e "${RED}  - $BUILD_DIR/encode-orc${NC}"
     exit 1
 fi
 

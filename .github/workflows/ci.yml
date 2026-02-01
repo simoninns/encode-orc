@@ -110,7 +110,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:/vcpkg/archives
-          key: vcpkg-binary-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}
+          key: vcpkg-binary-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
           restore-keys: |
             vcpkg-binary-${{ runner.os }}-
       
@@ -120,19 +120,13 @@ jobs:
           path: |
             C:/vcpkg/installed
             C:/vcpkg/packages
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
           restore-keys: |
             vcpkg-${{ runner.os }}-
       
       - name: Install dependencies
         run: |
-          vcpkg install --triplet x64-windows --recurse `
-            spdlog `
-            sqlite3 `
-            yaml-cpp `
-            libpng `
-            pkgconf `
-            "ffmpeg[x264,x265,vpx,gpl]"
+          vcpkg install --triplet x64-windows
         env:
           VCPKG_BINARY_SOURCES: "clear;files,C:/vcpkg/archives,readwrite"
       
