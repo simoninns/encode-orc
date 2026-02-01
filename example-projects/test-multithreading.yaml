@@ -1,0 +1,23 @@
+name: "Multi-threading Test"
+description: "Test project to demonstrate multi-threaded encoding"
+
+processing:
+  threads: auto  # Use auto-detection, or specify a number like 4, 8, etc.
+
+output:
+  filename: "example-output/multithreading-test"
+  format: "pal-composite"
+  writer: "tbc"
+
+pipeline:
+  metadata:
+    generators:
+      - type: color-burst
+        enabled: true
+
+sections:
+  - name: "Test Pattern"
+    duration: 100
+    source:
+      type: "png-image"
+      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Composite.png"

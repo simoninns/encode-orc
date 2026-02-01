@@ -115,6 +115,9 @@ void DropoutSimulator::apply(Field& field, const FieldEffectContext& context) {
     if (!enabled_) return;
     if (density_ <= 0.0) return;
     
+    // Lock for thread safety - entire method modifies shared state
+    std::lock_guard<std::mutex> lock(dropout_mutex_);
+    
     // For YC mode: if this is C field and we have cached Y dropouts, use them
     if (context.field_type == FieldType::C && 
         cached_y_field_number_ == context.field_number && 
@@ -406,7 +409,7 @@ void DropoutSimulator::apply(Field& field, const FieldEffectContext& context) {
         multi_field_dropouts_.end()
     );
 
-    // Store dropouts for this field
+    // Store dropouts for this field (already protected by method-level mutex)
     field_dropouts_[context.field_number] = last_field_dropouts_;
 }
 

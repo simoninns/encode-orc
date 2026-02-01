@@ -67,6 +67,26 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
             }
         }
         
+        // Parse processing configuration (multi-threading)
+        if (root["processing"]) {
+            ProcessingConfig proc_cfg;
+            YAML::Node proc_node = root["processing"];
+            
+            if (proc_node["threads"]) {
+                // Can be a number or "auto"
+                if (proc_node["threads"].IsScalar()) {
+                    std::string threads_val = proc_node["threads"].as<std::string>();
+                    if (threads_val == "auto") {
+                        proc_cfg.threads = 0;  // 0 means auto-detect
+                    } else {
+                        proc_cfg.threads = proc_node["threads"].as<int32_t>();
+                    }
+                }
+            }
+            
+            config.processing = proc_cfg;
+        }
+        
         // Parse pipeline configuration (REQUIRED in Phase 4+)
         if (root["pipeline"]) {
             PipelineConfig pipeline_cfg;

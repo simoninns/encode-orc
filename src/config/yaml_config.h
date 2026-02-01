@@ -252,6 +252,13 @@ struct VideoLevelsConfig {
 };
 
 /**
+ * @brief Processing configuration (multi-threading, etc.)
+ */
+struct ProcessingConfig {
+    std::optional<int32_t> threads;  // Number of threads (0 or negative = auto-detect)
+};
+
+/**
  * @brief Output configuration
  */
 struct OutputConfig {
@@ -271,6 +278,9 @@ struct YAMLProjectConfig {
     std::string name;
     std::string description;
     OutputConfig output;
+    
+    // Processing configuration (multi-threading, etc.)
+    std::optional<ProcessingConfig> processing;
     
     // Pipeline configuration (Phase 4+) - REQUIRED
     PipelineConfig pipeline;

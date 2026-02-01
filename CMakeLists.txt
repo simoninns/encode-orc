@@ -44,6 +44,9 @@ find_package(PNG REQUIRED)
 # Find spdlog
 find_package(spdlog REQUIRED)
 
+# Find Threads (for multi-threading support)
+find_package(Threads REQUIRED)
+
 # Find FFmpeg (for MOV/MP4 video loading)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
@@ -108,6 +111,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/generated)
 set(SOURCES
     src/main.cpp
     src/utils/logging.cpp
+    src/utils/thread_pool.cpp
     src/config/yaml_config.cpp
     src/pipeline/writers/metadata_writer.cpp
     src/pipeline/writers/audio_writer.cpp
@@ -155,6 +159,7 @@ target_link_libraries(encode-orc PRIVATE
     PNG::PNG 
     spdlog::spdlog
     PkgConfig::FFMPEG
+    Threads::Threads
 )
 
 # Install target

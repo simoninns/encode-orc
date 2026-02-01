@@ -17,6 +17,7 @@
 #include <map>
 #include <tuple>
 #include <vector>
+#include <mutex>
 
 namespace encode_orc {
 
@@ -215,6 +216,7 @@ public:
      * @return Vector of tuples (field_line, startx, endx)
      */
     std::vector<std::tuple<int32_t, int32_t, int32_t>> get_field_dropouts(int32_t field_number) const {
+        std::lock_guard<std::mutex> lock(dropout_mutex_);
         auto it = field_dropouts_.find(field_number);
         if (it != field_dropouts_.end()) {
             return it->second;
@@ -241,6 +243,7 @@ private:
     int32_t last_processed_field_ = -1;
     std::vector<std::tuple<int32_t, int32_t, int32_t>> last_field_dropouts_; ///< (line, startx, endx)
     std::map<int32_t, std::vector<std::tuple<int32_t, int32_t, int32_t>>> field_dropouts_; ///< Dropouts per field
+    mutable std::mutex dropout_mutex_;  ///< Mutex to protect field_dropouts_ map for multi-threading
     
     // For YC mode: cache dropout decisions from Y field to apply to C field
     struct CachedDropout {

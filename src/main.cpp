@@ -20,12 +20,15 @@
 #include "png_loader.h"
 #include "mov_loader.h"
 #include "mp4_loader.h"
+#include "frame_buffer.h"
 #include "writer.h"
 #include "tbc_writer.h"
 #include "yc_tbc_writer.h"
 #include "standard_writer.h"
 #include "audio_writer.h"
 #include "version.h"
+#include "thread_pool.h"
+#include "ordered_queue.h"
 #include <iostream>
 #include <fstream>
 #include <cstdio>
@@ -36,8 +39,28 @@
 #include <cmath>
 #include <filesystem>
 #include <chrono>
+#include <thread>
+#include <future>
 
 namespace {
+
+// Structure to hold an encoding task
+struct EncodingTask {
+    encode_orc::FrameBuffer frame_buffer;
+    int32_t section_frame;
+    int32_t global_frame;
+    int32_t field_number;
+    const encode_orc::VBIData* vbi_data;
+};
+
+// Structure to hold the result of encoding
+struct EncodedResult {
+    int32_t section_frame;
+    int32_t global_frame;
+    encode_orc::Frame encoded_frame;
+    bool success;
+    std::string error_message;
+};
 
 struct AudioSource {
     enum class Type { Sine, PCM };
@@ -119,6 +142,47 @@ std::vector<int16_t> generate_field_audio(std::vector<AudioSource>& sources,
         output[i] = clamp_int16(mix[i]);
     }
     return output;
+}
+
+// Function to encode a single frame (thread-safe, can be called from worker threads)
+EncodedResult encode_single_frame(
+    EncodingTask task,
+    encode_orc::VideoEncoderPipeline* pipeline,
+    bool sound_enabled,
+    std::vector<AudioSource>& audio_sources,
+    int32_t samples_per_field)
+{
+    EncodedResult result;
+    result.section_frame = task.section_frame;
+    result.global_frame = task.global_frame;
+    result.success = false;
+    
+    try {
+        // Attach audio to the frame (if enabled)
+        // NOTE: Audio generation modifies audio_sources state, so it's not thread-safe
+        // For now, we'll skip audio in multi-threaded mode or handle it separately
+        if (sound_enabled) {
+            auto field1_audio = generate_field_audio(audio_sources, samples_per_field, 44100);
+            auto field2_audio = generate_field_audio(audio_sources, samples_per_field, 44100);
+
+            std::vector<int16_t> frame_audio;
+            frame_audio.reserve(field1_audio.size() + field2_audio.size());
+            frame_audio.insert(frame_audio.end(), field1_audio.begin(), field1_audio.end());
+            frame_audio.insert(frame_audio.end(), field2_audio.begin(), field2_audio.end());
+            task.frame_buffer.set_audio(std::move(frame_audio));
+        }
+
+        result.encoded_frame = pipeline->encode_frame(task.frame_buffer, task.field_number, task.vbi_data);
+        result.success = true;
+    } catch (const std::exception& e) {
+        result.error_message = std::string("Exception during encoding: ") + e.what();
+        result.success = false;
+    } catch (...) {
+        result.error_message = "Unknown exception during encoding";
+        result.success = false;
+    }
+    
+    return result;
 }
 
 bool read_file_to_pcm(const std::string& filename, std::vector<int16_t>& out_pcm, std::string& error_message) {
@@ -612,6 +676,35 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Determine number of threads to use
+    size_t num_threads;
+    size_t hw_threads = std::thread::hardware_concurrency();
+    
+    if (config.processing.has_value() && config.processing->threads.has_value()) {
+        int32_t thread_config = config.processing->threads.value();
+        if (thread_config <= 0) {
+            // Auto-detect: use hardware_concurrency() - 1, minimum 1
+            num_threads = (hw_threads > 1) ? (hw_threads - 1) : 1;
+            ENCODE_ORC_LOG_INFO("Multi-threading: AUTO (detected {} hardware threads, using {} encoding threads)", 
+                               hw_threads, num_threads);
+        } else {
+            num_threads = static_cast<size_t>(thread_config);
+            ENCODE_ORC_LOG_INFO("Multi-threading: ENABLED ({} encoding thread(s) configured)", num_threads);
+        }
+    } else {
+        // Default: auto-detect
+        num_threads = (hw_threads > 1) ? (hw_threads - 1) : 1;
+        ENCODE_ORC_LOG_INFO("Multi-threading: AUTO (default - detected {} hardware threads, using {} encoding threads)", 
+                           hw_threads, num_threads);
+    }
+    
+    // Create thread pool if multi-threading is enabled
+    std::unique_ptr<ThreadPool> thread_pool;
+    if (num_threads > 1) {
+        thread_pool = std::make_unique<ThreadPool>(num_threads);
+        ENCODE_ORC_LOG_DEBUG("Thread pool created with {} worker threads", num_threads);
+    }
+
     int32_t frame_offset = 0;
 
     for (const auto& section : config.sections) {
@@ -899,30 +992,17 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
 
-            auto encode_frame = [&](FrameBuffer& frame_buffer, int32_t section_frame) -> bool {
-                int32_t global_frame = frame_offset + section_frame;
-                int32_t field_number = global_frame * 2;
-
-                const VBIData* vbi_data = nullptr;
-                if (needs_vbi_data && field_number < static_cast<int32_t>(pre_metadata.vbi_data.size()) &&
-                    pre_metadata.vbi_data[field_number].has_value()) {
-                    vbi_data = &pre_metadata.vbi_data[field_number].value();
+            // Lambda to write a single encoded frame (must be called sequentially)
+            auto write_encoded_frame = [&](const EncodedResult& result) -> bool {
+                if (!result.success) {
+                    ENCODE_ORC_LOG_ERROR("Failed to encode frame {}: {}", 
+                                       result.global_frame, result.error_message);
+                    return false;
                 }
-
-                // Attach audio to the frame (if enabled)
-                if (sound_enabled) {
-                    auto field1_audio = generate_field_audio(audio_sources, samples_per_field, 44100);
-                    auto field2_audio = generate_field_audio(audio_sources, samples_per_field, 44100);
-
-                    std::vector<int16_t> frame_audio;
-                    frame_audio.reserve(field1_audio.size() + field2_audio.size());
-                    frame_audio.insert(frame_audio.end(), field1_audio.begin(), field1_audio.end());
-                    frame_audio.insert(frame_audio.end(), field2_audio.begin(), field2_audio.end());
-                    frame_buffer.set_audio(std::move(frame_audio));
-                }
-
-                Frame encoded_frame = pipeline->encode_frame(frame_buffer, field_number, vbi_data);
-
+                
+                const auto& encoded_frame = result.encoded_frame;
+                int32_t field_number = result.global_frame * 2;
+                
                 // Write fields based on output format
                 if (yc_writer) {
                     // Write Y and C fields separately
@@ -932,22 +1012,22 @@ int main(int argc, char* argv[]) {
                     const Field* c_field2 = encoded_frame.field2().c_field_const();
                     
                     if (!y_field1 || !c_field1 || !y_field2 || !c_field2) {
-                        ENCODE_ORC_LOG_ERROR("Y/C fields not generated for frame {}", global_frame);
+                        ENCODE_ORC_LOG_ERROR("Y/C fields not generated for frame {}", result.global_frame);
                         return false;
                     }
                     
                     if (!yc_writer->write_y_field(*y_field1) || !yc_writer->write_y_field(*y_field2)) {
-                        ENCODE_ORC_LOG_ERROR("Failed to write Y fields for frame {}", global_frame);
+                        ENCODE_ORC_LOG_ERROR("Failed to write Y fields for frame {}", result.global_frame);
                         return false;
                     }
                     if (!yc_writer->write_c_field(*c_field1) || !yc_writer->write_c_field(*c_field2)) {
-                        ENCODE_ORC_LOG_ERROR("Failed to write C fields for frame {}", global_frame);
+                        ENCODE_ORC_LOG_ERROR("Failed to write C fields for frame {}", result.global_frame);
                         return false;
                     }
                 } else {
                     // Write composite fields normally
                     if (!writer->write_field(encoded_frame.field1()) || !writer->write_field(encoded_frame.field2())) {
-                        ENCODE_ORC_LOG_ERROR("Failed to write encoded fields for frame {}", global_frame);
+                        ENCODE_ORC_LOG_ERROR("Failed to write encoded fields for frame {}", result.global_frame);
                         return false;
                     }
                 }
@@ -956,7 +1036,7 @@ int main(int argc, char* argv[]) {
                 if (sound_enabled && audio_writer) {
                     if (!audio_writer->write_samples(encoded_frame.field1().audio()) ||
                         !audio_writer->write_samples(encoded_frame.field2().audio())) {
-                        ENCODE_ORC_LOG_ERROR("Failed to write audio for frame {}", global_frame);
+                        ENCODE_ORC_LOG_ERROR("Failed to write audio for frame {}", result.global_frame);
                         return false;
                     }
                 }
@@ -983,11 +1063,28 @@ int main(int argc, char* argv[]) {
                     }
                 }
 
-                if ((section_frame + 1) % 10 == 0 || section_frame == section_frames - 1) {
-                    ENCODE_ORC_LOG_DEBUG("Writing field {} / {}", (global_frame + 1) * 2, total_frames * 2);
+                if ((result.section_frame + 1) % 10 == 0 || result.section_frame == section_frames - 1) {
+                    ENCODE_ORC_LOG_DEBUG("Writing field {} / {}", (result.global_frame + 1) * 2, total_frames * 2);
                 }
 
                 return true;
+            };
+
+            // Lambda to prepare an encoding task
+            auto prepare_task = [&](FrameBuffer&& frame_buffer, int32_t section_frame) -> EncodingTask {
+                EncodingTask task;
+                task.frame_buffer = std::move(frame_buffer);
+                task.section_frame = section_frame;
+                task.global_frame = frame_offset + section_frame;
+                task.field_number = task.global_frame * 2;
+                
+                task.vbi_data = nullptr;
+                if (needs_vbi_data && task.field_number < static_cast<int32_t>(pre_metadata.vbi_data.size()) &&
+                    pre_metadata.vbi_data[task.field_number].has_value()) {
+                    task.vbi_data = &pre_metadata.vbi_data[task.field_number].value();
+                }
+                
+                return task;
             };
 
             if (section.yuv422_image_source) {
@@ -1012,9 +1109,42 @@ int main(int argc, char* argv[]) {
                 }
                 yuv422_loader.close();
 
-                for (int32_t i = 0; i < section_frames; ++i) {
-                    if (!encode_frame(frame_buffer, i)) {
-                        return 1;
+                if (num_threads > 1) {
+                    // Multi-threaded encoding
+                    OrderedQueue<EncodedResult> result_queue;
+                    
+                    // Submit all encoding tasks
+                    for (int32_t i = 0; i < section_frames; ++i) {
+                        FrameBuffer fb_copy = frame_buffer;  // Copy frame buffer for each task
+                        EncodingTask task = prepare_task(std::move(fb_copy), i);
+                        
+                        thread_pool->enqueue([task, i, &result_queue, &pipeline, &audio_sources, sound_enabled, samples_per_field]() mutable {
+                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field);
+                            result_queue.push(i, std::move(result));
+                        });
+                    }
+                    
+                    // Write results in order
+                    for (int32_t i = 0; i < section_frames; ++i) {
+                        EncodedResult result;
+                        if (!result_queue.wait_and_pop(i, result)) {
+                            ENCODE_ORC_LOG_ERROR("Failed to get encoding result for frame {}", i);
+                            return 1;
+                        }
+                        if (!write_encoded_frame(result)) {
+                            return 1;
+                        }
+                    }
+                    thread_pool->wait_all();
+                } else {
+                    // Single-threaded encoding
+                    for (int32_t i = 0; i < section_frames; ++i) {
+                        FrameBuffer fb_copy = frame_buffer;
+                        EncodingTask task = prepare_task(std::move(fb_copy), i);
+                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field);
+                        if (!write_encoded_frame(result)) {
+                            return 1;
+                        }
                     }
                 }
             } else if (section.png_image_source) {
@@ -1036,9 +1166,42 @@ int main(int argc, char* argv[]) {
                 }
                 png_loader.close();
 
-                for (int32_t i = 0; i < section_frames; ++i) {
-                    if (!encode_frame(frame_buffer, i)) {
-                        return 1;
+                if (num_threads > 1) {
+                    // Multi-threaded encoding
+                    OrderedQueue<EncodedResult> result_queue;
+                    
+                    // Submit all encoding tasks
+                    for (int32_t i = 0; i < section_frames; ++i) {
+                        FrameBuffer fb_copy = frame_buffer;
+                        EncodingTask task = prepare_task(std::move(fb_copy), i);
+                        
+                        thread_pool->enqueue([task, i, &result_queue, &pipeline, &audio_sources, sound_enabled, samples_per_field]() mutable {
+                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field);
+                            result_queue.push(i, std::move(result));
+                        });
+                    }
+                    
+                    // Write results in order
+                    for (int32_t i = 0; i < section_frames; ++i) {
+                        EncodedResult result;
+                        if (!result_queue.wait_and_pop(i, result)) {
+                            ENCODE_ORC_LOG_ERROR("Failed to get encoding result for frame {}", i);
+                            return 1;
+                        }
+                        if (!write_encoded_frame(result)) {
+                            return 1;
+                        }
+                    }
+                    thread_pool->wait_all();
+                } else {
+                    // Single-threaded encoding
+                    for (int32_t i = 0; i < section_frames; ++i) {
+                        FrameBuffer fb_copy = frame_buffer;
+                        EncodingTask task = prepare_task(std::move(fb_copy), i);
+                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field);
+                        if (!write_encoded_frame(result)) {
+                            return 1;
+                        }
                     }
                 }
             } else if (section.mov_file_source) {
@@ -1053,20 +1216,59 @@ int main(int argc, char* argv[]) {
                     return 1;
                 }
 
-                for (int32_t i = 0; i < section_frames; ++i) {
-                    FrameBuffer frame_buffer;
-                    if (!mov_loader.load_frame(start_frame + i, frame_buffer, load_error)) {
-                        ENCODE_ORC_LOG_ERROR("Failed to load MOV frame {}: {}", start_frame + i, load_error);
-                        mov_loader.close();
-                        return 1;
-                    }
+                if (num_threads > 1) {
+                    // Multi-threaded encoding
+                    OrderedQueue<EncodedResult> result_queue;
+                    
+                    // Submit encoding tasks
+                    for (int32_t i = 0; i < section_frames; ++i) {
+                        FrameBuffer frame_buffer;
+                        if (!mov_loader.load_frame(start_frame + i, frame_buffer, load_error)) {
+                            ENCODE_ORC_LOG_ERROR("Failed to load MOV frame {}: {}", start_frame + i, load_error);
+                            mov_loader.close();
+                            return 1;
+                        }
 
-                    if (!encode_frame(frame_buffer, i)) {
-                        mov_loader.close();
-                        return 1;
+                        EncodingTask task = prepare_task(std::move(frame_buffer), i);
+                        
+                        thread_pool->enqueue([task, i, &result_queue, &pipeline, &audio_sources, sound_enabled, samples_per_field]() mutable {
+                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field);
+                            result_queue.push(i, std::move(result));
+                        });
                     }
+                    mov_loader.close();
+                    
+                    // Write results in order
+                    for (int32_t i = 0; i < section_frames; ++i) {
+                        EncodedResult result;
+                        if (!result_queue.wait_and_pop(i, result)) {
+                            ENCODE_ORC_LOG_ERROR("Failed to get encoding result for frame {}", i);
+                            return 1;
+                        }
+                        if (!write_encoded_frame(result)) {
+                            return 1;
+                        }
+                    }
+                    thread_pool->wait_all();
+                } else {
+                    // Single-threaded encoding
+                    for (int32_t i = 0; i < section_frames; ++i) {
+                        FrameBuffer frame_buffer;
+                        if (!mov_loader.load_frame(start_frame + i, frame_buffer, load_error)) {
+                            ENCODE_ORC_LOG_ERROR("Failed to load MOV frame {}: {}", start_frame + i, load_error);
+                            mov_loader.close();
+                            return 1;
+                        }
+
+                        EncodingTask task = prepare_task(std::move(frame_buffer), i);
+                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field);
+                        if (!write_encoded_frame(result)) {
+                            mov_loader.close();
+                            return 1;
+                        }
+                    }
+                    mov_loader.close();
                 }
-                mov_loader.close();
             } else if (section.mp4_file_source) {
                 std::string mp4_file = section.mp4_file_source->file;
                 int32_t start_frame = section.mp4_file_source->start_frame.value_or(0);
@@ -1081,27 +1283,75 @@ int main(int argc, char* argv[]) {
 
                 // Batch decode frames in chunks to reduce ffmpeg overhead
                 constexpr int32_t BATCH_SIZE = 50;  // Decode 50 frames at a time
-                for (int32_t batch_start = 0; batch_start < section_frames; batch_start += BATCH_SIZE) {
-                    int32_t batch_count = std::min(BATCH_SIZE, section_frames - batch_start);
+                
+                if (num_threads > 1) {
+                    // Multi-threaded encoding
+                    OrderedQueue<EncodedResult> result_queue;
                     
-                    std::vector<FrameBuffer> frame_buffers;
-                    if (!mp4_loader.load_frames(start_frame + batch_start, batch_count, frame_buffers, load_error)) {
-                        ENCODE_ORC_LOG_ERROR("Failed to load MP4 frames {}-{}: {}", 
-                                           start_frame + batch_start, 
-                                           start_frame + batch_start + batch_count - 1, 
-                                           load_error);
-                        mp4_loader.close();
-                        return 1;
-                    }
-
-                    for (int32_t i = 0; i < batch_count; ++i) {
-                        if (!encode_frame(frame_buffers[i], batch_start + i)) {
+                    for (int32_t batch_start = 0; batch_start < section_frames; batch_start += BATCH_SIZE) {
+                        int32_t batch_count = std::min(BATCH_SIZE, section_frames - batch_start);
+                        
+                        std::vector<FrameBuffer> frame_buffers;
+                        if (!mp4_loader.load_frames(start_frame + batch_start, batch_count, frame_buffers, load_error)) {
+                            ENCODE_ORC_LOG_ERROR("Failed to load MP4 frames {}-{}: {}", 
+                                               start_frame + batch_start, 
+                                               start_frame + batch_start + batch_count - 1, 
+                                               load_error);
                             mp4_loader.close();
                             return 1;
                         }
+
+                        for (int32_t i = 0; i < batch_count; ++i) {
+                            int32_t frame_index = batch_start + i;
+                            EncodingTask task = prepare_task(std::move(frame_buffers[i]), frame_index);
+                            
+                            thread_pool->enqueue([task, frame_index, &result_queue, &pipeline, &audio_sources, sound_enabled, samples_per_field]() mutable {
+                                EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field);
+                                result_queue.push(frame_index, std::move(result));
+                            });
+                        }
                     }
+                    mp4_loader.close();
+                    
+                    // Write results in order
+                    for (int32_t i = 0; i < section_frames; ++i) {
+                        EncodedResult result;
+                        if (!result_queue.wait_and_pop(i, result)) {
+                            ENCODE_ORC_LOG_ERROR("Failed to get encoding result for frame {}", i);
+                            return 1;
+                        }
+                        if (!write_encoded_frame(result)) {
+                            return 1;
+                        }
+                    }
+                    thread_pool->wait_all();
+                } else {
+                    // Single-threaded encoding
+                    for (int32_t batch_start = 0; batch_start < section_frames; batch_start += BATCH_SIZE) {
+                        int32_t batch_count = std::min(BATCH_SIZE, section_frames - batch_start);
+                        
+                        std::vector<FrameBuffer> frame_buffers;
+                        if (!mp4_loader.load_frames(start_frame + batch_start, batch_count, frame_buffers, load_error)) {
+                            ENCODE_ORC_LOG_ERROR("Failed to load MP4 frames {}-{}: {}", 
+                                               start_frame + batch_start, 
+                                               start_frame + batch_start + batch_count - 1, 
+                                               load_error);
+                            mp4_loader.close();
+                            return 1;
+                        }
+
+                        for (int32_t i = 0; i < batch_count; ++i) {
+                            int32_t frame_index = batch_start + i;
+                            EncodingTask task = prepare_task(std::move(frame_buffers[i]), frame_index);
+                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field);
+                            if (!write_encoded_frame(result)) {
+                                mp4_loader.close();
+                                return 1;
+                            }
+                        }
+                    }
+                    mp4_loader.close();
                 }
-                mp4_loader.close();
             }
 
             frame_offset += section_frames;
