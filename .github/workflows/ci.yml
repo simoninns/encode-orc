@@ -124,17 +124,40 @@ jobs:
           restore-keys: |
             vcpkg-${{ runner.os }}-
       
-      - name: Install dependencies
+      - name: Install FFmpeg (prebuilt with full codec support)
         run: |
-          vcpkg install --triplet x64-windows
-        env:
-          VCPKG_BINARY_SOURCES: "clear;files,C:/vcpkg/archives,readwrite"
+          # Install FFmpeg with all codecs via Chocolatey
+          choco install ffmpeg -y
+          # Install pkg-config for Windows to find FFmpeg
+          choco install pkgconfiglite -y
+        shell: pwsh
+      
+      - name: Setup FFmpeg for CMake
+        run: |
+          # Add FFmpeg to PATH and PKG_CONFIG_PATH
+          $ffmpegPath = "C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg\bin"
+          echo $ffmpegPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          
+          # Create pkg-config files for FFmpeg (Chocolatey package includes them)
+          $pkgConfigPath = "C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg\lib\pkgconfig"
+          if (Test-Path $pkgConfigPath) {
+            echo "PKG_CONFIG_PATH=$pkgConfigPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+        shell: pwsh
+      
+      - name: Verify FFmpeg
+        run: |
+          ffmpeg -version
+          ffprobe -version
+          pkg-config --modversion libavcodec 2>&1 || echo "Note: pkg-config check failed, will use manual FFmpeg detection"
+        shell: pwsh
       
       - name: Configure
         run: |
           cmake -B build `
             -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+            -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
+            -DCMAKE_PREFIX_PATH="C:/ProgramData/chocolatey/lib/ffmpeg/tools/ffmpeg"
       
       - name: Build
         run: cmake --build build --config Release -j $env:NUMBER_OF_PROCESSORS

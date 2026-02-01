@@ -7,10 +7,12 @@
     "sqlite3",
     "yaml-cpp",
     "libpng",
-    "pkgconf",
+    "pkgconf"
+  ],
+  "overrides": [
     {
       "name": "ffmpeg",
-      "features": ["x264", "x265", "vpx", "gpl"]
+      "version": "skip"
     }
   ]
 }
