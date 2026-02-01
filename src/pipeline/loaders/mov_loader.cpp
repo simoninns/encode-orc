@@ -24,6 +24,8 @@
 #ifdef _WIN32
 #include <process.h>
 #define getpid _getpid
+#define popen _popen
+#define pclose _pclose
 #else
 #include <unistd.h>
 #endif
@@ -121,7 +123,7 @@ bool MOVLoader::probe_video_info(std::string& error_message) {
     }
     
     // Read output
-    while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+    while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr) {
         result += buffer.data();
     }
     
@@ -229,7 +231,7 @@ bool MOVLoader::extract_frames_to_yuv(int32_t start_frame,
     }
     
     // Capture any error output
-    while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+    while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr) {
         ffmpeg_output += buffer.data();
     }
     

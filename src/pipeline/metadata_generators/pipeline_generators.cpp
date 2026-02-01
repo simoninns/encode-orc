@@ -360,8 +360,8 @@ void BiphaseVBIMetadataGenerator::apply(Field& field, const MetadataContext& con
         // Encode single byte as 3-byte biphase (byte, 0xFF, 0xFF for single-byte mode)
         auto samples = BiphaseEncoder::encode(vbi_byte, 0xFF, 0xFF,
                                              params_.sample_rate,
-                                             params_.white_16b_ire,
-                                             params_.blanking_16b_ire);
+                                             static_cast<uint16_t>(params_.white_16b_ire),
+                                             static_cast<uint16_t>(params_.blanking_16b_ire));
         
         // Get start position for biphase signal
         double line_period_h = 1.0 / (params_.system == VideoSystem::PAL ? 15625.0 : 15734.0);

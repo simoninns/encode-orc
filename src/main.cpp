@@ -337,7 +337,7 @@ bool extract_mp4_audio_pcm(const std::string& filename, std::vector<int16_t>& ou
         return false;
     }
 
-    while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+    while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr) {
         ffmpeg_output += buffer.data();
     }
 
