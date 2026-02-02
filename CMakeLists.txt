@@ -269,7 +269,7 @@ install(DIRECTORY testcard-images/
     DESTINATION share/encode-orc/testcard-images
     FILES_MATCHING 
         PATTERN "*.png"
-        PATTERN "*.yuv"
+        PATTERN "*.raw"
         PATTERN "*.mov"
         PATTERN "*.mp4"
         PATTERN "*.pcm"
