@@ -26,14 +26,9 @@ This tool enables developers and testers to create synthetic test data for valid
 
 First release
 
-## Build Status
+## Build 
 
-[![Build and Test](https://github.com/simoninns/encode-orc/actions/workflows/ci.yml/badge.svg)](https://github.com/simoninns/encode-orc/actions/workflows/ci.yml)
-[![Release](https://github.com/simoninns/encode-orc/actions/workflows/release.yml/badge.svg)](https://github.com/simoninns/encode-orc/actions/workflows/release.yml)
-
-Continuous integration builds and tests for Windows, macOS, and Linux (Fedora/Ubuntu/Flatpak) are run automatically on every commit. Release packages (MSI, DMG, and Flatpak) are automatically generated when version tags are pushed.
-
-See [BUILD_SYSTEM.md](docs/BUILD_SYSTEM.md) for detailed build and packaging documentation.
+Note that encode-orc is designed to be a sub-module to the decode-orc project.  Therefore local build is limited to a simple test of the compilation in Fedora as well as a number of local test encode runs to check functionality.
 
 ## Contributing
 
@@ -45,7 +40,7 @@ See [LICENSE](LICENSE) file for details.
 
 ## Related Projects
 
-- [decode-orc](https://github.com/simoninns/decode-orc) - The primary consumer of encode-orc test data
+- [decode-orc](https://github.com/simoninns/decode-orc) - Encode-Orc is designed as a sub-module to decode-orc.
 
 ## Acknowledgments
 
