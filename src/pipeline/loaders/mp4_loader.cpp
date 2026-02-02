@@ -371,7 +371,8 @@ bool MP4Loader::load_frames(int32_t start_frame,
     }
     
     // Create temporary file for YUV data
-    std::string temp_yuv_file = "/tmp/encode_orc_mp4_" + std::to_string(getpid()) + ".yuv";
+    std::filesystem::path temp_dir = std::filesystem::temp_directory_path();
+    std::string temp_yuv_file = (temp_dir / ("encode_orc_mp4_" + std::to_string(getpid()) + ".yuv")).string();
     
     // Extract frames to temporary YUV file
     if (!extract_frames_to_yuv(start_frame, num_frames, temp_yuv_file, error_message)) {

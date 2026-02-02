@@ -160,11 +160,11 @@ jobs:
             -DCMAKE_PREFIX_PATH="C:/ProgramData/chocolatey/lib/ffmpeg/tools/ffmpeg"
       
       - name: Build
-        run: cmake --build build --config Release -j $env:NUMBER_OF_PROCESSORS
+        run: cmake --build build --config Release --parallel
       
       - name: Run tests
-        run: bash run-tests.sh
-        shell: bash
+        run: .\run-tests.ps1
+        shell: pwsh
 
   # Code quality check
   code-quality:

@@ -47,6 +47,7 @@
 #include <chrono>
 #include <thread>
 #include <future>
+#include <mutex>
 
 namespace {
 
@@ -91,12 +92,19 @@ int16_t clamp_int16(int32_t value) {
 
 std::vector<int16_t> generate_field_audio(std::vector<AudioSource>& sources,
                                           int32_t samples_per_field,
-                                          int32_t sample_rate) {
+                                          int32_t sample_rate,
+                                          std::mutex* audio_mutex = nullptr) {
     const int32_t sample_values = samples_per_field * 2;  // Stereo interleaved
     std::vector<int32_t> mix(sample_values, 0);
 
     if (sources.empty()) {
         return std::vector<int16_t>(sample_values, 0);
+    }
+    
+    // Lock mutex if provided (for multi-threaded access)
+    std::unique_lock<std::mutex> lock;
+    if (audio_mutex) {
+        lock = std::unique_lock<std::mutex>(*audio_mutex);
     }
 
     constexpr double kAmplitude = 0.8 * 32767.0;
@@ -157,7 +165,8 @@ EncodedResult encode_single_frame(
     bool sound_enabled,
     std::vector<AudioSource>& audio_sources,
     int32_t samples_per_field,
-    bool parallel_fields = false)
+    bool parallel_fields = false,
+    std::mutex* audio_mutex = nullptr)
 {
     EncodedResult result;
     result.section_frame = task.section_frame;
@@ -166,11 +175,10 @@ EncodedResult encode_single_frame(
     
     try {
         // Attach audio to the frame (if enabled)
-        // NOTE: Audio generation modifies audio_sources state, so it's not thread-safe
-        // For now, we'll skip audio in multi-threaded mode or handle it separately
+        // NOTE: Audio generation modifies audio_sources state, so it must be protected by mutex in multi-threaded mode
         if (sound_enabled) {
-            auto field1_audio = generate_field_audio(audio_sources, samples_per_field, 44100);
-            auto field2_audio = generate_field_audio(audio_sources, samples_per_field, 44100);
+            auto field1_audio = generate_field_audio(audio_sources, samples_per_field, 44100, audio_mutex);
+            auto field2_audio = generate_field_audio(audio_sources, samples_per_field, 44100, audio_mutex);
 
             std::vector<int16_t> frame_audio;
             frame_audio.reserve(field1_audio.size() + field2_audio.size());
@@ -356,6 +364,7 @@ bool extract_mp4_audio_pcm(const std::string& filename, std::vector<int16_t>& ou
 } // namespace
 
 int main(int argc, char* argv[]) {
+    try {
     using namespace encode_orc;
     
     // Check for help and version flags first
@@ -374,6 +383,7 @@ int main(int argc, char* argv[]) {
             std::cout << "Options:\n";
             std::cout << "  -h, --help              Show this help message\n";
             std::cout << "  -v, --version           Show version information\n";
+            std::cout << "  -q, --quiet             Suppress output except errors\n";
             std::cout << "  --log-level LEVEL       Set logging verbosity\n";
             std::cout << "                          (trace, debug, info, warn, error, critical, off)\n";
             std::cout << "                          Default: info\n";
@@ -390,13 +400,21 @@ int main(int argc, char* argv[]) {
     // Parse command-line arguments to extract logging options and other flags
     std::string log_level = "info";
     std::string log_file = "";
+    bool quiet_mode = false;
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--log-level" && i + 1 < argc) {
             log_level = argv[++i];
         } else if (arg == "--log-file" && i + 1 < argc) {
             log_file = argv[++i];
+        } else if (arg == "--quiet" || arg == "-q") {
+            quiet_mode = true;
         }
+    }
+    
+    // Apply quiet mode if enabled (overrides --log-level)
+    if (quiet_mode) {
+        log_level = "error";
     }
     
     // Initialize logging system
@@ -452,6 +470,76 @@ int main(int argc, char* argv[]) {
     
     if (!validate_yaml_config(config, error_msg)) {
         ENCODE_ORC_LOG_ERROR("Error validating YAML config: {}", error_msg);
+        return 1;
+    }
+    
+    // Validate all input files exist before processing
+    ENCODE_ORC_LOG_DEBUG("Validating input files...");
+    bool validation_failed = false;
+    for (const auto& section : config.sections) {
+        if (section.yuv422_image_source) {
+            if (!std::filesystem::exists(section.yuv422_image_source->file)) {
+                ENCODE_ORC_LOG_ERROR("Input file does not exist: {}", section.yuv422_image_source->file);
+                validation_failed = true;
+            }
+        }
+        if (section.png_image_source) {
+            if (!std::filesystem::exists(section.png_image_source->file)) {
+                ENCODE_ORC_LOG_ERROR("Input file does not exist: {}", section.png_image_source->file);
+                validation_failed = true;
+            }
+        }
+        if (section.mov_file_source) {
+            if (!std::filesystem::exists(section.mov_file_source->file)) {
+                ENCODE_ORC_LOG_ERROR("Input file does not exist: {}", section.mov_file_source->file);
+                validation_failed = true;
+            }
+        }
+        if (section.mp4_file_source) {
+            if (!std::filesystem::exists(section.mp4_file_source->file)) {
+                ENCODE_ORC_LOG_ERROR("Input file does not exist: {}", section.mp4_file_source->file);
+                validation_failed = true;
+            }
+        }
+        // Check audio files
+        for (const auto& sound_cfg : section.sound) {
+            if (sound_cfg.type == "wav" && sound_cfg.file.has_value()) {
+                if (!std::filesystem::exists(sound_cfg.file.value())) {
+                    ENCODE_ORC_LOG_ERROR("Audio file does not exist: {}", sound_cfg.file.value());
+                    validation_failed = true;
+                }
+            }
+        }
+    }
+    
+    if (validation_failed) {
+        ENCODE_ORC_LOG_ERROR("Input file validation failed. Please check that all files exist.");
+        return 1;
+    }
+    
+    // Validate and create output directory if needed
+    ENCODE_ORC_LOG_DEBUG("Validating output destination...");
+    std::filesystem::path output_path(config.output.filename);
+    std::filesystem::path output_dir = output_path.parent_path();
+    
+    // If no directory specified, use current directory
+    if (output_dir.empty()) {
+        output_dir = ".";
+    }
+    
+    // Check if output directory exists or can be created
+    if (!output_dir.empty() && !std::filesystem::exists(output_dir)) {
+        ENCODE_ORC_LOG_DEBUG("Output directory does not exist, creating: {}", output_dir.string());
+        std::error_code ec;
+        if (!std::filesystem::create_directories(output_dir, ec)) {
+            ENCODE_ORC_LOG_ERROR("Failed to create output directory '{}': {}", output_dir.string(), ec.message());
+            return 1;
+        }
+    }
+    
+    // Verify we can write to the output directory
+    if (!std::filesystem::is_directory(output_dir)) {
+        ENCODE_ORC_LOG_ERROR("Output path '{}' exists but is not a directory", output_dir.string());
         return 1;
     }
     
@@ -640,6 +728,7 @@ int main(int argc, char* argv[]) {
 
         if (!audio_writer->open(audio_filename, audio_format, 44100, 2, 16)) {
             ENCODE_ORC_LOG_ERROR("Could not open audio output file: {}", audio_filename);
+            ENCODE_ORC_LOG_ERROR("Ensure the output directory exists and you have write permissions.");
             return 1;
         }
     }
@@ -653,6 +742,7 @@ int main(int argc, char* argv[]) {
         yc_writer = std::make_unique<YCTBCWriter>(YCTBCWriter::NamingMode::MODERN);
         if (!yc_writer->open(output_filename)) {
             ENCODE_ORC_LOG_ERROR("Could not open Y/C output files: {}", output_filename);
+            ENCODE_ORC_LOG_ERROR("Ensure the output directory exists and you have write permissions.");
             return 1;
         }
         
@@ -674,6 +764,7 @@ int main(int argc, char* argv[]) {
 
         if (!writer->open(output_filename)) {
             ENCODE_ORC_LOG_ERROR("Could not open output file: {}", output_filename);
+            ENCODE_ORC_LOG_ERROR("Ensure the output directory exists and you have write permissions.");
             return 1;
         }
 
@@ -733,21 +824,22 @@ int main(int argc, char* argv[]) {
     }
     
     // Determine whether to use parallel field encoding (Phase 2)
-    // Auto-enable on systems with 8+ hardware threads to avoid oversubscription on smaller systems
-    bool parallel_fields = (hw_threads >= 8);
-    if (parallel_fields) {
-        ENCODE_ORC_LOG_INFO("Field-level parallelism: AUTO-ENABLED ({} hardware threads detected)", hw_threads);
-    } else {
-        ENCODE_ORC_LOG_DEBUG("Field-level parallelism: AUTO-DISABLED ({} hardware threads < 8)", hw_threads);
-    }
+    // DISABLED: Causes heap corruption when combined with frame-level multi-threading
+    // TODO: Fix thread safety issues in parallel field encoding before re-enabling
+    bool parallel_fields = false;
+    ENCODE_ORC_LOG_DEBUG("Field-level parallelism: DISABLED (incompatible with frame-level threading)");
 
     int32_t frame_offset = 0;
+    
+    // Shared audio state and mutex for all sections (moved outside section loop to prevent dangling references)
+    std::vector<AudioSource> audio_sources;
+    std::mutex audio_mutex;
 
     for (const auto& section : config.sections) {
         ENCODE_ORC_LOG_INFO("Encoding section: {}", section.name);
 
-        // Prepare audio sources for this section
-        std::vector<AudioSource> audio_sources;
+        // Clear and prepare audio sources for this section
+        audio_sources.clear();
         if (sound_enabled) {
             if (!section.sound.empty()) {
                 for (const auto& sound_cfg : section.sound) {
@@ -1150,12 +1242,14 @@ int main(int argc, char* argv[]) {
                     OrderedQueue<EncodedResult> result_queue;
                     
                     // Submit all encoding tasks
+                    // Capture pipeline raw pointer by value to avoid dangling reference
+                    auto* pipeline_ptr = pipeline.get();
                     for (int32_t i = 0; i < section_frames; ++i) {
                         FrameBuffer fb_copy = frame_buffer;  // Copy frame buffer for each task
                         EncodingTask task = prepare_task(std::move(fb_copy), i);
                         
-                        thread_pool->enqueue([task, i, &result_queue, &pipeline, &audio_sources, sound_enabled, samples_per_field, parallel_fields]() mutable {
-                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields);
+                        thread_pool->enqueue([task, i, &result_queue, pipeline_ptr, &audio_sources, &audio_mutex, sound_enabled, samples_per_field, parallel_fields]() mutable {
+                            EncodedResult result = encode_single_frame(std::move(task), pipeline_ptr, sound_enabled, audio_sources, samples_per_field, parallel_fields, &audio_mutex);
                             result_queue.push(i, std::move(result));
                         });
                     }
@@ -1177,7 +1271,7 @@ int main(int argc, char* argv[]) {
                     for (int32_t i = 0; i < section_frames; ++i) {
                         FrameBuffer fb_copy = frame_buffer;
                         EncodingTask task = prepare_task(std::move(fb_copy), i);
-                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields);
+                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields, nullptr);
                         if (!write_encoded_frame(result)) {
                             return 1;
                         }
@@ -1207,12 +1301,14 @@ int main(int argc, char* argv[]) {
                     OrderedQueue<EncodedResult> result_queue;
                     
                     // Submit all encoding tasks
+                    // Capture pipeline raw pointer by value to avoid dangling reference
+                    auto* pipeline_ptr = pipeline.get();
                     for (int32_t i = 0; i < section_frames; ++i) {
                         FrameBuffer fb_copy = frame_buffer;
                         EncodingTask task = prepare_task(std::move(fb_copy), i);
                         
-                        thread_pool->enqueue([task, i, &result_queue, &pipeline, &audio_sources, sound_enabled, samples_per_field, parallel_fields]() mutable {
-                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields);
+                        thread_pool->enqueue([task, i, &result_queue, pipeline_ptr, &audio_sources, &audio_mutex, sound_enabled, samples_per_field, parallel_fields]() mutable {
+                            EncodedResult result = encode_single_frame(std::move(task), pipeline_ptr, sound_enabled, audio_sources, samples_per_field, parallel_fields, &audio_mutex);
                             result_queue.push(i, std::move(result));
                         });
                     }
@@ -1234,7 +1330,7 @@ int main(int argc, char* argv[]) {
                     for (int32_t i = 0; i < section_frames; ++i) {
                         FrameBuffer fb_copy = frame_buffer;
                         EncodingTask task = prepare_task(std::move(fb_copy), i);
-                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields);
+                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields, nullptr);
                         if (!write_encoded_frame(result)) {
                             return 1;
                         }
@@ -1257,6 +1353,8 @@ int main(int argc, char* argv[]) {
                     OrderedQueue<EncodedResult> result_queue;
                     
                     // Submit encoding tasks
+                    // Capture pipeline raw pointer by value to avoid dangling reference
+                    auto* pipeline_ptr = pipeline.get();
                     for (int32_t i = 0; i < section_frames; ++i) {
                         FrameBuffer frame_buffer;
                         if (!mov_loader.load_frame(start_frame + i, frame_buffer, load_error)) {
@@ -1267,8 +1365,8 @@ int main(int argc, char* argv[]) {
 
                         EncodingTask task = prepare_task(std::move(frame_buffer), i);
                         
-                        thread_pool->enqueue([task, i, &result_queue, &pipeline, &audio_sources, sound_enabled, samples_per_field, parallel_fields]() mutable {
-                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields);
+                        thread_pool->enqueue([task, i, &result_queue, pipeline_ptr, &audio_sources, &audio_mutex, sound_enabled, samples_per_field, parallel_fields]() mutable {
+                            EncodedResult result = encode_single_frame(std::move(task), pipeline_ptr, sound_enabled, audio_sources, samples_per_field, parallel_fields, &audio_mutex);
                             result_queue.push(i, std::move(result));
                         });
                     }
@@ -1297,7 +1395,7 @@ int main(int argc, char* argv[]) {
                         }
 
                         EncodingTask task = prepare_task(std::move(frame_buffer), i);
-                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields);
+                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields, nullptr);
                         if (!write_encoded_frame(result)) {
                             mov_loader.close();
                             return 1;
@@ -1324,6 +1422,8 @@ int main(int argc, char* argv[]) {
                     // Multi-threaded encoding
                     OrderedQueue<EncodedResult> result_queue;
                     
+                    // Capture pipeline raw pointer by value to avoid dangling reference
+                    auto* pipeline_ptr = pipeline.get();
                     for (int32_t batch_start = 0; batch_start < section_frames; batch_start += BATCH_SIZE) {
                         int32_t batch_count = std::min(BATCH_SIZE, section_frames - batch_start);
                         
@@ -1341,8 +1441,8 @@ int main(int argc, char* argv[]) {
                             int32_t frame_index = batch_start + i;
                             EncodingTask task = prepare_task(std::move(frame_buffers[i]), frame_index);
                             
-                            thread_pool->enqueue([task, frame_index, &result_queue, &pipeline, &audio_sources, sound_enabled, samples_per_field, parallel_fields]() mutable {
-                                EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields);
+                            thread_pool->enqueue([task, frame_index, &result_queue, pipeline_ptr, &audio_sources, &audio_mutex, sound_enabled, samples_per_field, parallel_fields]() mutable {
+                                EncodedResult result = encode_single_frame(std::move(task), pipeline_ptr, sound_enabled, audio_sources, samples_per_field, parallel_fields, &audio_mutex);
                                 result_queue.push(frame_index, std::move(result));
                             });
                         }
@@ -1379,7 +1479,7 @@ int main(int argc, char* argv[]) {
                         for (int32_t i = 0; i < batch_count; ++i) {
                             int32_t frame_index = batch_start + i;
                             EncodingTask task = prepare_task(std::move(frame_buffers[i]), frame_index);
-                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields);
+                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields, nullptr);
                             if (!write_encoded_frame(result)) {
                                 mp4_loader.close();
                                 return 1;
@@ -1427,5 +1527,12 @@ int main(int argc, char* argv[]) {
     }
     
     return 0;
+    
+    } catch (const std::exception& e) {
+        ENCODE_ORC_LOG_ERROR("Fatal error: {}", e.what());
+        return 1;
+    } catch (...) {
+        ENCODE_ORC_LOG_ERROR("Fatal error: Unknown exception occurred");
+        return 1;
+    }
 }
-

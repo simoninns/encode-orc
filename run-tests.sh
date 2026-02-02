@@ -5,6 +5,7 @@
 #
 
 set -e
+set -o pipefail
 
 # Colors for output
 RED='\033[0;31m'
@@ -32,21 +33,12 @@ if [ ! -d "$BUILD_DIR" ]; then
     cd "$PROJECT_ROOT"
 fi
 
-# Determine executable location based on platform
-# On Windows with MSVC, the executable is in build/Release/encode-orc.exe
-# On Unix-like systems, it's in build/encode-orc
-if [ -f "$BUILD_DIR/Release/encode-orc.exe" ]; then
-    ENCODE_ORC="$BUILD_DIR/Release/encode-orc.exe"
-elif [ -f "$BUILD_DIR/encode-orc.exe" ]; then
-    ENCODE_ORC="$BUILD_DIR/encode-orc.exe"
-elif [ -f "$BUILD_DIR/encode-orc" ]; then
+# Determine executable location
+if [ -f "$BUILD_DIR/encode-orc" ]; then
     ENCODE_ORC="$BUILD_DIR/encode-orc"
 else
-    echo -e "${RED}Error: encode-orc executable not found. Build may have failed.${NC}"
-    echo -e "${RED}Checked:${NC}"
-    echo -e "${RED}  - $BUILD_DIR/Release/encode-orc.exe${NC}"
-    echo -e "${RED}  - $BUILD_DIR/encode-orc.exe${NC}"
-    echo -e "${RED}  - $BUILD_DIR/encode-orc${NC}"
+    echo -e "${RED}Error: encode-orc executable not found at $BUILD_DIR/encode-orc${NC}"
+    echo -e "${RED}Build may have failed.${NC}"
     exit 1
 fi
 
@@ -85,7 +77,13 @@ for yaml_file in "${yaml_files[@]}"; do
         echo -n "Test $total_tests: $filename ... "
         
         # Run encode-orc with YAML file
-        if "$ENCODE_ORC" "$yaml_file" > /dev/null 2>&1; then
+        temp_output=$(mktemp)
+        set +e  # Temporarily disable exit on error
+        "$ENCODE_ORC" "$yaml_file" --quiet > "$temp_output" 2>&1
+        exit_code=$?
+        set -e  # Re-enable exit on error
+        
+        if [ $exit_code -eq 0 ]; then
             echo -e "${GREEN}PASSED${NC}"
             passed_tests=$((passed_tests + 1))
             
@@ -98,7 +96,12 @@ for yaml_file in "${yaml_files[@]}"; do
         else
             echo -e "${RED}FAILED${NC}"
             failed_tests=$((failed_tests + 1))
+            # Show error output if any
+            if [ -s "$temp_output" ]; then
+                cat "$temp_output" | sed 's/^/  /'
+            fi
         fi
+        rm -f "$temp_output"
     fi
 done
 
