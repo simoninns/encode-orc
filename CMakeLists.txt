@@ -123,7 +123,7 @@ if(WIN32)
 endif()
 
 # Fall back to pkg-config if FFmpeg not found manually (or not on Windows)
-if(NOT FFMPEG_FOUND)
+if(NOT TARGET FFMPEG::avcodec)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
         libavcodec
@@ -265,7 +265,6 @@ install(TARGETS encode-orc
 install(DIRECTORY example-projects/
     DESTINATION share/encode-orc/example-projects
     FILES_MATCHING PATTERN "*.yaml"
-    COMPONENT Runtime
 )
 
 # Install testcard images
@@ -277,7 +276,6 @@ install(DIRECTORY testcard-images/
         PATTERN "*.mov"
         PATTERN "*.mp4"
         PATTERN "*.pcm"
-    COMPONENT Runtime
 )
 
 # Install documentation
