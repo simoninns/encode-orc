@@ -129,29 +129,32 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:/ffmpeg
-          key: ffmpeg-8.0.1-full-windows
+          key: ffmpeg-btbn-latest-win64-gpl-shared
       
-      - name: Install FFmpeg (full build with dev files)
+      - name: Install FFmpeg (MSVC-compatible shared build)
         if: steps.cache-ffmpeg.outputs.cache-hit != 'true'
         run: |
-          # Download FFmpeg full build (includes .lib import libraries)
-          $ffmpegUrl = "https://github.com/GyanD/codexffmpeg/releases/download/8.0.1/ffmpeg-8.0.1-full_build.7z"
-          $ffmpegZip = "$env:TEMP\ffmpeg.7z"
+          # Download FFmpeg shared build with MSVC-compatible import libraries
+          $ffmpegUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip"
+          $ffmpegZip = "$env:TEMP\ffmpeg.zip"
           $ffmpegDir = "C:\ffmpeg"
           
           Write-Host "Downloading FFmpeg from $ffmpegUrl..."
           Invoke-WebRequest -Uri $ffmpegUrl -OutFile $ffmpegZip
           
           Write-Host "Extracting FFmpeg..."
-          7z x $ffmpegZip -o"$ffmpegDir" -y
+          Expand-Archive -Path $ffmpegZip -DestinationPath $ffmpegDir -Force
           
-          # Find the extracted directory (it will be something like ffmpeg-8.0.1-full_build)
+          # Find the extracted directory
           $extractedDir = Get-ChildItem -Path $ffmpegDir -Directory | Select-Object -First 1
           $ffmpegRoot = $extractedDir.FullName
           
           Write-Host "FFmpeg extracted to: $ffmpegRoot"
-          Write-Host "Contents of FFmpeg directory:"
+          Write-Host "Contents:"
           Get-ChildItem $ffmpegRoot | Select-Object Name, Mode
+          
+          Write-Host "`nLib directory:"
+          Get-ChildItem "$ffmpegRoot\lib" | Select-Object Name
         shell: pwsh
       
       - name: Setup FFmpeg environment
