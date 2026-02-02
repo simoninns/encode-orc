@@ -256,12 +256,16 @@ else()
 endif()
 
 # Install target
-install(TARGETS encode-orc DESTINATION bin)
+install(TARGETS encode-orc 
+    RUNTIME DESTINATION bin
+    COMPONENT Runtime
+)
 
 # Install example projects
 install(DIRECTORY example-projects/
     DESTINATION share/encode-orc/example-projects
     FILES_MATCHING PATTERN "*.yaml"
+    COMPONENT Runtime
 )
 
 # Install testcard images
@@ -273,17 +277,22 @@ install(DIRECTORY testcard-images/
         PATTERN "*.mov"
         PATTERN "*.mp4"
         PATTERN "*.pcm"
+    COMPONENT Runtime
 )
 
 # Install documentation
 install(FILES README.md LICENSE
     DESTINATION share/doc/encode-orc
+    COMPONENT Runtime
 )
 
 # On Windows, install vcpkg DLLs alongside the executable
 if(WIN32)
     # Install script to copy vcpkg DLLs during installation
     install(CODE "
+        # Ensure bin directory exists
+        file(MAKE_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/bin\")
+        
         # Copy vcpkg runtime DLLs
         set(VCPKG_BIN_DIR \"C:/vcpkg/installed/x64-windows/bin\")
         if(EXISTS \"\${VCPKG_BIN_DIR}\")
