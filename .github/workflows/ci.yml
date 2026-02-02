@@ -124,50 +124,53 @@ jobs:
           restore-keys: |
             vcpkg-${{ runner.os }}-
       
-      - name: Install FFmpeg (prebuilt with full codec support)
+      - name: Cache FFmpeg
+        id: cache-ffmpeg
+        uses: actions/cache@v4
+        with:
+          path: C:/ffmpeg
+          key: ffmpeg-8.0.1-full-windows
+      
+      - name: Install FFmpeg (full build with dev files)
+        if: steps.cache-ffmpeg.outputs.cache-hit != 'true'
         run: |
-          # Install FFmpeg with all codecs via Chocolatey
-          choco install ffmpeg -y
-          # Install pkg-config for Windows to find FFmpeg
-          choco install pkgconfiglite -y
+          # Download FFmpeg full build (includes .lib import libraries)
+          $ffmpegUrl = "https://github.com/GyanD/codexffmpeg/releases/download/8.0.1/ffmpeg-8.0.1-full_build.7z"
+          $ffmpegZip = "$env:TEMP\ffmpeg.7z"
+          $ffmpegDir = "C:\ffmpeg"
+          
+          Write-Host "Downloading FFmpeg from $ffmpegUrl..."
+          Invoke-WebRequest -Uri $ffmpegUrl -OutFile $ffmpegZip
+          
+          Write-Host "Extracting FFmpeg..."
+          7z x $ffmpegZip -o"$ffmpegDir" -y
+          
+          # Find the extracted directory (it will be something like ffmpeg-8.0.1-full_build)
+          $extractedDir = Get-ChildItem -Path $ffmpegDir -Directory | Select-Object -First 1
+          $ffmpegRoot = $extractedDir.FullName
+          
+          Write-Host "FFmpeg extracted to: $ffmpegRoot"
+          Write-Host "Contents of FFmpeg directory:"
+          Get-ChildItem $ffmpegRoot | Select-Object Name, Mode
         shell: pwsh
       
-      - name: Setup FFmpeg for CMake
+      - name: Setup FFmpeg environment
         run: |
-          # Add FFmpeg to PATH
-          $ffmpegPath = "C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg\bin"
-          echo $ffmpegPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          # Find the FFmpeg directory (whether cached or just downloaded)
+          $extractedDir = Get-ChildItem -Path "C:\ffmpeg" -Directory | Select-Object -First 1
+          $ffmpegRoot = $extractedDir.FullName
           
-          # Set FFmpeg root directory for CMake
-          $ffmpegRoot = "C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg"
+          Write-Host "Using FFmpeg from: $ffmpegRoot"
+          
+          # Add to PATH
+          echo "$ffmpegRoot\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          
+          # Set FFmpeg root for CMake
           echo "FFMPEG_ROOT=$ffmpegRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        shell: pwsh
-      
-      - name: Verify FFmpeg
-        run: |
-          ffmpeg -version
-          ffprobe -version
-          
-          # Show FFmpeg directory structure
-          Write-Host "`nFFmpeg directory structure:"
-          if (Test-Path "C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg") {
-            Get-ChildItem "C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg" | Select-Object Name, Mode
-            Write-Host "`nLib directory:"
-            if (Test-Path "C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg\lib") {
-              Get-ChildItem "C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg\lib" | Select-Object Name
-            }
-            Write-Host "`nBin directory:"
-            if (Test-Path "C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg\bin") {
-              Get-ChildItem "C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg\bin" -Filter "*.dll" | Select-Object Name
-            }
-          }
         shell: pwsh
       
       - name: Configure
         run: |
-          # Set FFMPEG_ROOT environment variable for CMake
-          $env:FFMPEG_ROOT = "C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg"
-          
           cmake -B build `
             -DCMAKE_BUILD_TYPE=Release `
             -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
