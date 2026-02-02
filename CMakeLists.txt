@@ -48,13 +48,90 @@ find_package(spdlog REQUIRED)
 find_package(Threads REQUIRED)
 
 # Find FFmpeg (for MOV/MP4 video loading)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
-    libavcodec
-    libavformat
-    libavutil
-    libswscale
-)
+if(WIN32)
+    # On Windows, try to find FFmpeg manually first, fall back to pkg-config
+    # This handles Chocolatey FFmpeg installations better
+    if(DEFINED ENV{FFMPEG_ROOT})
+        set(FFMPEG_ROOT $ENV{FFMPEG_ROOT})
+    endif()
+    
+    # Try to find FFmpeg headers and libraries manually
+    find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h
+        HINTS ${FFMPEG_ROOT}/include ${CMAKE_PREFIX_PATH}/include
+        PATH_SUFFIXES include
+    )
+    
+    find_library(AVCODEC_LIBRARY
+        NAMES avcodec libavcodec
+        HINTS ${FFMPEG_ROOT}/lib ${CMAKE_PREFIX_PATH}/lib ${FFMPEG_ROOT}/bin
+        PATH_SUFFIXES lib bin
+    )
+    
+    find_library(AVFORMAT_LIBRARY
+        NAMES avformat libavformat
+        HINTS ${FFMPEG_ROOT}/lib ${CMAKE_PREFIX_PATH}/lib ${FFMPEG_ROOT}/bin
+        PATH_SUFFIXES lib bin
+    )
+    
+    find_library(AVUTIL_LIBRARY
+        NAMES avutil libavutil
+        HINTS ${FFMPEG_ROOT}/lib ${CMAKE_PREFIX_PATH}/lib ${FFMPEG_ROOT}/bin
+        PATH_SUFFIXES lib bin
+    )
+    
+    find_library(SWSCALE_LIBRARY
+        NAMES swscale libswscale
+        HINTS ${FFMPEG_ROOT}/lib ${CMAKE_PREFIX_PATH}/lib ${FFMPEG_ROOT}/bin
+        PATH_SUFFIXES lib bin
+    )
+    
+    if(AVCODEC_INCLUDE_DIR AND AVCODEC_LIBRARY AND AVFORMAT_LIBRARY AND AVUTIL_LIBRARY AND SWSCALE_LIBRARY)
+        # Create imported targets manually
+        add_library(FFMPEG::avcodec UNKNOWN IMPORTED)
+        set_target_properties(FFMPEG::avcodec PROPERTIES
+            IMPORTED_LOCATION "${AVCODEC_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${AVCODEC_INCLUDE_DIR}"
+        )
+        
+        add_library(FFMPEG::avformat UNKNOWN IMPORTED)
+        set_target_properties(FFMPEG::avformat PROPERTIES
+            IMPORTED_LOCATION "${AVFORMAT_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${AVCODEC_INCLUDE_DIR}"
+        )
+        
+        add_library(FFMPEG::avutil UNKNOWN IMPORTED)
+        set_target_properties(FFMPEG::avutil PROPERTIES
+            IMPORTED_LOCATION "${AVUTIL_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${AVCODEC_INCLUDE_DIR}"
+        )
+        
+        add_library(FFMPEG::swscale UNKNOWN IMPORTED)
+        set_target_properties(FFMPEG::swscale PROPERTIES
+            IMPORTED_LOCATION "${SWSCALE_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${AVCODEC_INCLUDE_DIR}"
+        )
+        
+        set(FFMPEG_FOUND TRUE)
+        message(STATUS "Found FFmpeg (manual discovery)")
+        message(STATUS "  avcodec: ${AVCODEC_LIBRARY}")
+        message(STATUS "  avformat: ${AVFORMAT_LIBRARY}")
+        message(STATUS "  avutil: ${AVUTIL_LIBRARY}")
+        message(STATUS "  swscale: ${SWSCALE_LIBRARY}")
+    else()
+        set(FFMPEG_FOUND FALSE)
+    endif()
+endif()
+
+# Fall back to pkg-config if FFmpeg not found manually (or not on Windows)
+if(NOT FFMPEG_FOUND)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
+        libavcodec
+        libavformat
+        libavutil
+        libswscale
+    )
+endif()
 
 # Get git commit hash
 execute_process(
@@ -153,14 +230,30 @@ set(SOURCES
 add_executable(encode-orc ${SOURCES})
 
 # Link libraries
-target_link_libraries(encode-orc PRIVATE 
-    SQLite::SQLite3 
-    yaml-cpp::yaml-cpp 
-    PNG::PNG 
-    spdlog::spdlog
-    PkgConfig::FFMPEG
-    Threads::Threads
-)
+if(WIN32 AND FFMPEG_FOUND AND TARGET FFMPEG::avcodec)
+    # Using manual FFmpeg discovery on Windows
+    target_link_libraries(encode-orc PRIVATE 
+        SQLite::SQLite3 
+        yaml-cpp::yaml-cpp 
+        PNG::PNG 
+        spdlog::spdlog
+        FFMPEG::avcodec
+        FFMPEG::avformat
+        FFMPEG::avutil
+        FFMPEG::swscale
+        Threads::Threads
+    )
+else()
+    # Using pkg-config FFmpeg
+    target_link_libraries(encode-orc PRIVATE 
+        SQLite::SQLite3 
+        yaml-cpp::yaml-cpp 
+        PNG::PNG 
+        spdlog::spdlog
+        PkgConfig::FFMPEG
+        Threads::Threads
+    )
+endif()
 
 # Install target
 install(TARGETS encode-orc DESTINATION bin)
