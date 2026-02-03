@@ -21,6 +21,7 @@
           nativeBuildInputs = with pkgs; [
             cmake
             pkg-config
+            makeWrapper
           ];
 
           buildInputs = with pkgs; [
@@ -34,6 +35,11 @@
           cmakeFlags = [
             "-DCMAKE_BUILD_TYPE=Release"
           ];
+
+          postInstall = ''
+            wrapProgram $out/bin/encode-orc \
+              --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.ffmpeg ]}
+          '';
 
           meta = with pkgs.lib; {
             description = "LaserDisc video encoder for generating TBC files";
