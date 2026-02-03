@@ -26,7 +26,46 @@ This tool enables developers and testers to create synthetic test data for valid
 
 First release
 
-## Build 
+## Building
+
+This project uses Nix for reproducible builds and development environments.
+
+### Prerequisites
+
+- [Nix](https://nixos.org/download.html) with flakes enabled
+- (Optional) [direnv](https://direnv.net/) for automatic environment loading
+
+### Build Instructions
+
+```bash
+# Build the project
+nix build
+
+# Run the executable
+./result/bin/encode-orc --help
+```
+
+### Development Environment
+
+```bash
+# Enter development shell with all dependencies
+nix develop
+
+# Or use direnv for automatic environment loading
+direnv allow
+```
+
+### Running Tests
+
+```bash
+# Build first
+nix build
+
+# Run the test suite
+./run-tests.sh
+```
+
+The test suite will automatically detect and use the Nix-built executable from `result/bin/encode-orc`.
 
 Note that encode-orc is designed to be a sub-module to the decode-orc project.  Therefore local build is limited to a simple test of the compilation in Fedora as well as a number of local test encode runs to check functionality.
 

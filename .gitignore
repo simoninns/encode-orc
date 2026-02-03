@@ -49,6 +49,11 @@ _deps/
 conan/
 vcpkg_installed/
 
+# Nix
+result
+result-*
+.direnv/
+
 # Temporary files
 *.tmp
 *.log

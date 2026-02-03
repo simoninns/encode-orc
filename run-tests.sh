@@ -23,22 +23,18 @@ TEST_PROJECTS_DIR="$PROJECT_ROOT/example-projects"
 TEST_OUTPUT_DIR="$PROJECT_ROOT/example-output"
 BUILD_DIR="$PROJECT_ROOT/build"
 
-# Build directory
-if [ ! -d "$BUILD_DIR" ]; then
-    echo -e "${BLUE}Building project...${NC}"
-    mkdir -p "$BUILD_DIR"
-    cd "$BUILD_DIR"
-    cmake ..
-    make
-    cd "$PROJECT_ROOT"
-fi
-
 # Determine executable location
-if [ -f "$BUILD_DIR/encode-orc" ]; then
+# Check for Nix-built executable first, then build directory
+if [ -f "$PROJECT_ROOT/result/bin/encode-orc" ]; then
+    ENCODE_ORC="$PROJECT_ROOT/result/bin/encode-orc"
+    echo -e "${BLUE}Using Nix-built executable${NC}"
+elif [ -f "$BUILD_DIR/encode-orc" ]; then
     ENCODE_ORC="$BUILD_DIR/encode-orc"
+    echo -e "${BLUE}Using build directory executable${NC}"
 else
-    echo -e "${RED}Error: encode-orc executable not found at $BUILD_DIR/encode-orc${NC}"
-    echo -e "${RED}Build may have failed.${NC}"
+    echo -e "${RED}Error: encode-orc executable not found${NC}"
+    echo -e "${RED}Tried: $PROJECT_ROOT/result/bin/encode-orc and $BUILD_DIR/encode-orc${NC}"
+    echo -e "${YELLOW}Run 'nix build' or build manually with cmake first${NC}"
     exit 1
 fi
 
@@ -90,8 +86,11 @@ for yaml_file in "${yaml_files[@]}"; do
             # Extract output filename from YAML to verify it was created
             output_file=$(grep "filename:" "$yaml_file" | head -1 | sed 's/.*filename:[[:space:]]*"\([^"]*\)".*/\1/')
             if [ -f "$output_file" ]; then
-                file_size=$(stat -f%z "$output_file" 2>/dev/null || stat -c%s "$output_file" 2>/dev/null)
-                echo "  └─ Output: $output_file ($(numfmt --to=iec-i --suffix=B $file_size 2>/dev/null || echo "$file_size bytes"))"
+                # Use portable stat command
+                file_size=$(stat -c%s "$output_file" 2>/dev/null || stat -f%z "$output_file" 2>/dev/null)
+                # Use numfmt if available, otherwise just show bytes
+                formatted_size=$(numfmt --to=iec-i --suffix=B "$file_size" 2>/dev/null || echo "$file_size bytes")
+                echo "  └─ Output: $output_file ($formatted_size)"
             fi
         else
             echo -e "${RED}FAILED${NC}"
