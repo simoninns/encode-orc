@@ -13,46 +13,36 @@ on:
       - 'docs/**'
 
 jobs:
-  # Build and test on Fedora
-  build-fedora:
-    name: Build on Fedora
+  build-and-test:
+    name: Build and Test with Nix
     runs-on: ubuntu-latest
-    container:
-      image: fedora:latest
     
     steps:
-      - name: Install git and git-lfs
-        run: |
-          dnf install -y git git-lfs
-      
       - uses: actions/checkout@v4
         with:
           lfs: true
           submodules: recursive
       
-      - name: Install dependencies
-        run: |
-          dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
-          dnf install -y https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
-          dnf install -y gcc gcc-c++ make cmake sqlite-devel yaml-cpp-devel libpng-devel spdlog-devel
-          dnf install -y ffmpeg ffmpeg-devel --allowerasing
+      - name: Install Nix
+        uses: cachix/install-nix-action@v25
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
       
-      - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
-      
-      - name: Build
-        run: cmake --build build --config Release -j$(nproc)
-      
-      - name: Run Tests
-        run: bash run-tests.sh
+      - name: Build with Nix
+        run: nix build -L
       
       - name: Verify executable
-        run: ./build/encode-orc --version
+        run: ./result/bin/encode-orc --version
+      
+      - name: Run Tests
+        run: ./run-tests.sh
       
       - name: Upload test artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-output-fedora
-          path: test-output/
+          name: test-output
+          path: example-output/
           retention-days: 7
