@@ -61,11 +61,19 @@ direnv allow
 # Build first
 nix build
 
-# Run the test suite
-./run-tests.sh
+# Run flake checks (includes build + tests)
+nix flake check
+
 ```
 
 The test suite will automatically detect and use the Nix-built executable from `result/bin/encode-orc`.
+
+### Formatting
+
+```bash
+# Format Nix files
+nix fmt
+```
 
 Note that encode-orc is designed to be a sub-module to the decode-orc project.  Therefore local build is limited to a simple test of the compilation in Fedora as well as a number of local test encode runs to check functionality.
 

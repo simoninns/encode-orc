@@ -10,13 +10,16 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-      in
-      {
-        packages.default = pkgs.stdenv.mkDerivation {
+
+        encode-orc = pkgs.stdenv.mkDerivation {
           pname = "encode-orc";
           version = "0.1.0";
 
           src = ./.;
+
+          strictDeps = true;
+          cmakeBuildDir = "build";
+          cmakeBuildType = "Release";
 
           nativeBuildInputs = with pkgs; [
             cmake
@@ -32,10 +35,6 @@
             ffmpeg
           ];
 
-          cmakeFlags = [
-            "-DCMAKE_BUILD_TYPE=Release"
-          ];
-
           postInstall = ''
             wrapProgram $out/bin/encode-orc \
               --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.ffmpeg ]}
@@ -49,64 +48,25 @@
             mainProgram = "encode-orc";
           };
         };
+      in
+      {
+        packages.encode-orc = encode-orc;
+        packages.default = encode-orc;
 
-        checks.encode-orc-tests = pkgs.stdenv.mkDerivation {
-          pname = "encode-orc-tests";
-          version = "0.1.0";
-
-          src = ./.;
-
-          nativeBuildInputs = with pkgs; [
-            cmake
-            pkg-config
-          ];
-
-          buildInputs = with pkgs; [
-            spdlog
-            sqlite
-            yaml-cpp
-            libpng
-            ffmpeg
-          ];
-
-          configurePhase = ''
-            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release > /dev/null 2>&1
-          '';
-
-          buildPhase = ''
-            cmake --build build -- -s > /dev/null 2>&1
-          '';
-
+        checks.encode-orc-tests = encode-orc.overrideAttrs (_old: {
           doCheck = true;
           checkPhase = ''
-            ctest --test-dir build --progress --output-on-failure
+            export PATH=${pkgs.lib.makeBinPath [ pkgs.ffmpeg ]}:$PATH
+            ctest --progress --output-on-failure
           '';
-
           installPhase = ''
             mkdir -p $out
           '';
-
-          meta = with pkgs.lib; {
-            description = "CTest-based test suite for encode-orc";
-            homepage = "https://github.com/simoninns/encode-orc";
-            license = licenses.gpl3Plus;
-            platforms = platforms.all;
-          };
-        };
+        });
 
         devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            # Build tools
-            cmake
-            pkg-config
-            
-            # Dependencies
-            spdlog
-            sqlite
-            yaml-cpp
-            libpng
-            ffmpeg
-            
+          inputsFrom = [ encode-orc ];
+          packages = with pkgs; [
             # Development tools
             gdb
             clang-tools
@@ -122,9 +82,11 @@
 
         apps.default = {
           type = "app";
-          program = "${self.packages.${system}.default}/bin/encode-orc";
-          meta = self.packages.${system}.default.meta;
+          program = "${encode-orc}/bin/encode-orc";
+          meta = encode-orc.meta;
         };
+
+        formatter = pkgs.nixpkgs-fmt;
       }
     );
 }
