@@ -1,8 +1,8 @@
-name: "PAL Noise YC"
-description: "PAL test signal with Gaussian noise and separate YC output"
+name: "PAL Dropout YC Test"
+description: "PAL test signal with dropout effects and separate YC output to verify Y/C synchronization"
 
 output:
-  filename: "example-output/pal-noise-yc"
+  filename: "test-output/test-pal-dropout-yc"
   format: "pal-yc"
 
 pipeline:
@@ -22,26 +22,14 @@ pipeline:
         enabled: true
 
   effects:
-    - type: "noise"
+    - type: "dropout"
       enabled: true
-      snr_db: 35.0
-      seed: 42
+      density: 0.05
+      seed: 12345
 
 sections:
-  - name: "Lead-in"
-    duration: 1
-    source:
-      type: "yuv422-image"
-      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
-  
   - name: "Test Content"
-    duration: 20
-    source:
-      type: "yuv422-image"
-      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
-  
-  - name: "Lead-out"
-    duration: 1
+    duration: 2
     source:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_75_BARS.raw"

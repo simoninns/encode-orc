@@ -2,7 +2,7 @@ name: "NTSC-Noise Test"
 description: "NTSC test signal with Gaussian noise simulation for tape hiss testing"
 
 output:
-  filename: "example-output/ntsc-noise"
+  filename: "test-output/ntsc-noise"
   format: "ntsc-composite"
 
 laserdisc:

@@ -37,12 +37,12 @@ jobs:
         run: ./result/bin/encode-orc --version
       
       - name: Run Tests
-        run: ./run-tests.sh
+        run: nix flake check -L --print-build-logs
       
       - name: Upload test artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-output
-          path: example-output/
+          path: test-output/
           retention-days: 7

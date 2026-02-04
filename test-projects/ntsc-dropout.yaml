@@ -2,7 +2,7 @@ name: "NTSC-Dropout Test"
 description: "NTSC test signal with line dropouts for tape damage simulation"
 
 output:
-  filename: "example-output/ntsc-dropout"
+  filename: "test-output/ntsc-dropout"
   format: "ntsc-composite"
 
 laserdisc:

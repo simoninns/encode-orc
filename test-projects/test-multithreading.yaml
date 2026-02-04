@@ -5,7 +5,7 @@ processing:
   threads: auto  # Use auto-detection, or specify a number like 4, 8, etc.
 
 output:
-  filename: "example-output/multithreading-test"
+  filename: "test-output/multithreading-test"
   format: "pal-composite"
   writer: "tbc"
 

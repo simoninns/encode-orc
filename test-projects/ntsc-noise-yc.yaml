@@ -2,7 +2,7 @@ name: "NTSC Noise YC"
 description: "NTSC test signal with Gaussian noise and separate YC output"
 
 output:
-  filename: "example-output/ntsc-noise-yc"
+  filename: "test-output/ntsc-noise-yc"
   format: "ntsc-yc"
 
 pipeline:

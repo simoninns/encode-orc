@@ -2,7 +2,7 @@ name: "PAL Sound Test"
 description: "PAL project to test analogue sound output with WAV input"
 
 output:
-  filename: "example-output/pal-sound"
+  filename: "test-output/pal-sound"
   format: "pal-composite"
   sound_format: "pcm"
 

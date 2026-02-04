@@ -87,7 +87,7 @@ sections:
 Then run:
 
 ```bash
-./build/encode-orc example-projects/test-multithreading.yaml
+./build/encode-orc test-projects/test-multithreading.yaml
 ```
 
 ## Performance Expectations
@@ -165,11 +165,11 @@ To test the multi-threading implementation:
 
 ```bash
 # Test auto-detection
-./build/encode-orc example-projects/test-multithreading.yaml
+./build/encode-orc test-projects/test-multithreading.yaml
 
 # Test with specific thread count
 # Edit test-multithreading.yaml to set threads: 4
-./build/encode-orc example-projects/test-multithreading.yaml --log-level debug
+./build/encode-orc test-projects/test-multithreading.yaml --log-level debug
 
 # Verify output is identical to single-threaded
 # (Change threads: 1 in YAML)

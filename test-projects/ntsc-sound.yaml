@@ -2,7 +2,7 @@ name: "NTSC Sound Test"
 description: "NTSC project to test analogue sound output with WAV input"
 
 output:
-  filename: "example-output/ntsc-sound"
+  filename: "test-output/ntsc-sound"
   format: "ntsc-composite"
   sound_format: "pcm"
 

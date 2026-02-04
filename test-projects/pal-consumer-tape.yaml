@@ -2,7 +2,7 @@ name: "PAL Consumer Tape"
 description: "PAL Consumer VHS tape with separate YC output and VITC timecodes"
 
 output:
-  filename: "example-output/pal-consumer-tape"
+  filename: "test-output/pal-consumer-tape"
   format: "pal-yc"
 
 pipeline:

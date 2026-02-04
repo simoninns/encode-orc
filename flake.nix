@@ -50,6 +50,50 @@
           };
         };
 
+        checks.encode-orc-tests = pkgs.stdenv.mkDerivation {
+          pname = "encode-orc-tests";
+          version = "0.1.0";
+
+          src = ./.;
+
+          nativeBuildInputs = with pkgs; [
+            cmake
+            pkg-config
+          ];
+
+          buildInputs = with pkgs; [
+            spdlog
+            sqlite
+            yaml-cpp
+            libpng
+            ffmpeg
+          ];
+
+          configurePhase = ''
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release > /dev/null 2>&1
+          '';
+
+          buildPhase = ''
+            cmake --build build -- -s > /dev/null 2>&1
+          '';
+
+          doCheck = true;
+          checkPhase = ''
+            ctest --test-dir build --progress --output-on-failure
+          '';
+
+          installPhase = ''
+            mkdir -p $out
+          '';
+
+          meta = with pkgs.lib; {
+            description = "CTest-based test suite for encode-orc";
+            homepage = "https://github.com/simoninns/encode-orc";
+            license = licenses.gpl3Plus;
+            platforms = platforms.all;
+          };
+        };
+
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             # Build tools
@@ -79,6 +123,7 @@
         apps.default = {
           type = "app";
           program = "${self.packages.${system}.default}/bin/encode-orc";
+          meta = self.packages.${system}.default.meta;
         };
       }
     );

@@ -61,6 +61,42 @@ add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 # Enable testing
 enable_testing()
 
+# =============================================================================
+# CTest configuration for YAML project tests
+# =============================================================================
+
+set(TEST_PROJECTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/test-projects")
+set(TEST_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/test-output")
+
+if(EXISTS "${TEST_PROJECTS_DIR}")
+    file(GLOB TEST_YAML_FILES "${TEST_PROJECTS_DIR}/*.yaml")
+
+    if(TEST_YAML_FILES)
+        # Ensure output directory exists (some YAMLs write here)
+        file(MAKE_DIRECTORY "${TEST_OUTPUT_DIR}")
+
+        foreach(yaml_file IN LISTS TEST_YAML_FILES)
+            get_filename_component(test_name "${yaml_file}" NAME_WE)
+            string(REPLACE "-" "_" test_name "${test_name}")
+
+            add_test(
+                NAME "encode_orc_${test_name}"
+                COMMAND $<TARGET_FILE:encode-orc> "${yaml_file}" --quiet
+            )
+
+            set_tests_properties(
+                "encode_orc_${test_name}"
+                PROPERTIES
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            )
+        endforeach()
+    else()
+        message(STATUS "encode-orc: No YAML test files found in ${TEST_PROJECTS_DIR}")
+    endif()
+else()
+    message(STATUS "encode-orc: Test projects directory not found at ${TEST_PROJECTS_DIR}")
+endif()
+
 # Find SQLite3
 find_package(SQLite3 REQUIRED)
 
@@ -296,8 +332,8 @@ install(TARGETS encode-orc
 )
 
 # Install example projects
-install(DIRECTORY example-projects/
-    DESTINATION share/encode-orc/example-projects
+install(DIRECTORY test-projects/
+    DESTINATION share/encode-orc/test-projects
     FILES_MATCHING PATTERN "*.yaml"
 )
 

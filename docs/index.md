@@ -30,7 +30,7 @@ encode-orc is a C++17 command-line application that generates test data for [dec
 ## Getting Help
 
 - Check the [User Guide](user-guide/)
-- See example projects in the repository's `example-projects/` directory
+- See example projects in the repository's `test-projects/` directory
 
 ---
 
