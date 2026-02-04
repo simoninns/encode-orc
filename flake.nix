@@ -74,9 +74,7 @@
           ];
 
           shellHook = ''
-            echo "encode-orc development environment"
-            echo "Run 'cmake -B build -S .' to configure"
-            echo "Run 'cmake --build build' to build"
+            echo "encode-orc nix development environment"
           '';
         };
 
