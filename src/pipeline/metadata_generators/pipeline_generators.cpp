@@ -350,18 +350,22 @@ void BiphaseVBIMetadataGenerator::apply(Field& field, const MetadataContext& con
             continue;
         }
         
-        // Get the appropriate VBI byte (with explicit cast to avoid C4244 on MSVC)
-        uint8_t vbi_byte = (byte_index == 0) ? static_cast<uint8_t>(context.vbi_data->vbi0) : 
-                          (byte_index == 1) ? static_cast<uint8_t>(context.vbi_data->vbi1) : 
-                                              static_cast<uint8_t>(context.vbi_data->vbi2);
+        // Get the appropriate 24-bit VBI value for this line
+        int32_t vbi_value = (byte_index == 0) ? context.vbi_data->vbi0 :
+                   (byte_index == 1) ? context.vbi_data->vbi1 :
+                               context.vbi_data->vbi2;
         
         uint16_t* line_buffer = field.line_data(field_relative_line);
         
-        // Encode single byte as 3-byte biphase (byte, 0xFF, 0xFF for single-byte mode)
-        auto samples = BiphaseEncoder::encode(vbi_byte, 0xFF, 0xFF,
-                                             params_.sample_rate,
-                                             static_cast<uint16_t>(params_.white_16b_ire),
-                                             static_cast<uint16_t>(params_.blanking_16b_ire));
+        // Encode full 24-bit VBI value (MSB-first) across the line
+        uint8_t byte0 = static_cast<uint8_t>((vbi_value >> 16) & 0xFF);
+        uint8_t byte1 = static_cast<uint8_t>((vbi_value >> 8) & 0xFF);
+        uint8_t byte2 = static_cast<uint8_t>(vbi_value & 0xFF);
+
+        auto samples = BiphaseEncoder::encode(byte0, byte1, byte2,
+                             params_.sample_rate,
+                             static_cast<uint16_t>(params_.white_16b_ire),
+                             static_cast<uint16_t>(params_.blanking_16b_ire));
         
         // Get start position for biphase signal
         double line_period_h = 1.0 / (params_.system == VideoSystem::PAL ? 15625.0 : 15734.0);
