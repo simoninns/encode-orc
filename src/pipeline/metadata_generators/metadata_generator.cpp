@@ -139,8 +139,8 @@ bool generate_metadata(const YAMLProjectConfig& config,
                     vbi_field1.vbi0 = 0x8F7000;  // Lead-out flag set
                     vbi_field2.vbi0 = 0x8F7000;
                 } else {
-                    vbi_field1.vbi0 = 0x87A000;  // Programme area
-                    vbi_field2.vbi0 = 0x87A000;
+                    vbi_field1.vbi0 = 0x8DC000;  // Programme status code (programme area)
+                    vbi_field2.vbi0 = 0x8DC000;
                 }
                 
                 // Lead-in and lead-out use special codes
@@ -186,15 +186,22 @@ bool generate_metadata(const YAMLProjectConfig& config,
                     int32_t pic_tens = frame_in_second / 10;
                     int32_t pic_units = frame_in_second % 10;
                     int32_t pic_bcd = (pic_tens << 4) | pic_units;
-                    
-                    vbi_field1.vbi0 = (0x8 << 20) | (x1 << 16) | (0xE << 12) | (sec_units << 8) | pic_bcd;
+
+                    // CLV picture number (seconds + picture number within second)
+                    int32_t clv_pic_number = (0x8 << 20) | (x1 << 16) | (0xE << 12) | (sec_units << 8) | pic_bcd;
                     
                     int32_t hh_bcd = ((hh / 10) << 4) | (hh % 10);
                     int32_t mm_bcd = ((mm / 10) << 4) | (mm % 10);
                     int32_t timecode = 0xF0DD00 | (hh_bcd << 16) | mm_bcd;
                     
+                    // CLV timecode (hours/minutes) on lines 17/18 of the first field
+                    vbi_field1.vbi0 = clv_pic_number;  // CLV picture number on line 16
                     vbi_field1.vbi1 = timecode;
                     vbi_field1.vbi2 = timecode;
+
+                    // CLV code and programme status on the other field (no timecode/picture there)
+                    vbi_field2.vbi0 = 0x8DC000;  // Programme status code
+                    vbi_field2.vbi1 = 0x87FFFF;  // CLV code
                 } else {
                     // Default - no specific numbering on field 1
                     vbi_field1.vbi1 = 0x80DD00;  // Programme area with no picture/timecode
@@ -206,11 +213,9 @@ bool generate_metadata(const YAMLProjectConfig& config,
                     // Chapter code on line 18 of field 2
                     int32_t chapter_bcd = ((chapter / 10) << 4) | (chapter % 10);
                     int32_t chapter_code = 0x800DDD | ((chapter_bcd & 0x7F) << 12);
-                    vbi_field2.vbi1 = 0x80DD00;  // Line 17 unused in field 2 (programme area)
                     vbi_field2.vbi2 = chapter_code;
                 } else {
                     // Default - no chapter on field 2
-                    vbi_field2.vbi1 = 0x80DD00;  // Programme area
                     vbi_field2.vbi2 = 0x80DD00;
                 }
                 }

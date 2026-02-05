@@ -68,11 +68,14 @@ void BiphaseVBIGenerator::encode_biphase_on_line(uint16_t* line_buffer, int32_t 
     );
     
     // Calculate start position for biphase signal
-    // According to spec: T = 0.188 H ± 0.003 H
+    // According to spec: T = 0.188 H ± 0.003 H (normal)
+    // Programme status codes use reduced timing: T = 0.172 H ± 0.003 H
     // H (line period) can be calculated from sample_rate and field_width
     double line_period_h = static_cast<double>(params_.field_width) / params_.sample_rate;
-    int32_t start_pos = BiphaseEncoder::get_signal_start_position(
-        params_.sample_rate, line_period_h);
+
+    bool is_status_code = ((vbi_value & 0xFFF000) == 0x8DC000) || ((vbi_value & 0xFFF000) == 0x8BA000);
+    double start_time_s = (is_status_code ? 0.172 : 0.188) * line_period_h;
+    int32_t start_pos = static_cast<int32_t>(params_.sample_rate * start_time_s);
     
     // Copy biphase signal into line buffer
     int32_t samples_to_copy = std::min(

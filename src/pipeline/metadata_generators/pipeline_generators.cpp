@@ -369,7 +369,11 @@ void BiphaseVBIMetadataGenerator::apply(Field& field, const MetadataContext& con
         
         // Get start position for biphase signal
         double line_period_h = 1.0 / (params_.system == VideoSystem::PAL ? 15625.0 : 15734.0);
-        int32_t start_pos = BiphaseEncoder::get_signal_start_position(params_.sample_rate, line_period_h);
+
+        // Programme status codes use reduced timing (IEC 60857-1986 10.1.8)
+        bool is_status_code = ((vbi_value & 0xFFF000) == 0x8DC000) || ((vbi_value & 0xFFF000) == 0x8BA000);
+        double start_time_s = (is_status_code ? 0.172 : 0.188) * line_period_h;
+        int32_t start_pos = static_cast<int32_t>(params_.sample_rate * start_time_s);
         
         // Copy biphase samples into line buffer
         for (size_t j = 0; j < samples.size() && (start_pos + j) < static_cast<size_t>(field.width()); j++) {

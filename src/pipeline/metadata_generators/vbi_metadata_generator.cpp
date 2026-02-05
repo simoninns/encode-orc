@@ -31,8 +31,8 @@ void VBIMetadataGenerator::generate_frame_vbi(
         field1.vbi0 = 0x8F7000;  // Lead-out flag set
         field2.vbi0 = 0x8F7000;
     } else {
-        field1.vbi0 = 0x87A000;  // Programme area
-        field2.vbi0 = 0x87A000;
+        field1.vbi0 = 0x8DC000;  // Programme status code (programme area)
+        field2.vbi0 = 0x8DC000;
     }
     
     // Lead-in and lead-out use special codes
@@ -92,24 +92,29 @@ void VBIMetadataGenerator::generate_frame_vbi(
         int32_t pic_tens = frame_in_second / 10;
         int32_t pic_units = frame_in_second % 10;
         int32_t pic_bcd = (pic_tens << 4) | pic_units;
-        
-        field1.vbi0 = (0x8 << 20) | (x1 << 16) | (0xE << 12) | (sec_units << 8) | pic_bcd;
+
+        // CLV picture number (seconds + picture number within second)
+        int32_t clv_pic_number = (0x8 << 20) | (x1 << 16) | (0xE << 12) | (sec_units << 8) | pic_bcd;
         
         int32_t hh_bcd = ((hh / 10) << 4) | (hh % 10);
         int32_t mm_bcd = ((mm / 10) << 4) | (mm % 10);
         int32_t timecode = 0xF0DD00 | (hh_bcd << 16) | mm_bcd;
         
+        // CLV timecode (hours/minutes) on lines 17/18 of the first field
+        field1.vbi0 = clv_pic_number;  // CLV picture number on line 16
         field1.vbi1 = timecode;
         field1.vbi2 = timecode;
+
+        // CLV code and programme status on the other field (no timecode/picture there)
+        field2.vbi0 = 0x8DC000;  // Programme status code
+        field2.vbi1 = 0x87FFFF;  // CLV code
         
-        // Field 2 - chapter if provided
+        // Field 2 - chapter if provided (line 18)
         if (chapter > 0) {
             int32_t chapter_bcd = ((chapter / 10) << 4) | (chapter % 10);
             int32_t chapter_code = 0x800DDD | ((chapter_bcd & 0x7F) << 12);
-            field2.vbi1 = 0x80DD00;
             field2.vbi2 = chapter_code;
         } else {
-            field2.vbi1 = 0x80DD00;
             field2.vbi2 = 0x80DD00;
         }
         
