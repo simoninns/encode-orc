@@ -212,7 +212,7 @@ Insertion in lead-in and/or lead-out area in the lines 16, 329 (16, 279 for NTSC
 
 On the CLV disk the CLV picture number identifies each video frame and can also be used to detect hang-ups.
 
-Code: 8 Xl E X3 X4 X5
+Code: 8 X1 E X3 X4 X5
 
 X1 = A through F: X3 = 0 through 9
 
@@ -228,4 +228,74 @@ The CLV picture number shall be inserted into line 16 or 329 (16 or 279 for NTSC
 
 Both the PAL and NTSC IEC specification have additional requirements in the "amendment 2" documents.
 
-TBC
+## CLV picture number
+Replace the text of the previous "CLV Picture Number" definition with the following text:
+
+On the CLV disk the CLV picture number identifies each video frame and can also be used to detect hang-ups.
+
+Code: 8 X1 E X3 X4 X5
+
+X1 = A to F and X3 = 0 to 9.
+
+X1 and X3 indicate the seconds of the run time together with the hours and minutes of the programme time code.
+
+X4 and X5 are the picture numbers within 1s, thus:
+
+X4 = 0 to 2 and X5 = 0 to 9.
+
+The CLV picture number shall be inserted into line 16 or 329 (16 or 279 for NTSC) depending on which field is the first field of the picture.
+
+The start of the programme time code is zero hour and zero minute, and that of CLV picture number is zero second and zero picture at the beginning of the active programme.
+
+### CLV picture number (NTSC only)
+To resolve the colour time error, the seconds count within the CLV picture number should jump to the next value (X1, X3 part incremented by 1; X4 and X5 part reset to zero) at the first following renewal of the CLV picture number, each time the accumulated number of video frames (N) equals one of the numbers in the following sequence:
+
+N = 8991 X L + 899 x M
+
+where Land M are integer, and 0 <= L and 0 <= M <= 9
+
+For example:
+
+N = 899, 1798, ... , 8091, 8991, 9890, ...
+
+## Definition of the data in programme status code
+
+DC = CX noise reduction on
+BA = CX noise reduction off
+
+X31 indicates disk size:
+0 = 12 inch; 1 = 8 inch
+
+X32 indicates disk side:
+0 = first side; 1 = second side
+
+X33 indicates if there are teletext signals present anywhere on the disk or not:
+0 = teletext signal absent; 1 = teletext signal present
+
+X34 indicates if it is allowed to copy the programme:
+0 = copy prohibited; 1 = copy permitted
+
+X41, X42, X43 together with X44 indicate the status of the analogue audio channels and
+the video signal according to the following table:
+
+| Mode | X41, X42, X43, X44 | Videosignal | Channel 1 Channel 2   |
+| ---: | ------------------ | ----------- | --------------------- |
+|    0 | 0000               | Standard    | Stereo                |           
+|    1 | 0001               | Standard    | Mono                  |           
+|    2 | 0010               | Standard    | Audio subcarriers off |           
+|    3 | 0011               | Standard    | Bilingual             |           
+|    4 | 0100               | Future use  | Future use            |           
+|    5 | 0101               | Future use  | Future use            |           
+|    6 | 0110               | Future use  | Future use            |           
+|    7 | 0111               | Future use  | Future use            |           
+|    8 | 1000               | Standard    | Mono Dump             |           
+|    9 | 1001               | Future use  | Future use            |           
+|   10 | 1010               | Future use  | Future use            |           
+|   11 | 1011               | Future use  | Future use            |           
+|   12 | 1100               | Future use  | Future use            |
+|   13 | 1101               | Future use  | Future use            |
+|   14 | 1110               | Future use  | Future use            |
+|   15 | 1111               | Future use  | Future use            |
+
+## Picture numbers (NTSC only)
+The picture numbers are always present on CAV disks. They are unique and in normal count sequence, starting with the number 1 at the beginning of the active programme. The maximum available picture number is 79999.
