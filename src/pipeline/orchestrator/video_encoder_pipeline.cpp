@@ -116,15 +116,16 @@ VideoEncoderPipeline::VideoEncoderPipeline(const VideoParameters& params,
 }
 
 Frame VideoEncoderPipeline::encode_frame(const FrameBuffer& frame_buffer, int32_t field_number,
-                                        const VBIData* vbi_data) {
+                                        const VBIData* vbi_data_field1,
+                                        const VBIData* vbi_data_field2) {
     Frame frame(params_.field_width, params_.field_height);
     
     // Split frame into fields
     auto field_pair = field_splitter_->split_frame(frame_buffer, field_number, params_);
     
     // Encode both fields
-    frame.field1() = encode_field_from_yuv(field_pair.field1, field_number, true, vbi_data);
-    frame.field2() = encode_field_from_yuv(field_pair.field2, field_number + 1, false, vbi_data);
+    frame.field1() = encode_field_from_yuv(field_pair.field1, field_number, true, vbi_data_field1);
+    frame.field2() = encode_field_from_yuv(field_pair.field2, field_number + 1, false, vbi_data_field2);
     
     return frame;
 }

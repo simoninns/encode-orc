@@ -53,13 +53,15 @@ public:
     static int32_t get_signal_duration_samples(double sample_rate);
     
     /**
-     * @brief Encode frame number as LaserDisc CAV picture number
-     * @param frame_number Frame number to encode (0-79999)
+    * @brief Encode frame number as LaserDisc CAV picture number
+    * @param frame_number Frame number to encode
+    * @param max_frame_number Maximum allowed picture number (PAL: 99999, NTSC: 79999)
      * @param byte0 Output: First byte (0xF + top digit)
      * @param byte1 Output: Second byte (middle 2 BCD digits)
      * @param byte2 Output: Third byte (lower 2 BCD digits)
      */
     static void encode_cav_picture_number(uint32_t frame_number,
+                                          uint32_t max_frame_number,
                                           uint8_t& byte0,
                                           uint8_t& byte1,
                                           uint8_t& byte2);

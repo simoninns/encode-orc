@@ -64,6 +64,7 @@ int32_t BiphaseEncoder::get_signal_start_position(double sample_rate, double lin
 }
 
 void BiphaseEncoder::encode_cav_picture_number(uint32_t frame_number,
+                                               uint32_t max_frame_number,
                                                uint8_t& byte0,
                                                uint8_t& byte1,
                                                uint8_t& byte2) {
@@ -72,8 +73,8 @@ void BiphaseEncoder::encode_cav_picture_number(uint32_t frame_number,
     // The first digit is masked to 0-7 range
     
     // Clamp frame number to valid range
-    if (frame_number > 79999) {
-        frame_number = 79999;
+    if (frame_number > max_frame_number) {
+        frame_number = max_frame_number;
     }
     
     // Convert frame number to BCD (5 digits)
@@ -92,8 +93,8 @@ void BiphaseEncoder::encode_cav_picture_number(uint32_t frame_number,
         if (shift >= 20) break;
     }
     
-    // Mask the first digit to 0-7 range and prepend 0xF
-    uint32_t result = 0xF00000 | (bcd & 0x07FFFF);
+    // Prepend 0xF key nibble and keep 5 BCD digits
+    uint32_t result = 0xF00000 | (bcd & 0x0FFFFF);
     
     // Split into three bytes
     byte0 = (result >> 16) & 0xFF;  // MSB: 0xF + top digit

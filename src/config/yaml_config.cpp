@@ -400,6 +400,38 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                     if (bv_node["disc_area"]) {
                         bv.disc_area = bv_node["disc_area"].as<std::string>();
                     }
+
+                    if (bv_node["spec"]) {
+                        bv.spec = bv_node["spec"].as<std::string>();
+                        if (bv.spec == "amendment2") {
+                            bv.spec = "amendment-2";
+                        }
+                    }
+
+                    if (bv_node["user_code"]) {
+                        if (bv_node["user_code"].IsScalar()) {
+                            std::string user_code_str = bv_node["user_code"].as<std::string>();
+                            if (user_code_str.rfind("0x", 0) == 0 || user_code_str.rfind("0X", 0) == 0) {
+                                user_code_str = user_code_str.substr(2);
+                            }
+                            if (user_code_str.size() != 4) {
+                                throw std::invalid_argument("user_code must be exactly 4 hex digits");
+                            }
+                            auto hex_nibble = [](char c) -> uint32_t {
+                                if (c >= '0' && c <= '9') return static_cast<uint32_t>(c - '0');
+                                if (c >= 'a' && c <= 'f') return static_cast<uint32_t>(c - 'a' + 10);
+                                if (c >= 'A' && c <= 'F') return static_cast<uint32_t>(c - 'A' + 10);
+                                throw std::invalid_argument("user_code must be hex digits");
+                            };
+                            uint32_t p3 = hex_nibble(user_code_str[0]);
+                            uint32_t p2 = hex_nibble(user_code_str[1]);
+                            uint32_t p1 = hex_nibble(user_code_str[2]);
+                            uint32_t p0 = hex_nibble(user_code_str[3]);
+                            bv.user_code = 0x800000 | (p3 << 16) | (0xD << 12) | (p2 << 8) | (p1 << 4) | p0;
+                        } else {
+                            throw std::invalid_argument("user_code must be a 4-digit hex string");
+                        }
+                    }
                     
                     if (bv_node["picture_start"]) {
                         bv.picture_start = bv_node["picture_start"].as<int32_t>();
@@ -620,6 +652,20 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
         
         // Validate Biphase VBI picture numbers if specified
         if (section.biphase_vbi) {
+            if (section.biphase_vbi->spec != "standard" && section.biphase_vbi->spec != "amendment-2") {
+                error_message = "Biphase VBI spec must be 'standard' or 'amendment-2' for section: " + section.name;
+                return false;
+            }
+            if (section.biphase_vbi->user_code) {
+                uint32_t code = section.biphase_vbi->user_code.value();
+                bool has_key = (code & 0xF00000) == 0x800000;
+                bool has_d_nibble = (code & 0x00F000) == 0x00D000;
+                bool x1_valid = ((code & 0x0F0000) <= 0x070000);
+                if (code > 0xFFFFFF || !has_key || !has_d_nibble || !x1_valid) {
+                    error_message = "Biphase VBI user_code must be exactly 4 hex digits (X1X3X4X5) for section: " + section.name;
+                    return false;
+                }
+            }
             if (section.biphase_vbi->picture_start && section.biphase_vbi->picture_start.value() <= 0) {
                 error_message = "Biphase VBI picture_start must be greater than 0 for section: " + section.name;
                 return false;

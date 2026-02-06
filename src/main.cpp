@@ -57,7 +57,8 @@ struct EncodingTask {
     int32_t section_frame;
     int32_t global_frame;
     int32_t field_number;
-    const encode_orc::VBIData* vbi_data;
+    const encode_orc::VBIData* vbi_data_field1;
+    const encode_orc::VBIData* vbi_data_field2;
 };
 
 // Structure to hold the result of encoding
@@ -193,11 +194,11 @@ EncodedResult encode_single_frame(
                                    pipeline->get_parameters().field_height);
             
             auto future1 = std::async(std::launch::async, [&]() {
-                return pipeline->encode_field(task.frame_buffer, task.field_number, true, task.vbi_data);
+                return pipeline->encode_field(task.frame_buffer, task.field_number, true, task.vbi_data_field1);
             });
             
             auto future2 = std::async(std::launch::async, [&]() {
-                return pipeline->encode_field(task.frame_buffer, task.field_number + 1, false, task.vbi_data);
+                return pipeline->encode_field(task.frame_buffer, task.field_number + 1, false, task.vbi_data_field2);
             });
             
             frame.field1() = future1.get();
@@ -205,7 +206,12 @@ EncodedResult encode_single_frame(
             result.encoded_frame = std::move(frame);
         } else {
             // Sequential field encoding (default)
-            result.encoded_frame = pipeline->encode_frame(task.frame_buffer, task.field_number, task.vbi_data);
+            result.encoded_frame = pipeline->encode_frame(
+                task.frame_buffer,
+                task.field_number,
+                task.vbi_data_field1,
+                task.vbi_data_field2
+            );
         }
         
         result.success = true;
@@ -1206,10 +1212,18 @@ int main(int argc, char* argv[]) {
                 task.global_frame = frame_offset + section_frame;
                 task.field_number = task.global_frame * 2;
                 
-                task.vbi_data = nullptr;
-                if (needs_vbi_data && task.field_number < static_cast<int32_t>(pre_metadata.vbi_data.size()) &&
-                    pre_metadata.vbi_data[task.field_number].has_value()) {
-                    task.vbi_data = &pre_metadata.vbi_data[task.field_number].value();
+                task.vbi_data_field1 = nullptr;
+                task.vbi_data_field2 = nullptr;
+                if (needs_vbi_data) {
+                    if (task.field_number < static_cast<int32_t>(pre_metadata.vbi_data.size()) &&
+                        pre_metadata.vbi_data[task.field_number].has_value()) {
+                        task.vbi_data_field1 = &pre_metadata.vbi_data[task.field_number].value();
+                    }
+                    int32_t field2_number = task.field_number + 1;
+                    if (field2_number < static_cast<int32_t>(pre_metadata.vbi_data.size()) &&
+                        pre_metadata.vbi_data[field2_number].has_value()) {
+                        task.vbi_data_field2 = &pre_metadata.vbi_data[field2_number].value();
+                    }
                 }
                 
                 return task;

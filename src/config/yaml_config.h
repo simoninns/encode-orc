@@ -159,6 +159,10 @@ struct PipelineConfig {
  */
 struct BiphaseVBIConfig {
     std::string disc_area = "programme-area";  // lead-in, programme-area, lead-out
+    std::string spec = "standard";             // "standard" or "amendment-2"
+
+    // Optional user code (24-bit hex, 8X1DXXX) for lead-in/lead-out
+    std::optional<uint32_t> user_code;
     
     // CAV mode
     std::optional<int32_t> picture_start;

@@ -31,6 +31,11 @@ public:
         CLVChapter,       // Chapter numbers
         None
     };
+
+    enum class Spec {
+        Standard,
+        Amendment2
+    };
     
     /**
      * @brief Generate VBI data for a frame
@@ -51,6 +56,8 @@ public:
         int32_t timecode_start_frame,
         int32_t chapter,
         int32_t fps,
+        VideoSystem system,
+        Spec spec,
         const std::string& disc_area,
         VBIData& field1,
         VBIData& field2

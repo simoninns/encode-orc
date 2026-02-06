@@ -2,7 +2,7 @@ name: "Source Alignment NTSC CLV 00:00:00:00"
 description: "NTSC CLV with timecode starting 00:00:00:00 for source alignment"
 
 output:
-  filename: "test-output/source-alignment/ntsc-clv-tc-00000000"
+  filename: "test-output/ntsc-clv-tc-00000000"
   format: "ntsc-composite"
 
 laserdisc:
@@ -44,6 +44,7 @@ sections:
       file: "testcard-images/ntsc-raw/525_5994_75_BARS.raw"
     biphase-vbi:
       disc_area: "lead-in"
+      user_code: "1066"
   
   - name: "Test Content"
     duration: 20
@@ -62,3 +63,4 @@ sections:
       file: "testcard-images/ntsc-raw/525_5994_75_BARS.raw"
     biphase-vbi:
       disc_area: "lead-out"
+      user_code: "1066"

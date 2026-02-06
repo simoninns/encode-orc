@@ -18,6 +18,59 @@
 #include <iostream>
 #include <cstdio>
 
+namespace {
+constexpr int32_t kNoCode = 0x80DD00;
+constexpr int32_t kLeadIn = 0x88FFFF;
+constexpr int32_t kLeadOut = 0x80EEEE;
+constexpr int32_t kCLVCode = 0x87FFFF;
+constexpr int32_t kPictureStop = 0x82CFFF;
+constexpr int32_t kProgrammeStatusDefault = 0x8DC000;
+
+int32_t to_bcd_byte(int32_t value) {
+    return ((value / 10) << 4) | (value % 10);
+}
+
+int32_t encode_chapter_code(int32_t chapter, bool stop_bit_one = true) {
+    // Chapter is encoded as BCD in bits 12-18, with stop bit at bit 19
+    // Format: 0x8[stop][tens][units]DDD
+    // Example: chapter 42 with stop=1 -> 0x8C2DDD
+    int32_t chapter_bcd = to_bcd_byte(chapter);
+    int32_t stop_bit = stop_bit_one ? 0x80000 : 0x00000;
+    return 0x800DDD | stop_bit | ((chapter_bcd & 0x7F) << 12);
+}
+
+int32_t encode_timecode(int32_t hh, int32_t mm) {
+    int32_t hh_bcd = to_bcd_byte(hh);
+    int32_t mm_bcd = to_bcd_byte(mm);
+    return 0xF0DD00 | (hh_bcd << 16) | mm_bcd;
+}
+
+int32_t amendment2_ntsc_correction(int32_t frame_index) {
+    if (frame_index <= 0) {
+        return 0;
+    }
+
+    int32_t count = 0;
+    int32_t l_max = frame_index / 8991;
+    for (int32_t l = 0; l <= l_max; ++l) {
+        int32_t remaining = frame_index - (8991 * l);
+        int32_t max_m = remaining / 899;
+        if (max_m > 9) {
+            max_m = 9;
+        }
+        if (max_m >= 0) {
+            count += (max_m + 1);
+        }
+    }
+
+    // Exclude the N=0 term
+    if (count > 0) {
+        count -= 1;
+    }
+    return count;
+}
+}  // namespace
+
 namespace encode_orc {
 
 bool generate_metadata(const YAMLProjectConfig& config,
@@ -109,6 +162,10 @@ bool generate_metadata(const YAMLProjectConfig& config,
                     chapter = section.biphase_vbi->chapter.value();
                 }
             }
+
+            if (disc_area == "programme-area" && chapter == 0) {
+                chapter = 1;
+            }
             
             // Parse timecode start offset for this section
             if (!timecode_start.empty()) {
@@ -130,95 +187,101 @@ bool generate_metadata(const YAMLProjectConfig& config,
             for (int32_t section_frame = 0; section_frame < section.duration.value(); ++section_frame) {
                 VBIData vbi_field1;  // First field (odd)
                 VBIData vbi_field2;  // Second field (even)
-                
-                // Set programme status code based on disc area
-                if (disc_area == "lead-in") {
-                    vbi_field1.vbi0 = 0x8BA000;  // Lead-in flag set
-                    vbi_field2.vbi0 = 0x8BA000;
-                } else if (disc_area == "lead-out") {
-                    vbi_field1.vbi0 = 0x8F7000;  // Lead-out flag set
-                    vbi_field2.vbi0 = 0x8F7000;
-                } else {
-                    vbi_field1.vbi0 = 0x8DC000;  // Programme status code (programme area)
-                    vbi_field2.vbi0 = 0x8DC000;
+
+                vbi_field1.vbi0 = kNoCode;
+                vbi_field1.vbi1 = kNoCode;
+                vbi_field1.vbi2 = kNoCode;
+                vbi_field2.vbi0 = kNoCode;
+                vbi_field2.vbi1 = kNoCode;
+                vbi_field2.vbi2 = kNoCode;
+
+                bool use_amendment2 = false;
+                std::optional<uint32_t> user_code;
+                if (section.biphase_vbi) {
+                    use_amendment2 = (section.biphase_vbi->spec == "amendment-2");
+                    user_code = section.biphase_vbi->user_code;
                 }
-                
-                // Lead-in and lead-out use special codes
+
                 if (disc_area == "lead-in") {
-                    vbi_field1.vbi1 = 0x88FFFF;
-                    vbi_field1.vbi2 = 0x88FFFF;
-                    vbi_field2.vbi1 = 0x88FFFF;
-                    vbi_field2.vbi2 = 0x88FFFF;
+                    if (user_code.has_value()) {
+                        vbi_field1.vbi0 = static_cast<int32_t>(user_code.value());
+                        vbi_field2.vbi0 = static_cast<int32_t>(user_code.value());
+                    }
+                    vbi_field1.vbi1 = kLeadIn;
+                    vbi_field1.vbi2 = kLeadIn;
+                    vbi_field2.vbi1 = kLeadIn;
+                    vbi_field2.vbi2 = kLeadIn;
                 } else if (disc_area == "lead-out") {
-                    vbi_field1.vbi1 = 0x80EEEE;
-                    vbi_field1.vbi2 = 0x80EEEE;
-                    vbi_field2.vbi1 = 0x80EEEE;
-                    vbi_field2.vbi2 = 0x80EEEE;
-                } else {
-                    // Programme area - encode picture/timecode/chapter
-                    // Field 1: Picture number or timecode (line 17/18)
-                if (picture_start > 0) {
-                    // CAV mode - picture number on line 17/18 of field 1
+                    if (user_code.has_value()) {
+                        vbi_field1.vbi0 = static_cast<int32_t>(user_code.value());
+                        vbi_field2.vbi0 = static_cast<int32_t>(user_code.value());
+                    }
+                    vbi_field1.vbi1 = kLeadOut;
+                    vbi_field1.vbi2 = kLeadOut;
+                    vbi_field2.vbi1 = kLeadOut;
+                    vbi_field2.vbi2 = kLeadOut;
+                } else if (picture_start > 0) {
+                    // CAV mode - picture number on lines 17/18 of field 1
                     int32_t picture_number = picture_start + frame_num;
                     uint8_t b0, b1, b2;
-                    BiphaseEncoder::encode_cav_picture_number(picture_number, b0, b1, b2);
+                    uint32_t max_picture = (system == VideoSystem::NTSC) ? 79999 : 99999;
+                    BiphaseEncoder::encode_cav_picture_number(picture_number, max_picture, b0, b1, b2);
                     int32_t cav = (static_cast<int32_t>(b0) << 16) |
                                  (static_cast<int32_t>(b1) << 8) |
                                  static_cast<int32_t>(b2);
+
+                    vbi_field1.vbi0 = kProgrammeStatusDefault;
                     vbi_field1.vbi1 = cav;
                     vbi_field1.vbi2 = cav;
+
+                    // Picture stop on the following field (lines 16/17)
+                    vbi_field2.vbi0 = kPictureStop;
+                    vbi_field2.vbi1 = kPictureStop;
+                    if (chapter > 0) {
+                        vbi_field2.vbi2 = encode_chapter_code(chapter);
+                    }
                 } else if (has_timecode_mode) {
                     // CLV timecode mode - continuous timecode across entire file on field 1
                     int32_t total_frame = global_timecode_offset + frame_num;
-                    int32_t total_seconds = total_frame / fps;
-                    int32_t frame_in_second = total_frame % fps;
-                    int32_t total_minutes = total_seconds / 60;
+                    int32_t total_seconds_timecode = total_frame / fps;
+                    int32_t total_minutes = total_seconds_timecode / 60;
                     int32_t total_hours = total_minutes / 60;
-                    
+
                     int32_t hh = total_hours;
                     int32_t mm = total_minutes % 60;
-                    int32_t ss = total_seconds % 60;
-                    
-                    int32_t sec_tens = ss / 10;
-                    int32_t sec_units = ss % 10;
+
+                    int32_t correction = 0;
+                    if (use_amendment2 && system == VideoSystem::NTSC) {
+                        correction = amendment2_ntsc_correction(total_frame);
+                    }
+                    int32_t corrected_frame = total_frame + correction;
+                    int32_t corrected_seconds = corrected_frame / fps;
+                    int32_t frame_in_second = corrected_frame % fps;
+
+                    int32_t sec_tens = (corrected_seconds % 60) / 10;
+                    int32_t sec_units = (corrected_seconds % 60) % 10;
                     int32_t x1 = 0x0A + sec_tens;
-                    
+
                     int32_t pic_tens = frame_in_second / 10;
                     int32_t pic_units = frame_in_second % 10;
                     int32_t pic_bcd = (pic_tens << 4) | pic_units;
 
-                    // CLV picture number (seconds + picture number within second)
                     int32_t clv_pic_number = (0x8 << 20) | (x1 << 16) | (0xE << 12) | (sec_units << 8) | pic_bcd;
-                    
-                    int32_t hh_bcd = ((hh / 10) << 4) | (hh % 10);
-                    int32_t mm_bcd = ((mm / 10) << 4) | (mm % 10);
-                    int32_t timecode = 0xF0DD00 | (hh_bcd << 16) | mm_bcd;
-                    
-                    // CLV timecode (hours/minutes) on lines 17/18 of the first field
+                    int32_t timecode = encode_timecode(hh, mm);
+
                     vbi_field1.vbi0 = clv_pic_number;  // CLV picture number on line 16
                     vbi_field1.vbi1 = timecode;
                     vbi_field1.vbi2 = timecode;
 
-                    // CLV code and programme status on the other field (no timecode/picture there)
-                    vbi_field2.vbi0 = 0x8DC000;  // Programme status code
-                    vbi_field2.vbi1 = 0x87FFFF;  // CLV code
+                    vbi_field2.vbi0 = kProgrammeStatusDefault;  // Programme status code on line 16/279
+                    vbi_field2.vbi1 = kCLVCode;                 // CLV code on line 17/280
+                    vbi_field2.vbi2 = (chapter > 0) ? encode_chapter_code(chapter) : kCLVCode;  // Chapter on line 18/281, or CLV code if no chapter
                 } else {
-                    // Default - no specific numbering on field 1
-                    vbi_field1.vbi1 = 0x80DD00;  // Programme area with no picture/timecode
-                    vbi_field1.vbi2 = 0x80DD00;
+                    // Default - programme area with status only
+                    vbi_field1.vbi0 = kProgrammeStatusDefault;
+                    vbi_field2.vbi0 = kProgrammeStatusDefault;
                 }
-                
-                // Field 2: Chapter number (line 18 = vbi2)
-                if (chapter > 0) {
-                    // Chapter code on line 18 of field 2
-                    int32_t chapter_bcd = ((chapter / 10) << 4) | (chapter % 10);
-                    int32_t chapter_code = 0x800DDD | ((chapter_bcd & 0x7F) << 12);
-                    vbi_field2.vbi2 = chapter_code;
-                } else {
-                    // Default - no chapter on field 2
-                    vbi_field2.vbi2 = 0x80DD00;
-                }
-                }
+
                 combined.vbi_data[frame_num * 2] = vbi_field1;
                 combined.vbi_data[frame_num * 2 + 1] = vbi_field2;
                 frame_num++;

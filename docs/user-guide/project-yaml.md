@@ -688,6 +688,8 @@ sections:
     biphase-vbi:
       disc_area: "programme-area"
       picture_start: 1
+      spec: "standard"
+      user_code: "1066"
 ```
 
 ### `disc_area` (required)
@@ -699,6 +701,25 @@ LaserDisc disc region identifier.
 - `"lead-in"` - Start of disc (before content)
 - `"programme-area"` - Main content area
 - `"lead-out"` - End of disc (after content)
+
+### `spec` (optional)
+**Type:** String  
+**Values:** "standard" | "amendment-2"
+
+Selects the IEC encoding rules used for the six VBI values (3 per field).
+
+- "standard" - IEC 60856/60857 base specification
+- "amendment-2" - Applies the amendment 2 CLV picture-number correction (NTSC)
+
+### `user_code` (optional)
+**Type:** String (hex)  
+**Format:** `X1X3X4X5` (exactly 4 hex digits; optional `0x` prefix)
+
+Provide only the 4 user digits (X1, X3, X4, X5). The encoder will build the
+full 24-bit code internally (`8X1DXXX`).
+
+User code is inserted into line 16 (field 1) and line 279/329 (field 2)
+for lead-in/lead-out areas when `disc_area` is `lead-in` or `lead-out`.
 
 ### CAV Mode Fields
 

@@ -121,7 +121,8 @@ public:
      * @return Frame containing two encoded composite fields
      */
     Frame encode_frame(const FrameBuffer& frame_buffer, int32_t field_number,
-                      const VBIData* vbi_data = nullptr);
+                      const VBIData* vbi_data_field1 = nullptr,
+                      const VBIData* vbi_data_field2 = nullptr);
     
     /**
      * @brief Encode a single field
