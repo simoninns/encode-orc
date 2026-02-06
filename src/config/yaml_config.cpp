@@ -18,6 +18,14 @@ namespace encode_orc {
 bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                        std::string& error_message) {
     try {
+        // Check if file exists before attempting to parse
+        std::ifstream file_check(filename);
+        if (!file_check.good()) {
+            error_message = "File not found: " + filename;
+            return false;
+        }
+        file_check.close();
+        
         YAML::Node root = YAML::LoadFile(filename);
         
         // Parse top-level fields
