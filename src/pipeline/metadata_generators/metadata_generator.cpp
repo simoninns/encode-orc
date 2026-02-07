@@ -143,18 +143,23 @@ bool generate_metadata(const YAMLProjectConfig& config,
         int32_t frame_num = 0;
         int32_t global_timecode_offset = 0;  // Tracks timecode across sections
         bool has_timecode_mode = false;       // Whether we're in timecode mode at all
+        int32_t current_picture_number = 0;   // Tracks picture number across sections
+        bool in_picture_mode = false;         // Whether we're generating picture numbers
         
         for (const auto& section : config.sections) {
-            int32_t picture_start = 0;
             int32_t chapter = 0;
             std::string timecode_start = "";
             std::string disc_area = "programme-area";
             
             if (section.biphase_vbi) {
                 disc_area = section.biphase_vbi->disc_area;
+                
+                // If picture_start is explicitly set, update current picture number and enter picture mode
                 if (section.biphase_vbi->picture_start) {
-                    picture_start = section.biphase_vbi->picture_start.value();
+                    current_picture_number = section.biphase_vbi->picture_start.value();
+                    in_picture_mode = true;
                 }
+                
                 if (section.biphase_vbi->timecode_start) {
                     timecode_start = section.biphase_vbi->timecode_start.value();
                 }
@@ -220,9 +225,10 @@ bool generate_metadata(const YAMLProjectConfig& config,
                     vbi_field1.vbi2 = kLeadOut;
                     vbi_field2.vbi1 = kLeadOut;
                     vbi_field2.vbi2 = kLeadOut;
-                } else if (picture_start > 0) {
+                } else if (in_picture_mode) {
                     // CAV mode - picture number on lines 17/18 of field 1
-                    int32_t picture_number = picture_start + frame_num;
+                    // Use current_picture_number and increment it for each frame
+                    int32_t picture_number = current_picture_number + section_frame;
                     uint8_t b0, b1, b2;
                     uint32_t max_picture = (system == VideoSystem::NTSC) ? 79999 : 99999;
                     BiphaseEncoder::encode_cav_picture_number(picture_number, max_picture, b0, b1, b2);
@@ -285,6 +291,12 @@ bool generate_metadata(const YAMLProjectConfig& config,
                 combined.vbi_data[frame_num * 2] = vbi_field1;
                 combined.vbi_data[frame_num * 2 + 1] = vbi_field2;
                 frame_num++;
+            }
+            
+            // Update current_picture_number for the next section if we're in picture mode
+            // and not in lead-in/lead-out
+            if (in_picture_mode && disc_area == "programme-area") {
+                current_picture_number += section.duration.value();
             }
         }
         

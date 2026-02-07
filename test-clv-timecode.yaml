@@ -1,0 +1,77 @@
+name: "CLV Timecode Test"
+description: "Test that CLV timecode increments correctly across sections and chapters"
+
+output:
+  filename: "test-output/clv-timecode-test"
+  format: "pal-composite"
+
+laserdisc:
+  mode: "clv"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: false
+  
+  metadata:
+    generators:
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [16, 17, 18, 328, 329, 330]
+        format: "timecode"
+      
+      - type: "color-burst"
+        enabled: true
+
+sections:
+  # Lead-in should NOT have timecode
+  - name: "Lead-in"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "lead-in"
+      user_code: "5678"
+  
+  # Chapter 1 starts at timecode 00:00:00:00 (50 frames: 00:00:00:00 - 00:00:01:24)
+  - name: "Chapter1_Part1"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      timecode_start: "00:00:00:00"
+      chapter: 1
+  
+  # No timecode_start specified - should continue from 00:00:02:00 (50 frames: 00:00:02:00 - 00:00:03:24)
+  - name: "Chapter1_Part2"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  # Chapter 2 - should continue from 00:00:04:00 (30 frames: 00:00:04:00 - 00:00:05:04)
+  - name: "Chapter2"
+    duration: 30
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 2
+  
+  # Lead-out should NOT have timecode
+  - name: "Lead-out"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "lead-out"
+      user_code: "5678"

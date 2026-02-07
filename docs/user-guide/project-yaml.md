@@ -949,13 +949,26 @@ For Constant Angular Velocity (CAV) discs with picture numbering.
 ```yaml
 biphase-vbi:
   disc_area: "programme-area"
-  picture_start: 1            # Starting frame number
+  picture_start: 1            # Starting frame number (only needed for first section)
+  chapter: 1                  # Optional chapter number
 ```
 
 **Fields:**
-- `picture_start`: First picture/frame number for this section
+- `picture_start`: Sets the starting picture/frame number for this section
+  - Only required for the **first** programme-area section that uses picture numbering
+  - Subsequent sections automatically continue from the previous section's last frame number
+  - To restart numbering at a different value, specify `picture_start` again
+  - Example: Section 1 with `picture_start: 1` and 50 frames → frames 1-50
+  - Section 2 (no `picture_start`) with 50 frames → automatically continues as frames 51-100
+  - Section 3 with `picture_start: 200` and 30 frames → restarts at frames 200-229
+- `chapter`: Optional chapter/track number for this section
+  - Chapter changes do NOT reset picture numbers
+  - Picture numbers continue incrementing even when changing chapters
 
-Picture numbers increment automatically: frame 1, 2, 3, etc.
+**Important Notes:**
+- Picture numbers automatically increment across sections and chapter boundaries
+- Lead-in and lead-out areas never have picture numbers
+- Picture numbers only reset when explicitly set with a new `picture_start` value
 
 ### CLV Mode Fields
 
@@ -964,19 +977,27 @@ For Constant Linear Velocity (CLV) discs with timecode.
 ```yaml
 biphase-vbi:
   disc_area: "programme-area"
-  chapter: 1                        # Chapter number
+  chapter: 1                        # Optional chapter number
   timecode_start: "00:00:00:00"     # Starting timecode (HH:MM:SS:FF)
 ```
 
 **Fields:**
-- `chapter`: Chapter/track number
+- `chapter`: Optional chapter/track number for this section
+  - Can be used in both CAV and CLV modes
+  - Chapter changes do NOT reset timecode or picture numbers
 - `timecode_start`: Starting timecode in format `HH:MM:SS:FF`
   - HH: Hours (00-99)
   - MM: Minutes (00-59)
   - SS: Seconds (00-59)
   - FF: Frames (00-24 PAL, 00-29 NTSC)
+  - Only required for the **first** programme-area section that uses timecode
+  - Subsequent sections automatically continue from the previous section's ending timecode
+  - To restart timecode at a different value, specify `timecode_start` again
 
-Timecode increments automatically based on frame rate.
+**Important Notes:**
+- Timecode increments automatically based on frame rate across sections and chapter boundaries
+- Lead-in and lead-out areas never have timecode or picture numbers
+- Timecode only resets when explicitly set with a new `timecode_start` value
 
 ---
 
@@ -1104,15 +1125,37 @@ sections:
     biphase-vbi:
       disc_area: "lead-in"
   
-  - name: "Content"
-    duration: 500
+  # Chapter 1 starts at frame 1
+  - name: "Chapter 1 Intro"
+    duration: 250  # Frames 1-250
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_100_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      picture_start: 1  # Start at frame 1
+      chapter: 1
+  
+  - name: "Chapter 1 Content"
+    duration: 250  # Frames 251-500 (automatically continues)
     source:
       type: "mov-file"
       file: "video/content.mov"
       start_frame: 0
     biphase-vbi:
       disc_area: "programme-area"
-      picture_start: 1
+      chapter: 1  # No picture_start needed - continues from 251
+  
+  # Chapter 2 continues numbering (doesn't reset)
+  - name: "Chapter 2"
+    duration: 300  # Frames 501-800 (continues from previous)
+    source:
+      type: "mov-file"
+      file: "video/chapter2.mov"
+      start_frame: 0
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 2  # Chapter change doesn't reset picture numbers
   
   - name: "Lead-out"
     duration: 1
