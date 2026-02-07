@@ -4,7 +4,7 @@ description: "PAL LaserDisc CAV virtual test disc"
 output:
   filename: "test-output/ggv1066"
   format: "pal-composite"
-  sound_format: "wav"
+  sound_format: "pcm"
 
 laserdisc:
   mode: "cav"
@@ -41,8 +41,8 @@ sections:
   - name: "Lead-in"
     duration: 2
     source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-32.png"
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
     biphase-vbi:
       disc_area: "lead-in"
       user_code: "1066"
@@ -54,13 +54,12 @@ sections:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_100_BARS.raw"
     sound:
-      - type: "sine"
-        start_freq_hz: 50
-        end_freq_hz: 50
-        hz_per_field: 0
+      type: "sine"
+      start_freq_hz: 50
     biphase-vbi:
       disc_area: "programme-area"
       picture_start: 1
+      chapter: 1
   
   - name: "625_50_75_BARS"
     duration: 50
@@ -68,12 +67,11 @@ sections:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_75_BARS.raw"
     sound:
-      - type: "sine"
-        start_freq_hz: 100
-        end_freq_hz: 100
-        hz_per_field: 0
+      type: "sine"
+      start_freq_hz: 100
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_75_BARS_RED"
     duration: 50
@@ -81,12 +79,11 @@ sections:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_75_BARS_RED.raw"
     sound:
-      - type: "sine"
-        start_freq_hz: 315
-        end_freq_hz: 315
-        hz_per_field: 0
+      type: "sine"
+      start_freq_hz: 315
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_CHROMA_RAMP"
     duration: 50
@@ -94,12 +91,11 @@ sections:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_CHROMA_RAMP.raw"
     sound:
-      - type: "sine"
-        start_freq_hz: 400
-        end_freq_hz: 400
-        hz_per_field: 0
+      type: "sine"
+      start_freq_hz: 400
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_FULL_RAMP"
     duration: 50
@@ -107,12 +103,11 @@ sections:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_FULL_RAMP.raw"
     sound:
-      - type: "sine"
-        start_freq_hz: 1000
-        end_freq_hz: 1000
-        hz_per_field: 0
+      type: "sine"
+      start_freq_hz: 1000
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_GREY_10H_STEP"
     duration: 50
@@ -120,12 +115,11 @@ sections:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_GREY_10H_STEP.raw"
     sound:
-      - type: "sine"
-        start_freq_hz: 2000
-        end_freq_hz: 2000
-        hz_per_field: 0
+      type: "sine"
+      start_freq_hz: 2000
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_GREY_10V_STEP"
     duration: 50
@@ -133,12 +127,11 @@ sections:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_GREY_10V_STEP.raw"
     sound:
-      - type: "sine"
-        start_freq_hz: 3150
-        end_freq_hz: 3150
-        hz_per_field: 0
+      type: "sine"
+      start_freq_hz: 3150
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_GREY_5H_STEP"
     duration: 50
@@ -146,12 +139,11 @@ sections:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_GREY_5H_STEP.raw"
     sound:
-      - type: "sine"
-        start_freq_hz: 5000
-        end_freq_hz: 5000
-        hz_per_field: 0
+      type: "sine"
+      start_freq_hz: 5000
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_GREY_5V_STEP"
     duration: 50
@@ -159,12 +151,11 @@ sections:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_GREY_5V_STEP.raw"
     sound:
-      - type: "sine"
-        start_freq_hz: 8000
-        end_freq_hz: 8000
-        hz_per_field: 0
+      type: "sine"
+      start_freq_hz: 8000
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_LEGAL_RAMP"
     duration: 50
@@ -172,12 +163,11 @@ sections:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_LEGAL_RAMP.raw"
     sound:
-      - type: "sine"
-        start_freq_hz: 10000
-        end_freq_hz: 10000
-        hz_per_field: 0
+      type: "sine"
+      start_freq_hz: 10000
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_LUMA_RAMP"
     duration: 50
@@ -185,12 +175,11 @@ sections:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_LUMA_RAMP.raw"
     sound:
-      - type: "sine"
-        start_freq_hz: 12500
-        end_freq_hz: 12500
-        hz_per_field: 0
+      type: "sine"
+      start_freq_hz: 12500
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_LUMA_RAMP_DOWN"
     duration: 50
@@ -198,12 +187,11 @@ sections:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_LUMA_RAMP_DOWN.raw"
     sound:
-      - type: "sine"
-        start_freq_hz: 15000
-        end_freq_hz: 15000
-        hz_per_field: 0
+      type: "sine"
+      start_freq_hz: 15000
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_MULTIBURST"
     duration: 50
@@ -211,74 +199,115 @@ sections:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_MULTIBURST.raw"
     sound:
-      - type: "sine"
-        start_freq_hz: 20
-        end_freq_hz: 20000
-        hz_per_field: 20
+      type: "sine"
+      start_freq_hz: 20
+      end_freq_hz: 20000
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_PLUGE"
     duration: 50
     source:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_PLUGE.raw"
+    sound:
+      type: "square"
+      start_freq_hz: 440
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_SMPTE_BARS"
     duration: 50
     source:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_SMPTE_BARS.raw"
+    sound:
+      type: "sawtooth"
+      start_freq_hz: 220
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_TARTAN"
     duration: 50
     source:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_TARTAN.raw"
+    sound:
+      type: "pink"
+      amplitude: 75
+      seed: 42
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_VALID_RAMPS"
     duration: 50
     source:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_VALID_RAMPS.raw"
+    sound:
+      type: "white"
+      amplitude: 50
+      seed: 123
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_VERT_LUMA_RAMP"
     duration: 50
     source:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_VERT_LUMA_RAMP.raw"
+    sound:
+      type: "brown"
+      amplitude: 75
+      seed: 456
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
   - name: "625_50_Y_CB_CR_RAMPS"
     duration: 50
     source:
       type: "yuv422-image"
       file: "testcard-images/pal-raw/625_50_Y_CB_CR_RAMPS.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 100
+      end_freq_hz: 10000
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 1
   
-  # Chapter 2: MOV Files (each repeated 10 times)
+  # Chapter 2: Audio Test - WAV file with silence padding
+  - name: "Organ_Test_WAV"
+    duration: 342
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_SMPTE_BARS.raw"
+    sound:
+      type: "wav"
+      file: "testcard-images/sound/organ.wav"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 2
+  
+  # Chapter 3: MOV Files (each repeated 10 times)
   - name: "625-50-i_Moving-Zone-2H (1/10)"
     source:
       type: "mov-file"
       file: "testcard-images/pal-mov/625-50-i_Moving-Zone-2H.mov"
       start_frame: 0
     sound:
-      - type: "sine"
-        start_freq_hz: 20
-        end_freq_hz: 20000
-        hz_per_field: 20
+      type: "sine"
+      start_freq_hz: 20
+      end_freq_hz: 20000
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 3
   
   - name: "625-50-i_Moving-Zone-2H (2/10)"
     source:
@@ -286,12 +315,12 @@ sections:
       file: "testcard-images/pal-mov/625-50-i_Moving-Zone-2H.mov"
       start_frame: 0
     sound:
-      - type: "sine"
-        start_freq_hz: 20000
-        end_freq_hz: 20
-        hz_per_field: -20
+      type: "sine"
+      start_freq_hz: 20000
+      end_freq_hz: 20
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 3
   
   - name: "625-50-i_Moving-Zone-2H (3/10)"
     source:
@@ -299,12 +328,12 @@ sections:
       file: "testcard-images/pal-mov/625-50-i_Moving-Zone-2H.mov"
       start_frame: 0
     sound:
-      - type: "sine"
-        start_freq_hz: 20
-        end_freq_hz: 20000
-        hz_per_field: 20
+      type: "sine"
+      start_freq_hz: 20
+      end_freq_hz: 20000
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 3
   
   - name: "625-50-i_Moving-Zone-2H (4/10)"
     source:
@@ -312,12 +341,12 @@ sections:
       file: "testcard-images/pal-mov/625-50-i_Moving-Zone-2H.mov"
       start_frame: 0
     sound:
-      - type: "sine"
-        start_freq_hz: 20000
-        end_freq_hz: 20
-        hz_per_field: -20
+      type: "sine"
+      start_freq_hz: 20000
+      end_freq_hz: 20
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 3
   
   - name: "625-50-i_Moving-Zone-2H (5/10)"
     source:
@@ -325,12 +354,12 @@ sections:
       file: "testcard-images/pal-mov/625-50-i_Moving-Zone-2H.mov"
       start_frame: 0
     sound:
-      - type: "sine"
-        start_freq_hz: 20
-        end_freq_hz: 20000
-        hz_per_field: 20
+      type: "sine"
+      start_freq_hz: 20
+      end_freq_hz: 20000
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 3
   
   - name: "625-50-i_Moving-Zone-2H (6/10)"
     source:
@@ -338,12 +367,12 @@ sections:
       file: "testcard-images/pal-mov/625-50-i_Moving-Zone-2H.mov"
       start_frame: 0
     sound:
-      - type: "sine"
-        start_freq_hz: 20000
-        end_freq_hz: 20
-        hz_per_field: -20
+      type: "sine"
+      start_freq_hz: 20000
+      end_freq_hz: 20
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 3
   
   - name: "625-50-i_Moving-Zone-2H (7/10)"
     source:
@@ -351,12 +380,12 @@ sections:
       file: "testcard-images/pal-mov/625-50-i_Moving-Zone-2H.mov"
       start_frame: 0
     sound:
-      - type: "sine"
-        start_freq_hz: 20
-        end_freq_hz: 20000
-        hz_per_field: 20
+      type: "sine"
+      start_freq_hz: 20
+      end_freq_hz: 20000
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 3
   
   - name: "625-50-i_Moving-Zone-2H (8/10)"
     source:
@@ -364,12 +393,12 @@ sections:
       file: "testcard-images/pal-mov/625-50-i_Moving-Zone-2H.mov"
       start_frame: 0
     sound:
-      - type: "sine"
-        start_freq_hz: 20000
-        end_freq_hz: 20
-        hz_per_field: -20
+      type: "sine"
+      start_freq_hz: 20000
+      end_freq_hz: 20
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 3
   
   - name: "625-50-i_Moving-Zone-2H (9/10)"
     source:
@@ -377,12 +406,12 @@ sections:
       file: "testcard-images/pal-mov/625-50-i_Moving-Zone-2H.mov"
       start_frame: 0
     sound:
-      - type: "sine"
-        start_freq_hz: 20
-        end_freq_hz: 20000
-        hz_per_field: 20
+      type: "sine"
+      start_freq_hz: 20
+      end_freq_hz: 20000
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 3
   
   - name: "625-50-i_Moving-Zone-2H (10/10)"
     source:
@@ -390,1682 +419,30 @@ sections:
       file: "testcard-images/pal-mov/625-50-i_Moving-Zone-2H.mov"
       start_frame: 0
     sound:
-      - type: "sine"
-        start_freq_hz: 20000
-        end_freq_hz: 20
-        hz_per_field: -20
+      type: "sine"
+      start_freq_hz: 20000
+      end_freq_hz: 20
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 3
   
-  # Chapter 3: PNG Images (1 frame each)
-  - name: "PAL-720x576-Check-Clipping-Target-Broadcast"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Clipping-Target-Broadcast.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Clipping-Target-Full"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Clipping-Target-Full.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Color-Wipe-Full"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Color-Wipe-Full.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Color-Wipe-Half"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Color-Wipe-Half.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Composite"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Composite.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Contrast-Checker"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Contrast-Checker.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Contrast-Lines"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Contrast-Lines.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Convergence-Hori"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Convergence-Hori.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Convergence-Vert"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Convergence-Vert.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Gamma-Checker"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Gamma-Checker.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Gamma-Lines"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Gamma-Lines.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Length-Hori"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Length-Hori.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Length-Vert"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Length-Vert.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Overscan"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Overscan.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Patterns-Background"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Patterns-Background.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Patterns"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Patterns.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Resolution-Hori-Wedge-Inv"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Resolution-Hori-Wedge-Inv.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Resolution-Hori-Wedge"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Resolution-Hori-Wedge.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Resolution-Star"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Resolution-Star.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Resolution-Vert-Wedge-Inv"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Resolution-Vert-Wedge-Inv.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Check-Resolution-Vert-Wedge"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Check-Resolution-Vert-Wedge.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Clipping-High-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Clipping-High-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Clipping-High-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Clipping-High-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Clipping-High-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Clipping-High-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Clipping-High"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Clipping-High.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Clipping-Low-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Clipping-Low-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Clipping-Low-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Clipping-Low-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Clipping-Low-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Clipping-Low-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Clipping-Low"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Clipping-Low.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Bars-Hori-03"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Bars-Hori-03.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Bars-Hori-06"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Bars-Hori-06.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Bars-Hori-12"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Bars-Hori-12.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Bars-Hori-Cont"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Bars-Hori-Cont.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Bars-Vert-03"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Bars-Vert-03.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Bars-Vert-06"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Bars-Vert-06.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Bars-Vert-12"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Bars-Vert-12.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Bars-Vert-Cont"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Bars-Vert-Cont.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Composite-Step-Wipe-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Composite-Step-Wipe-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Composite-Step-Wipe-Gray"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Composite-Step-Wipe-Gray.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Composite-Step-Wipe-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Composite-Step-Wipe-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Composite-Step-Wipe-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Composite-Step-Wipe-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-One-Black"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Black.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-One-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-One-Cyan"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Cyan.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-One-Gray"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Gray.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-One-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-One-Magenta"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Magenta.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-One-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-One-White"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-White.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-One-Yellow"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Yellow.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Patch-4096-Rgb-B"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Patch-4096-Rgb-B.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Random-01"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-01.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Random-02"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-02.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Random-04"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-04.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Random-08"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-08.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Random-16"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-16.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Random-Gray-01"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-Gray-01.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Random-Gray-02"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-Gray-02.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Random-Gray-04"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-Gray-04.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Random-Gray-08"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-Gray-08.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Random-Gray-16"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Random-Gray-16.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Step-Lin-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Lin-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Step-Lin-Cyan"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Lin-Cyan.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Step-Lin-Gray"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Lin-Gray.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Step-Lin-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Lin-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Step-Lin-Magenta"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Lin-Magenta.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Step-Lin-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Lin-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Step-Lin-Yellow"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Lin-Yellow.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Step-Log-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Log-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Step-Log-Cyan"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Log-Cyan.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Step-Log-Gray"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Log-Gray.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Step-Log-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Log-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Step-Log-Magenta"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Log-Magenta.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Step-Log-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Log-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Step-Log-Yellow"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Step-Log-Yellow.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Triangle-Solid"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Triangle-Solid.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Triangle-Wireframe"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Triangle-Wireframe.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Wipe-Full-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Full-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Wipe-Full-Cyan"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Full-Cyan.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Wipe-Full-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Full-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Wipe-Full-Magenta"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Full-Magenta.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Wipe-Full-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Full-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Wipe-Full-Yellow"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Full-Yellow.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Wipe-Half-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Half-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Wipe-Half-Cyan"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Half-Cyan.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Wipe-Half-Gray"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Half-Gray.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Wipe-Half-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Half-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Wipe-Half-Magenta"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Half-Magenta.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Wipe-Half-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Half-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Color-Wipe-Half-Yellow"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-Wipe-Half-Yellow.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Gamma-Checker-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Gamma-Checker-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Gamma-Checker-Gray"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Gamma-Checker-Gray.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Gamma-Checker-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Gamma-Checker-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Gamma-Checker-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Gamma-Checker-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Gamma-Lines-Gray-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Gamma-Lines-Gray-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Gamma-Lines-Gray-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Gamma-Lines-Gray-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Gamma-Lines-Gray-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Gamma-Lines-Gray-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Gamma-Lines-Gray"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Gamma-Lines-Gray.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Bars-Hori"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Bars-Hori.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Bars-Vert"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Bars-Vert.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Checkers-02"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-02.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Checkers-04"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-04.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Checkers-08"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-08.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Checkers-16"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-16.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Checkers-32"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-32.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Checkers-Log-Inv"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-Log-Inv.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Checkers-Log"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-Log.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Distortion-Circle-Many-Inv"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Distortion-Circle-Many-Inv.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Distortion-Circle-Many"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Distortion-Circle-Many.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Distortion-Circle-One-Inv"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Distortion-Circle-One-Inv.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Distortion-Circle-One"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Distortion-Circle-One.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Distortion-Square-Many-Inv"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Distortion-Square-Many-Inv.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Distortion-Square-Many"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Distortion-Square-Many.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Grid-Inv"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Grid-Inv.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Grid"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Grid.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Lines-Hori-2"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Hori-2.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Lines-Hori-4-Inv"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Hori-4-Inv.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Lines-Hori-4"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Hori-4.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Lines-Hori-8-Inv"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Hori-8-Inv.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Lines-Hori-8"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Hori-8.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Lines-Hori-Log-Inv"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Hori-Log-Inv.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Lines-Hori-Log"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Hori-Log.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Lines-Vert-2"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Vert-2.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Lines-Vert-4-Inv"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Vert-4-Inv.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Lines-Vert-4"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Vert-4.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Lines-Vert-8-Inv"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Vert-8-Inv.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Lines-Vert-8"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Vert-8.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Lines-Vert-Log"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Lines-Vert-Log.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Points-02"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-02.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Points-04-Inv"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-04-Inv.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Points-04"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-04.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Points-08-Inv"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-08-Inv.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Points-08"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-08.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Points-16-Inv"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-16-Inv.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Points-16"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-16.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Points-32-Inv"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-32-Inv.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Points-32"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Points-32.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Squares-02"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Squares-02.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Squares-04"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Squares-04.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Squares-08"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Squares-08.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Squares-16"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Squares-16.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Geometry-Squares-32"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Squares-32.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsl-Fix-Hue-Blue-Magenta-Var-Sat-Lev"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Blue-Magenta-Var-Sat-Lev.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsl-Fix-Hue-Blue-Var-Sat-Lev"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Blue-Var-Sat-Lev.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsl-Fix-Hue-Cyan-Blue-Var-Sat-Lev"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Cyan-Blue-Var-Sat-Lev.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsl-Fix-Hue-Cyan-Var-Sat-Lev"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Cyan-Var-Sat-Lev.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsl-Fix-Hue-Green-Cyan-Var-Sat-Lev"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Green-Cyan-Var-Sat-Lev.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsl-Fix-Hue-Green-Var-Sat-Lev"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Green-Var-Sat-Lev.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsl-Fix-Hue-Magenta-Red-Var-Sat-Lev"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Magenta-Red-Var-Sat-Lev.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsl-Fix-Hue-Magenta-Var-Sat-Lev"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Magenta-Var-Sat-Lev.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsl-Fix-Hue-Red-Var-Sat-Lev"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Red-Var-Sat-Lev.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsl-Fix-Hue-Yellow-Green-Var-Sat-Lev"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Yellow-Green-Var-Sat-Lev.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsl-Fix-Hue-Yellow-Red-Var-Sat-Lev"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Yellow-Red-Var-Sat-Lev.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsl-Fix-Hue-Yellow-Var-Sat-Lev"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsl-Fix-Hue-Yellow-Var-Sat-Lev.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsv-Fix-Hue-Blue-Magenta-Var-Sat-Val"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Blue-Magenta-Var-Sat-Val.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsv-Fix-Hue-Blue-Var-Sat-Val"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Blue-Var-Sat-Val.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsv-Fix-Hue-Cyan-Blue-Var-Sat-Val"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Cyan-Blue-Var-Sat-Val.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsv-Fix-Hue-Cyan-Var-Sat-Val"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Cyan-Var-Sat-Val.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsv-Fix-Hue-Green-Cyan-Var-Sat-Val"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Green-Cyan-Var-Sat-Val.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsv-Fix-Hue-Green-Var-Sat-Val"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Green-Var-Sat-Val.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsv-Fix-Hue-Magenta-Red-Var-Sat-Val"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Magenta-Red-Var-Sat-Val.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsv-Fix-Hue-Magenta-Var-Sat-Val"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Magenta-Var-Sat-Val.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsv-Fix-Hue-Red-Var-Sat-Val"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Red-Var-Sat-Val.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsv-Fix-Hue-Yellow-Green-Var-Sat-Val"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Yellow-Green-Var-Sat-Val.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsv-Fix-Hue-Yellow-Red-Var-Sat-Val"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Yellow-Red-Var-Sat-Val.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Hsv-Fix-Hue-Yellow-Var-Sat-Val"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Hsv-Fix-Hue-Yellow-Var-Sat-Val.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Rgb-Fix-Blue-064-Var-Red-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Blue-064-Var-Red-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Rgb-Fix-Blue-127-Var-Red-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Blue-127-Var-Red-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Rgb-Fix-Blue-191-Var-Red-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Blue-191-Var-Red-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Rgb-Fix-Blue-255-Var-Red-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Blue-255-Var-Red-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Rgb-Fix-Green-064-Var-Blue-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Green-064-Var-Blue-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Rgb-Fix-Green-127-Var-Blue-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Green-127-Var-Blue-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Rgb-Fix-Green-191-Var-Blue-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Green-191-Var-Blue-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Rgb-Fix-Green-255-Var-Blue-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Green-255-Var-Blue-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Rgb-Fix-Red-064-Var-Green-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Red-064-Var-Green-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Rgb-Fix-Red-127-Var-Green-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Red-127-Var-Green-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Rgb-Fix-Red-191-Var-Green-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Red-191-Var-Green-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Swatch-Rgb-Fix-Red-255-Var-Green-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Swatch-Rgb-Fix-Red-255-Var-Green-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsl-Fix-Hue-0.00-Var-Sat-Lev"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Hue-0.00-Var-Sat-Lev.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsl-Fix-Hue-0.33-Var-Sat-Lev"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Hue-0.33-Var-Sat-Lev.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsl-Fix-Hue-0.66-Var-Sat-Lev"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Hue-0.66-Var-Sat-Lev.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsl-Fix-Lev-0.25-Var-Hue-Sat"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Lev-0.25-Var-Hue-Sat.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsl-Fix-Lev-0.50-Var-Hue-Sat"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Lev-0.50-Var-Hue-Sat.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsl-Fix-Lev-0.75-Var-Hue-Sat"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Lev-0.75-Var-Hue-Sat.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsl-Fix-Sat-0.00-Var-Lev-Hue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Sat-0.00-Var-Lev-Hue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsl-Fix-Sat-0.50-Var-Lev-Hue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Sat-0.50-Var-Lev-Hue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsl-Fix-Sat-1.00-Var-Lev-Hue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsl-Fix-Sat-1.00-Var-Lev-Hue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsv-Fix-Hue-0.00-Var-Sat-Val"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Hue-0.00-Var-Sat-Val.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsv-Fix-Hue-0.33-Var-Sat-Val"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Hue-0.33-Var-Sat-Val.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsv-Fix-Hue-0.66-Var-Sat-Val"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Hue-0.66-Var-Sat-Val.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsv-Fix-Sat-0.00-Var-Val-Hue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Sat-0.00-Var-Val-Hue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsv-Fix-Sat-0.50-Var-Val-Hue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Sat-0.50-Var-Val-Hue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsv-Fix-Sat-1.00-Var-Val-Hue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Sat-1.00-Var-Val-Hue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsv-Fix-Val-0.00-Var-Hue-Sat"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Val-0.00-Var-Hue-Sat.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsv-Fix-Val-0.50-Var-Hue-Sat"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Val-0.50-Var-Hue-Sat.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Hsv-Fix-Val-1.00-Var-Hue-Sat"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Hsv-Fix-Val-1.00-Var-Hue-Sat.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Rgb-Fix-Blue-000-Var-Red-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Blue-000-Var-Red-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Rgb-Fix-Blue-127-Var-Red-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Blue-127-Var-Red-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Rgb-Fix-Blue-255-Var-Red-Green"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Blue-255-Var-Red-Green.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Rgb-Fix-Green-000-Var-Blue-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Green-000-Var-Blue-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Rgb-Fix-Green-127-Var-Blue-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Green-127-Var-Blue-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Rgb-Fix-Green-255-Var-Blue-Red"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Green-255-Var-Blue-Red.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Rgb-Fix-Red-000-Var-Green-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Red-000-Var-Green-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Rgb-Fix-Red-127-Var-Green-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Red-127-Var-Green-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  - name: "PAL-720x576-Wipe-Rgb-Fix-Red-255-Var-Green-Blue"
-    duration: 1
-    source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Wipe-Rgb-Fix-Red-255-Var-Green-Blue.png"
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  # Chapter 4: pal-nynashamn.mp4
-  - name: "Nynashamn"
-    source:
-      type: "mp4-file"
-      file: "testcard-images/pal-mp4/pal-nynashamn.mp4"
-      start_frame: 0
-    sound:
-      - type: "sine"
-        start_freq_hz: 1000
-        end_freq_hz: 1000
-        hz_per_field: 0
-    biphase-vbi:
-      disc_area: "programme-area"
-  
-  # Chapter 5: pal-ice-skating.mp4 (with sound)
+  # Chapter 4: pal-ice-skating.mp4 (with sound)
   - name: "Ice Skating"
     source:
       type: "mp4-file"
       file: "testcard-images/pal-mp4/pal-ice-skating.mp4"
       start_frame: 0
+    sound:
+      type: "source"
     biphase-vbi:
       disc_area: "programme-area"
+      chapter: 4
   
   - name: "Lead-out"
     duration: 2
     source:
-      type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-32.png"
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
     biphase-vbi:
       disc_area: "lead-out"
       user_code: "1066"
