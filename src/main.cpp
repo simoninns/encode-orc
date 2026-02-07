@@ -862,26 +862,43 @@ int main(int argc, char* argv[]) {
                 section_audio.samples = AudioGenerator::generate_silence(total_audio_samples);
             }
             
-            // Get filter settings (use defaults if not specified)
-            bool enable_chroma_filter = true;  // Default: enabled
-            bool enable_luma_filter = false;   // Default: disabled
-
-            if (section.filters) {
-                enable_chroma_filter = section.filters->chroma.enabled;
-                enable_luma_filter = section.filters->luma.enabled;
+            // Determine which pipeline configuration to use
+            // Section-level pipeline settings extend/override global pipeline
+            // - If section has metadata, use section metadata; otherwise use global metadata
+            // - If section has preprocessing, use section preprocessing; otherwise use global preprocessing
+            // - If section has effects, use section effects; otherwise use global effects
+            const PipelineMetadataConfig* metadata_config = nullptr;
+            const PipelinePreprocessingConfig* preprocessing_config = nullptr;
+            const PipelineEffectsConfig* effects_config = nullptr;
+            
+            // Determine metadata config (section overrides global)
+            if (section.pipeline.has_value() && section.pipeline->metadata.has_value()) {
+                metadata_config = &section.pipeline->metadata.value();
+                ENCODE_ORC_LOG_DEBUG("Using section-level metadata configuration for section '{}'", section.name);
+            } else if (config.pipeline.metadata.has_value()) {
+                metadata_config = &config.pipeline.metadata.value();
             }
-
-            // Determine which pipeline configuration to use (section-level overrides global)
-            const PipelineConfig* active_pipeline = &config.pipeline;
-            if (section.pipeline.has_value()) {
-                active_pipeline = &section.pipeline.value();
-                ENCODE_ORC_LOG_DEBUG("Using section-level pipeline configuration for section '{}'", section.name);
+            
+            // Determine preprocessing config (section overrides global)
+            if (section.pipeline.has_value() && section.pipeline->preprocessing.has_value()) {
+                preprocessing_config = &section.pipeline->preprocessing.value();
+                ENCODE_ORC_LOG_DEBUG("Using section-level preprocessing configuration for section '{}'", section.name);
+            } else if (config.pipeline.preprocessing.has_value()) {
+                preprocessing_config = &config.pipeline.preprocessing.value();
+            }
+            
+            // Determine effects config (section overrides global)
+            if (section.pipeline.has_value() && section.pipeline->effects.has_value()) {
+                effects_config = &section.pipeline->effects.value();
+                ENCODE_ORC_LOG_DEBUG("Using section-level effects configuration for section '{}'", section.name);
+            } else if (config.pipeline.effects.has_value()) {
+                effects_config = &config.pipeline.effects.value();
             }
 
             // Instantiate metadata generators from YAML configuration
             std::vector<std::unique_ptr<MetadataGenerator>> generators;
-            if (active_pipeline->metadata.has_value()) {
-                for (const auto& gen_config : active_pipeline->metadata->generators) {
+            if (metadata_config != nullptr) {
+                for (const auto& gen_config : metadata_config->generators) {
                     if (!gen_config.enabled) {
                         continue;  // Skip disabled generators
                     }
@@ -1031,8 +1048,8 @@ int main(int argc, char* argv[]) {
 
             // Instantiate field effects from YAML configuration
             std::vector<std::unique_ptr<FieldEffect>> effects;
-            if (active_pipeline->effects.has_value()) {
-                for (const auto& effect_config : active_pipeline->effects->effects) {
+            if (effects_config != nullptr) {
+                for (const auto& effect_config : effects_config->effects) {
                     if (!effect_config.enabled) {
                         continue;  // Skip disabled effects
                     }
@@ -1088,8 +1105,16 @@ int main(int argc, char* argv[]) {
             // Build pipeline for this section
             VideoEncoderPipeline::Builder pipeline_builder;
             pipeline_builder.set_system(system)
-                            .set_parameters(params)
-                            .enable_chroma_filter(enable_chroma_filter)
+                            .set_parameters(params);
+            
+            // Apply filter settings from preprocessing config (defaults: chroma=true, luma=false)
+            bool enable_chroma_filter = true;
+            bool enable_luma_filter = false;
+            if (preprocessing_config != nullptr && preprocessing_config->filters.has_value()) {
+                enable_chroma_filter = preprocessing_config->filters->chroma.enabled;
+                enable_luma_filter = preprocessing_config->filters->luma.enabled;
+            }
+            pipeline_builder.enable_chroma_filter(enable_chroma_filter)
                             .enable_luma_filter(enable_luma_filter);
             
             // Enable Y/C output if format is Y/C
