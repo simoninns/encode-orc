@@ -568,6 +568,11 @@ Audio sources for this section. See [Sound Configuration](#sound-configuration).
 
 Section-specific LaserDisc metadata. See [Biphase VBI Configuration](#biphase-vbi-configuration).
 
+### `vitc` (optional)
+**Type:** Object
+
+Section-specific VITC timecode configuration. See [VITC Configuration](#vitc-configuration).
+
 ---
 
 ## Source Types
@@ -1057,6 +1062,81 @@ biphase-vbi:
 - Timecode increments automatically based on frame rate across sections and chapter boundaries
 - Lead-in and lead-out areas never have timecode or picture numbers
 - Timecode only resets when explicitly set with a new `timecode_start` value
+
+---
+
+## VITC Configuration
+
+Section-level VITC (Vertical Interval Time Code) configuration for consumer tape formats. Used with `vitc` generator.
+
+```yaml
+sections:
+  - name: "Lead-in"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+    vitc:
+      timecode_start: "00:00:00.00"
+  
+  - name: "Content"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_100_BARS.raw"
+    vitc:
+      timecode_start: "00:00:00.00"
+```
+
+### `timecode_start` (optional)
+**Type:** String  
+**Format:** `HH:MM:SS.FF`
+
+Starting timecode for this section in format `HH:MM:SS.FF`:
+- HH: Hours (00-99)
+- MM: Minutes (00-59)
+- SS: Seconds (00-59)
+- FF: Frames (00-24 for PAL, 00-29 for NTSC)
+
+**Behavior:**
+- Only required for the **first** section that uses VITC timecode
+- Subsequent sections automatically continue from the previous section's ending timecode
+- To restart timecode at a different value, specify `timecode_start` again in a later section
+
+**Example:**
+```yaml
+sections:
+  # Section 1: Starts at 00:00:00.00, duration 50 frames → ends at 00:00:02.00 (PAL)
+  - name: "Intro"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "intro.raw"
+    vitc:
+      timecode_start: "00:00:00.00"
+  
+  # Section 2: Automatically continues from 00:00:02.00
+  - name: "Main"
+    duration: 100
+    source:
+      type: "mov-file"
+      file: "main.mov"
+    # No vitc block needed - continues from previous section
+  
+  # Section 3: Restart at a specific timecode
+  - name: "Credits"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "credits.raw"
+    vitc:
+      timecode_start: "01:00:00.00"  # Jump to 1 hour
+```
+
+**Important Notes:**
+- Timecode increments automatically based on frame rate (25 fps for PAL, ~30 fps for NTSC)
+- If no section specifies `timecode_start`, VITC will start from frame 0 (00:00:00.00)
+- The pipeline-level `vitc` generator must be enabled with appropriate VBI lines
 
 ---
 
