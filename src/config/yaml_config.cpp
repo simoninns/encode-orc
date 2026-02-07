@@ -365,32 +365,45 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                     section.filters = fc;
                 }
 
-                // Parse sound configuration
-                if (sec_node["sound"] && sec_node["sound"].IsSequence()) {
-                    for (const auto& sound_node : sec_node["sound"]) {
-                        SoundConfig sound_cfg;
-                        if (sound_node["type"]) {
-                            sound_cfg.type = sound_node["type"].as<std::string>();
-                        }
-
-                        if (sound_cfg.type == "sine") {
-                            if (sound_node["start_freq_hz"]) {
-                                sound_cfg.start_freq_hz = sound_node["start_freq_hz"].as<double>();
-                            }
-                            if (sound_node["end_freq_hz"]) {
-                                sound_cfg.end_freq_hz = sound_node["end_freq_hz"].as<double>();
-                            }
-                            if (sound_node["hz_per_field"]) {
-                                sound_cfg.hz_per_field = sound_node["hz_per_field"].as<double>();
-                            }
-                        } else if (sound_cfg.type == "wav") {
-                            if (sound_node["file"]) {
-                                sound_cfg.file = sound_node["file"].as<std::string>();
-                            }
-                        }
-
-                        section.sound.push_back(sound_cfg);
+                // Parse sound configuration (only one sound field per section)
+                if (sec_node["sound"]) {
+                    SoundConfig sound_cfg;
+                    const YAML::Node& sound_node = sec_node["sound"];
+                    
+                    if (sound_node["type"]) {
+                        sound_cfg.type = sound_node["type"].as<std::string>();
                     }
+
+                    // Parse frequency parameters for waveform types
+                    if (sound_cfg.type == "sine" || sound_cfg.type == "square" || sound_cfg.type == "sawtooth") {
+                        if (sound_node["start_freq_hz"]) {
+                            sound_cfg.start_freq_hz = sound_node["start_freq_hz"].as<double>();
+                        }
+                        if (sound_node["end_freq_hz"]) {
+                            sound_cfg.end_freq_hz = sound_node["end_freq_hz"].as<double>();
+                        }
+                    } else if (sound_cfg.type == "wav") {
+                        if (sound_node["file"]) {
+                            sound_cfg.file = sound_node["file"].as<std::string>();
+                        }
+                    }
+                    
+                    // Parse optional amplitude (0-100 percent)
+                    if (sound_node["amplitude"]) {
+                        sound_cfg.amplitude = sound_node["amplitude"].as<double>();
+                    }
+                    
+                    // Parse optional balance (-100 to +100)
+                    if (sound_node["balance"]) {
+                        sound_cfg.balance = sound_node["balance"].as<double>();
+                    }
+                    
+                    // Parse optional seed for noise types
+                    if (sound_node["seed"]) {
+                        sound_cfg.seed = sound_node["seed"].as<uint32_t>();
+                    }
+
+                    section.sound = sound_cfg;
                 }
                 
                 // Parse section-level biphase VBI configuration
@@ -635,24 +648,63 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
         }
 
         // Validate sound configuration
-        for (const auto& sound_cfg : section.sound) {
+        if (section.sound.has_value()) {
+            const auto& sound_cfg = section.sound.value();
             if (!config.output.sound_format.has_value()) {
                 error_message = "output.sound_format is required when sound is configured (section: " + section.name + ")";
                 return false;
             }
-            if (sound_cfg.type != "sine" && sound_cfg.type != "wav") {
+            
+            // Validate sound type
+            const std::vector<std::string> valid_types = {"silence", "source", "sine", "square", "sawtooth", "pink", "white", "brown", "wav"};
+            bool valid_type = false;
+            for (const auto& vt : valid_types) {
+                if (sound_cfg.type == vt) {
+                    valid_type = true;
+                    break;
+                }
+            }
+            if (!valid_type) {
                 error_message = "Invalid sound type '" + sound_cfg.type + "' in section: " + section.name;
                 return false;
             }
-            if (sound_cfg.type == "sine") {
-                if (!sound_cfg.start_freq_hz.has_value() || !sound_cfg.end_freq_hz.has_value() || !sound_cfg.hz_per_field.has_value()) {
-                    error_message = "Sound type 'sine' requires start_freq_hz, end_freq_hz, and hz_per_field in section: " + section.name;
+            
+            // Validate waveform types require start frequency
+            if (sound_cfg.type == "sine" || sound_cfg.type == "square" || sound_cfg.type == "sawtooth") {
+                if (!sound_cfg.start_freq_hz.has_value()) {
+                    error_message = "Sound type '" + sound_cfg.type + "' requires start_freq_hz in section: " + section.name;
                     return false;
                 }
             }
+            
+            // Validate amplitude if specified
+            if (sound_cfg.amplitude.has_value()) {
+                if (sound_cfg.amplitude.value() < 0.0 || sound_cfg.amplitude.value() > 100.0) {
+                    error_message = "Sound amplitude must be between 0 and 100 (percent) in section: " + section.name;
+                    return false;
+                }
+            }
+            
+            // Validate balance if specified
+            if (sound_cfg.balance.has_value()) {
+                if (sound_cfg.balance.value() < -100.0 || sound_cfg.balance.value() > 100.0) {
+                    error_message = "Sound balance must be between -100 (left only) and +100 (right only) in section: " + section.name;
+                    return false;
+                }
+            }
+            
+            // Validate WAV requires file
             if (sound_cfg.type == "wav") {
                 if (!sound_cfg.file.has_value()) {
                     error_message = "Sound type 'wav' requires file in section: " + section.name;
+                    return false;
+                }
+            }
+            
+            // Validate source type for "source" sound
+            if (sound_cfg.type == "source") {
+                if (section.source_type != "mov-file" && section.source_type != "mp4-file") {
+                    error_message = "Sound type 'source' requires a MOV or MP4 file source in section: " + section.name;
                     return false;
                 }
             }

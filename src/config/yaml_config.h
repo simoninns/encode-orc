@@ -213,15 +213,19 @@ struct MP4FileSource {
  * @brief Sound configuration for a section
  */
 struct SoundConfig {
-    std::string type;  // "sine" or "wav"
+    std::string type;  // "silence", "source", "sine", "square", "sawtooth", "pink", "white", "brown", "wav"
 
-    // For sine:
+    // For generated sounds (sine, square, sawtooth):
     std::optional<double> start_freq_hz;
-    std::optional<double> end_freq_hz;
-    std::optional<double> hz_per_field;
+    std::optional<double> end_freq_hz;  // Optional, defaults to start_freq_hz
 
     // For wav:
     std::optional<std::string> file;
+
+    // For all generated sounds:
+    std::optional<double> amplitude;   // Amplitude in percent (0-100), default 75
+    std::optional<double> balance;     // Balance: -100 (left only), 0 (centered), +100 (right only), default 0
+    std::optional<uint32_t> seed;      // Optional random seed for noise types
 };
 
 /**
@@ -239,8 +243,8 @@ struct VideoSection {
     
     std::optional<FilterConfig> filters;  // Optional filter settings
 
-    // Optional sound configuration
-    std::vector<SoundConfig> sound;
+    // Sound (only one sound field per section)
+    std::optional<SoundConfig> sound;
     
     // Generator-specific metadata (matches pipeline generator types)
     std::optional<BiphaseVBIConfig> biphase_vbi;  // For biphase-vbi generator (LaserDisc)

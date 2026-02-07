@@ -609,7 +609,7 @@ source:
 
 ## Sound Configuration
 
-Add audio to video sections. Multiple sound sources can be layered.
+Add audio to video sections. Each section can have one sound field that applies to the entire section duration.
 
 ```yaml
 sections:
@@ -619,55 +619,276 @@ sections:
       type: "yuv422-image"
       file: "testcard.raw"
     sound:
-      - type: "sine"
-        start_freq_hz: 1000
-        end_freq_hz: 1000
-        hz_per_field: 0
-      
-      - type: "wav"
-        file: "audio/music.wav"
+      type: "sine"
+      start_freq_hz: 1000
+      end_freq_hz: 2000
 ```
 
-### Sine Wave Generator
+### Sound Types
 
-Generates synthetic sine wave tones.
+The following sound types are supported:
+
+- **silence**: No audio (silence)
+- **source**: Use audio from source file (MOV/MP4 only)
+- **sine**: Pure sine wave
+- **square**: Square wave
+- **sawtooth**: Sawtooth wave
+- **pink**: Pink noise (1/f noise)
+- **white**: White noise (Gaussian)
+- **brown**: Brown noise (Brownian/red noise)
+- **wav**: Load audio from WAV file
+
+### Silence
 
 ```yaml
-- type: "sine"
-  start_freq_hz: 440       # Starting frequency in Hz
-  end_freq_hz: 880         # Ending frequency in Hz
-  hz_per_field: 2          # Frequency change per field
+sound:
+  type: "silence"
+```
+
+Generates complete silence for the section. This is also the default if no sound field is specified.
+
+---
+
+### Source Audio
+
+```yaml
+sound:
+  type: "source"
+```
+
+Uses the audio track from the source video file. Only works with MOV or MP4 file sources.
+
+**Requirements:**
+- Section must use `mov-file` or `mp4-file` as source type
+- Source file must contain an audio track
+
+---
+
+### Sine Wave
+
+Generates a pure sine wave tone.
+
+```yaml
+sound:
+  type: "sine"
+  start_freq_hz: 440       # Starting frequency in Hz (required)
+  end_freq_hz: 880         # Ending frequency in Hz (optional, defaults to start_freq_hz)
+  amplitude: 75            # Volume in percent 0-100 (optional, default 75)
+  balance: 0               # Stereo balance -100 to +100 (optional, default 0)
 ```
 
 **Fields:**
-- `start_freq_hz`: Initial frequency (Hz)
-- `end_freq_hz`: Final frequency (Hz)
-- `hz_per_field`: Frequency change per field (Hz/field)
-  - Positive = frequency sweep up
-  - Negative = frequency sweep down
-  - Zero = constant tone
+- `start_freq_hz`: Starting frequency in Hz (required)
+- `end_freq_hz`: Ending frequency in Hz (optional, defaults to start_freq_hz)
+- `amplitude`: Volume as percentage 0-100 (optional, default 75)
+- `balance`: Stereo balance -100 (left only) to +100 (right only) (optional, default 0)
+- `seed`: Random seed (optional, not used for sine waves)
+
+**Frequency Sweeps:**
+- If `end_freq_hz` is omitted or equals `start_freq_hz`: Constant tone
+- If different: Linear frequency sweep across the entire section duration
+- Sweep is sample-accurate and calculated across the whole section
 
 **Use cases:**
-- Constant tones for calibration
-- Frequency sweeps for testing
-- Multi-tone mixing
+- Constant reference tones (e.g., 1000 Hz calibration)
+- Frequency response testing
+- Audio sweep tests
+- Stereo balance testing
+
+**Examples:**
+```yaml
+# Constant 1000 Hz tone at default amplitude (75%)
+sound:
+  type: "sine"
+  start_freq_hz: 1000
+
+# Constant 1000 Hz tone at 50% amplitude
+sound:
+  type: "sine"
+  start_freq_hz: 1000
+  amplitude: 50
+
+# Sweep from 20 Hz to 20000 Hz at full amplitude
+sound:
+  type: "sine"
+  start_freq_hz: 20
+  end_freq_hz: 20000
+  amplitude: 100
+
+# 440 Hz tone on left channel only
+sound:
+  type: "sine"
+  start_freq_hz: 440
+  balance: -100
+
+# 440 Hz tone on right channel only
+sound:
+  type: "sine"
+  start_freq_hz: 440
+  balance: 100
+```
+
+---
+
+### Square Wave
+
+Generates a square wave with 50% duty cycle.
+
+```yaml
+sound:
+  type: "square"
+  start_freq_hz: 440
+  amplitude: 60  # Optional, default 75
+  balance: 0     # Optional, default 0
+```
+
+**Fields:**
+- `start_freq_hz`: Starting frequency in Hz (required)
+- `end_freq_hz`: Ending frequency in Hz (optional, defaults to start_freq_hz)
+- `amplitude`: Volume as percentage 0-100 (optional, default 75)
+- `balance`: Stereo balance -100 (left only) to +100 (right only) (optional, default 0)
+
+**Characteristics:**
+- Contains odd harmonics (3rd, 5th, 7th, etc.)
+- Useful for testing harmonic distortion
+- Harsher sound than sine wave
+
+---
+
+### Sawtooth Wave
+
+Generates a sawtooth wave (linear ramp).
+
+```yaml
+sound:
+  type: "sawtooth"
+  start_freq_hz: 220
+  amplitude: 80  # Optional, default 75
+  balance: 0     # Optional, default 0
+```
+
+**Fields:**
+- `start_freq_hz`: Starting frequency in Hz (required)
+- `end_freq_hz`: Ending frequency in Hz (optional, defaults to start_freq_hz)
+- `amplitude`: Volume as percentage 0-100 (optional, default 75)
+- `balance`: Stereo balance -100 (left only) to +100 (right only) (optional, default 0)
+
+**Characteristics:**
+- Contains all harmonics (even and odd)
+- Bright, buzzy sound
+- Useful for synthesis testing
+
+---
+
+### Pink Noise
+
+Generates pink noise (1/f noise spectrum).
+
+```yaml
+sound:
+  type: "pink"
+  amplitude: 50  # Optional, default 75
+  balance: 0     # Optional, default 0
+  seed: 42       # Optional random seed for reproducibility
+```
+
+**Fields:**
+- `amplitude`: Volume as percentage 0-100 (optional, default 75)
+- `balance`: Stereo balance -100 (left only) to +100 (right only) (optional, default 0)
+- `seed`: Optional random seed (default: random)
+
+**Characteristics:**
+- Equal energy per octave
+- More natural sound than white noise
+- Useful for acoustic testing and speaker calibration
+
+---
+
+### White Noise
+
+Generates white noise (equal energy at all frequencies).
+
+```yaml
+sound:
+  type: "white"
+  amplitude: 50  # Optional, default 75
+  balance: 0     # Optional, default 0
+  seed: 42       # Optional random seed
+```
+
+**Fields:**
+- `amplitude`: Volume as percentage 0-100 (optional, default 75)
+- `balance`: Stereo balance -100 (left only) to +100 (right only) (optional, default 0)
+- `seed`: Optional random seed (default: random)
+
+**Characteristics:**
+- Flat frequency spectrum
+- Hissing sound
+- Useful for testing noise floors and dynamic range
+
+---
+
+### Brown Noise
+
+Generates brown noise (Brownian/red noise).
+
+```yaml
+sound:
+  type: "brown"
+  amplitude: 50  # Optional, default 75
+  balance: 0     # Optional, default 0
+  seed: 42       # Optional random seed
+```
+
+**Fields:**
+- `amplitude`: Volume as percentage 0-100 (optional, default 75)
+- `balance`: Stereo balance -100 (left only) to +100 (right only) (optional, default 0)
+- `seed`: Optional random seed (default: random)
+
+**Characteristics:**
+- Energy decreases 6 dB per octave
+- Deeper, rumbling sound than pink or white noise
+- Useful for low-frequency testing
 
 ---
 
 ### WAV File
 
-Plays PCM audio from WAV file.
+Loads audio from a WAV file.
 
 ```yaml
-- type: "wav"
+sound:
+  type: "wav"
   file: "audio/soundtrack.wav"
 ```
 
 **Fields:**
-- `file`: Path to WAV file
+- `file`: Path to WAV file (required)
 
 **Requirements:**
-- Standard WAV format (PCM)
+- Standard WAV format (16-bit PCM, stereo, 44.1kHz recommended)
+
+**Behavior:**
+- If WAV is shorter than section: Pads with silence at the end
+- If WAV is longer than section: Truncates to section duration
+- Mono WAV files are converted to stereo automatically
+
+---
+
+### Audio Technical Details
+
+**Sample Rate:** All audio is generated or resampled to 44.1 kHz stereo (2 channels, interleaved).
+
+**Pre-generation:** Audio for each section is pre-generated in full before encoding begins. This ensures:
+- Thread-safe operation with multi-threading
+- Accurate frequency sweeps across the entire section
+- Consistent audio/video synchronization
+
+**Duration:** The audio duration exactly matches the video section duration (number of fields × samples per field).
+
+**Default:** If no `sound` field is specified, the section will have silence.
+
+---
 - Sample rate: 48 kHz recommended
 - Channels: Mono or stereo
 - Audio loops if video is longer than audio file

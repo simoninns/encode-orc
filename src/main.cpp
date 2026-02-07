@@ -32,6 +32,7 @@
 #include "yc_tbc_writer.h"
 #include "standard_writer.h"
 #include "audio_writer.h"
+#include "audio_generator.h"
 #include "version.h"
 #include "thread_pool.h"
 #include "ordered_queue.h"
@@ -70,103 +71,37 @@ struct EncodedResult {
     std::string error_message;
 };
 
-struct AudioSource {
-    enum class Type { Sine, PCM };
-    Type type = Type::Sine;
-
-    // Sine parameters
-    double current_freq = 0.0;
-    double end_freq = 0.0;
-    double hz_per_field = 0.0;
-    double phase = 0.0;
-
-    // PCM data
-    std::vector<int16_t> pcm;
-    size_t cursor = 0;
-};
-
-int16_t clamp_int16(int32_t value) {
-    if (value > 32767) return 32767;
-    if (value < -32768) return -32768;
-    return static_cast<int16_t>(value);
-}
-
-std::vector<int16_t> generate_field_audio(std::vector<AudioSource>& sources,
-                                          int32_t samples_per_field,
-                                          int32_t sample_rate,
-                                          std::mutex* audio_mutex = nullptr) {
-    const int32_t sample_values = samples_per_field * 2;  // Stereo interleaved
-    std::vector<int32_t> mix(sample_values, 0);
-
-    if (sources.empty()) {
-        return std::vector<int16_t>(sample_values, 0);
-    }
+// Structure to hold pre-generated audio for a section
+struct SectionAudio {
+    std::vector<int16_t> samples;  // Interleaved stereo PCM (L, R, L, R, ...)
+    int32_t samples_per_field;
+    int32_t cursor = 0;  // Current read position in samples
     
-    // Lock mutex if provided (for multi-threaded access)
-    std::unique_lock<std::mutex> lock;
-    if (audio_mutex) {
-        lock = std::unique_lock<std::mutex>(*audio_mutex);
-    }
-
-    constexpr double kAmplitude = 0.8 * 32767.0;
-    constexpr double kTwoPi = 6.28318530717958647692;
-
-    for (auto& source : sources) {
-        if (source.type == AudioSource::Type::Sine) {
-            double freq = source.current_freq;
-            double phase = source.phase;
-            double phase_step = kTwoPi * freq / static_cast<double>(sample_rate);
-
-            for (int32_t i = 0; i < samples_per_field; ++i) {
-                int32_t sample = static_cast<int32_t>(std::sin(phase) * kAmplitude);
-                mix[i * 2] += sample;
-                mix[i * 2 + 1] += sample;
-                phase += phase_step;
-                if (phase >= kTwoPi) {
-                    phase -= kTwoPi;
-                }
+    // Get audio for a single field (advances cursor)
+    std::vector<int16_t> get_field_audio() {
+        int32_t field_samples = samples_per_field * 2;  // Stereo
+        if (cursor + field_samples > static_cast<int32_t>(samples.size())) {
+            // Pad with silence if we've reached the end
+            std::vector<int16_t> result(field_samples, 0);
+            int32_t remaining = static_cast<int32_t>(samples.size()) - cursor;
+            if (remaining > 0) {
+                std::copy(samples.begin() + cursor, samples.end(), result.begin());
             }
-
-            source.phase = phase;
-
-            // Update frequency for next field
-            if (source.hz_per_field != 0.0) {
-                double next_freq = source.current_freq + source.hz_per_field;
-                if (source.hz_per_field > 0.0) {
-                    source.current_freq = (next_freq > source.end_freq) ? source.end_freq : next_freq;
-                } else {
-                    source.current_freq = (next_freq < source.end_freq) ? source.end_freq : next_freq;
-                }
-            }
-        } else {
-            for (int32_t i = 0; i < samples_per_field; ++i) {
-                int16_t left = 0;
-                int16_t right = 0;
-                if (source.cursor + 1 < source.pcm.size()) {
-                    left = source.pcm[source.cursor++];
-                    right = source.pcm[source.cursor++];
-                }
-                mix[i * 2] += left;
-                mix[i * 2 + 1] += right;
-            }
+            cursor = static_cast<int32_t>(samples.size());
+            return result;
         }
+        
+        std::vector<int16_t> result(samples.begin() + cursor, samples.begin() + cursor + field_samples);
+        cursor += field_samples;
+        return result;
     }
-
-    std::vector<int16_t> output(sample_values, 0);
-    for (int32_t i = 0; i < sample_values; ++i) {
-        output[i] = clamp_int16(mix[i]);
-    }
-    return output;
-}
+};
 
 // Function to encode a single frame (thread-safe, can be called from worker threads)
 EncodedResult encode_single_frame(
     EncodingTask task,
     encode_orc::VideoEncoderPipeline* pipeline,
-    bool sound_enabled,
-    std::vector<AudioSource>& audio_sources,
-    int32_t samples_per_field,
-    bool parallel_fields = false,
+    SectionAudio* section_audio,
     std::mutex* audio_mutex = nullptr)
 {
     EncodedResult result;
@@ -175,11 +110,16 @@ EncodedResult encode_single_frame(
     result.success = false;
     
     try {
-        // Attach audio to the frame (if enabled)
-        // NOTE: Audio generation modifies audio_sources state, so it must be protected by mutex in multi-threaded mode
-        if (sound_enabled) {
-            auto field1_audio = generate_field_audio(audio_sources, samples_per_field, 44100, audio_mutex);
-            auto field2_audio = generate_field_audio(audio_sources, samples_per_field, 44100, audio_mutex);
+        // Attach audio to the frame (if enabled and section_audio is provided)
+        if (section_audio) {
+            // Lock mutex if provided (for multi-threaded access to section audio cursor)
+            std::unique_lock<std::mutex> lock;
+            if (audio_mutex) {
+                lock = std::unique_lock<std::mutex>(*audio_mutex);
+            }
+            
+            auto field1_audio = section_audio->get_field_audio();
+            auto field2_audio = section_audio->get_field_audio();
 
             std::vector<int16_t> frame_audio;
             frame_audio.reserve(field1_audio.size() + field2_audio.size());
@@ -188,31 +128,13 @@ EncodedResult encode_single_frame(
             task.frame_buffer.set_audio(std::move(frame_audio));
         }
 
-        if (parallel_fields) {
-            // Encode both fields in parallel using std::async
-            encode_orc::Frame frame(pipeline->get_parameters().field_width,
-                                   pipeline->get_parameters().field_height);
-            
-            auto future1 = std::async(std::launch::async, [&]() {
-                return pipeline->encode_field(task.frame_buffer, task.field_number, true, task.vbi_data_field1);
-            });
-            
-            auto future2 = std::async(std::launch::async, [&]() {
-                return pipeline->encode_field(task.frame_buffer, task.field_number + 1, false, task.vbi_data_field2);
-            });
-            
-            frame.field1() = future1.get();
-            frame.field2() = future2.get();
-            result.encoded_frame = std::move(frame);
-        } else {
-            // Sequential field encoding (default)
-            result.encoded_frame = pipeline->encode_frame(
-                task.frame_buffer,
-                task.field_number,
-                task.vbi_data_field1,
-                task.vbi_data_field2
-            );
-        }
+        // Sequential field encoding
+        result.encoded_frame = pipeline->encode_frame(
+            task.frame_buffer,
+            task.field_number,
+            task.vbi_data_field1,
+            task.vbi_data_field2
+        );
         
         result.success = true;
     } catch (const std::exception& e) {
@@ -508,7 +430,8 @@ int main(int argc, char* argv[]) {
             }
         }
         // Check audio files
-        for (const auto& sound_cfg : section.sound) {
+        if (section.sound.has_value()) {
+            const auto& sound_cfg = section.sound.value();
             if (sound_cfg.type == "wav" && sound_cfg.file.has_value()) {
                 if (!std::filesystem::exists(sound_cfg.file.value())) {
                     ENCODE_ORC_LOG_ERROR("Audio file does not exist: {}", sound_cfg.file.value());
@@ -828,62 +751,117 @@ int main(int argc, char* argv[]) {
         thread_pool = std::make_unique<ThreadPool>(num_threads);
         ENCODE_ORC_LOG_DEBUG("Thread pool created with {} worker threads", num_threads);
     }
-    
-    // Determine whether to use parallel field encoding (Phase 2)
-    // DISABLED: Causes heap corruption when combined with frame-level multi-threading
-    // TODO: Fix thread safety issues in parallel field encoding before re-enabling
-    bool parallel_fields = false;
-    ENCODE_ORC_LOG_DEBUG("Field-level parallelism: DISABLED (incompatible with frame-level threading)");
 
     int32_t frame_offset = 0;
     
-    // Shared audio state and mutex for all sections (moved outside section loop to prevent dangling references)
-    std::vector<AudioSource> audio_sources;
+    // Audio mutex for thread-safe access to section audio cursor
     std::mutex audio_mutex;
 
     for (const auto& section : config.sections) {
         ENCODE_ORC_LOG_INFO("Encoding section: {}", section.name);
 
-        // Clear and prepare audio sources for this section
-        audio_sources.clear();
-        if (sound_enabled) {
-            if (!section.sound.empty()) {
-                for (const auto& sound_cfg : section.sound) {
-                    if (sound_cfg.type == "sine") {
-                        AudioSource src;
-                        src.type = AudioSource::Type::Sine;
-                        src.current_freq = sound_cfg.start_freq_hz.value();
-                        src.end_freq = sound_cfg.end_freq_hz.value();
-                        src.hz_per_field = sound_cfg.hz_per_field.value();
-                        src.phase = 0.0;
-                        audio_sources.push_back(std::move(src));
-                    } else if (sound_cfg.type == "wav") {
-                        AudioSource src;
-                        src.type = AudioSource::Type::PCM;
-                        std::string wav_error;
-                        if (!load_wav_file(sound_cfg.file.value(), src.pcm, wav_error)) {
-                            ENCODE_ORC_LOG_ERROR("Failed to load WAV audio for section '{}': {}", section.name, wav_error);
-                            return 1;
-                        }
-                        audio_sources.push_back(std::move(src));
-                    }
-                }
-            } else if (section.mp4_file_source) {
-                AudioSource src;
-                src.type = AudioSource::Type::PCM;
-                std::string mp4_error;
-                if (!extract_mp4_audio_pcm(section.mp4_file_source->file, src.pcm, mp4_error)) {
-                    ENCODE_ORC_LOG_ERROR("Failed to extract MP4 audio for section '{}': {}", section.name, mp4_error);
-                    return 1;
-                }
-                audio_sources.push_back(std::move(src));
-            }
-        }
-
         // Track actual number of frames encoded in this section
         int32_t section_frames = 0;
 
         if (section.yuv422_image_source || section.png_image_source || section.mov_file_source || section.mp4_file_source) {
+            // Pre-generate audio for this section
+            SectionAudio section_audio;
+            section_audio.samples_per_field = samples_per_field;
+            
+            if (sound_enabled && section.sound.has_value()) {
+                const auto& sound_cfg = section.sound.value();
+                
+                // Calculate total number of fields in section
+                int32_t num_fields = section.duration.value() * 2;  // 2 fields per frame
+                int32_t total_audio_samples = num_fields * samples_per_field;
+                
+                ENCODE_ORC_LOG_DEBUG("Pre-generating audio for section '{}': {} fields, {} samples/field, {} total samples", 
+                                    section.name, num_fields, samples_per_field, total_audio_samples);
+                
+                if (sound_cfg.type == "silence") {
+                    section_audio.samples = AudioGenerator::generate_silence(total_audio_samples);
+                } else if (sound_cfg.type == "sine" || sound_cfg.type == "square" || sound_cfg.type == "sawtooth") {
+                    AudioGenerator::WaveformType waveform_type = AudioGenerator::string_to_type(sound_cfg.type);
+                    double start_freq = sound_cfg.start_freq_hz.value_or(440.0);
+                    double end_freq = sound_cfg.end_freq_hz.value_or(start_freq);  // Default to start_freq if not specified
+                    double amplitude = sound_cfg.amplitude.value_or(75.0);  // Default to 75%
+                    double balance = sound_cfg.balance.value_or(0.0);  // Default to 0 (centered)
+                    
+                    section_audio.samples = AudioGenerator::generate(
+                        waveform_type,
+                        total_audio_samples,
+                        44100,  // Sample rate
+                        start_freq,
+                        end_freq,
+                        amplitude,
+                        sound_cfg.seed.value_or(0),
+                        balance
+                    );
+                } else if (sound_cfg.type == "pink" || sound_cfg.type == "white" || sound_cfg.type == "brown") {
+                    AudioGenerator::WaveformType waveform_type = AudioGenerator::string_to_type(sound_cfg.type);
+                    double amplitude = sound_cfg.amplitude.value_or(75.0);  // Default to 75%
+                    double balance = sound_cfg.balance.value_or(0.0);  // Default to 0 (centered)
+                    
+                    section_audio.samples = AudioGenerator::generate(
+                        waveform_type,
+                        total_audio_samples,
+                        44100,
+                        0.0,  // Frequency not used for noise
+                        0.0,
+                        amplitude,
+                        sound_cfg.seed.value_or(0),
+                        balance
+                    );
+                } else if (sound_cfg.type == "wav") {
+                    // Load WAV file
+                    std::string wav_error;
+                    std::vector<int16_t> wav_pcm;
+                    if (!load_wav_file(sound_cfg.file.value(), wav_pcm, wav_error)) {
+                        ENCODE_ORC_LOG_ERROR("Failed to load WAV audio for section '{}': {}", section.name, wav_error);
+                        return 1;
+                    }
+                    
+                    // Use WAV data up to the section length, pad with silence if shorter
+                    int32_t total_samples_needed = total_audio_samples * 2;  // Stereo
+                    if (static_cast<int32_t>(wav_pcm.size()) >= total_samples_needed) {
+                        section_audio.samples.assign(wav_pcm.begin(), wav_pcm.begin() + total_samples_needed);
+                    } else {
+                        section_audio.samples = wav_pcm;
+                        section_audio.samples.resize(total_samples_needed, 0);  // Pad with silence
+                    }
+                } else if (sound_cfg.type == "source") {
+                    // Extract audio from source file (MOV or MP4)
+                    std::vector<int16_t> source_pcm;
+                    std::string extract_error;
+                    
+                    if (section.mp4_file_source) {
+                        if (!extract_mp4_audio_pcm(section.mp4_file_source->file, source_pcm, extract_error)) {
+                            ENCODE_ORC_LOG_ERROR("Failed to extract MP4 audio for section '{}': {}", section.name, extract_error);
+                            return 1;
+                        }
+                    } else if (section.mov_file_source) {
+                        if (!extract_mp4_audio_pcm(section.mov_file_source->file, source_pcm, extract_error)) {
+                            ENCODE_ORC_LOG_ERROR("Failed to extract MOV audio for section '{}': {}", section.name, extract_error);
+                            return 1;
+                        }
+                    }
+                    
+                    // Use source audio up to the section length, pad with silence if shorter
+                    int32_t total_samples_needed = total_audio_samples * 2;  // Stereo
+                    if (static_cast<int32_t>(source_pcm.size()) >= total_samples_needed) {
+                        section_audio.samples.assign(source_pcm.begin(), source_pcm.begin() + total_samples_needed);
+                    } else {
+                        section_audio.samples = source_pcm;
+                        section_audio.samples.resize(total_samples_needed, 0);  // Pad with silence
+                    }
+                }
+            } else if (sound_enabled) {
+                // No sound configured, use silence
+                int32_t num_fields = section.duration.value() * 2;
+                int32_t total_audio_samples = num_fields * samples_per_field;
+                section_audio.samples = AudioGenerator::generate_silence(total_audio_samples);
+            }
+            
             // Get filter settings (use defaults if not specified)
             bool enable_chroma_filter = true;  // Default: enabled
             bool enable_luma_filter = false;   // Default: disabled
@@ -1258,12 +1236,13 @@ int main(int argc, char* argv[]) {
                     // Submit all encoding tasks
                     // Capture pipeline raw pointer by value to avoid dangling reference
                     auto* pipeline_ptr = pipeline.get();
+                    SectionAudio* section_audio_ptr = sound_enabled ? &section_audio : nullptr;
                     for (int32_t i = 0; i < section_frames; ++i) {
                         FrameBuffer fb_copy = frame_buffer;  // Copy frame buffer for each task
                         EncodingTask task = prepare_task(std::move(fb_copy), i);
                         
-                        thread_pool->enqueue([task, i, &result_queue, pipeline_ptr, &audio_sources, &audio_mutex, sound_enabled, samples_per_field, parallel_fields]() mutable {
-                            EncodedResult result = encode_single_frame(std::move(task), pipeline_ptr, sound_enabled, audio_sources, samples_per_field, parallel_fields, &audio_mutex);
+                        thread_pool->enqueue([task, i, &result_queue, pipeline_ptr, section_audio_ptr, &audio_mutex]() mutable {
+                            EncodedResult result = encode_single_frame(std::move(task), pipeline_ptr, section_audio_ptr, &audio_mutex);
                             result_queue.push(i, std::move(result));
                         });
                     }
@@ -1282,10 +1261,11 @@ int main(int argc, char* argv[]) {
                     thread_pool->wait_all();
                 } else {
                     // Single-threaded encoding
+                    SectionAudio* section_audio_ptr = sound_enabled ? &section_audio : nullptr;
                     for (int32_t i = 0; i < section_frames; ++i) {
                         FrameBuffer fb_copy = frame_buffer;
                         EncodingTask task = prepare_task(std::move(fb_copy), i);
-                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields, nullptr);
+                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), section_audio_ptr, nullptr);
                         if (!write_encoded_frame(result)) {
                             return 1;
                         }
@@ -1317,12 +1297,13 @@ int main(int argc, char* argv[]) {
                     // Submit all encoding tasks
                     // Capture pipeline raw pointer by value to avoid dangling reference
                     auto* pipeline_ptr = pipeline.get();
+                    SectionAudio* section_audio_ptr = sound_enabled ? &section_audio : nullptr;
                     for (int32_t i = 0; i < section_frames; ++i) {
                         FrameBuffer fb_copy = frame_buffer;
                         EncodingTask task = prepare_task(std::move(fb_copy), i);
                         
-                        thread_pool->enqueue([task, i, &result_queue, pipeline_ptr, &audio_sources, &audio_mutex, sound_enabled, samples_per_field, parallel_fields]() mutable {
-                            EncodedResult result = encode_single_frame(std::move(task), pipeline_ptr, sound_enabled, audio_sources, samples_per_field, parallel_fields, &audio_mutex);
+                        thread_pool->enqueue([task, i, &result_queue, pipeline_ptr, section_audio_ptr, &audio_mutex]() mutable {
+                            EncodedResult result = encode_single_frame(std::move(task), pipeline_ptr, section_audio_ptr, &audio_mutex);
                             result_queue.push(i, std::move(result));
                         });
                     }
@@ -1341,10 +1322,11 @@ int main(int argc, char* argv[]) {
                     thread_pool->wait_all();
                 } else {
                     // Single-threaded encoding
+                    SectionAudio* section_audio_ptr = sound_enabled ? &section_audio : nullptr;
                     for (int32_t i = 0; i < section_frames; ++i) {
                         FrameBuffer fb_copy = frame_buffer;
                         EncodingTask task = prepare_task(std::move(fb_copy), i);
-                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields, nullptr);
+                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), section_audio_ptr, nullptr);
                         if (!write_encoded_frame(result)) {
                             return 1;
                         }
@@ -1369,6 +1351,7 @@ int main(int argc, char* argv[]) {
                     // Submit encoding tasks
                     // Capture pipeline raw pointer by value to avoid dangling reference
                     auto* pipeline_ptr = pipeline.get();
+                    SectionAudio* section_audio_ptr = sound_enabled ? &section_audio : nullptr;
                     for (int32_t i = 0; i < section_frames; ++i) {
                         FrameBuffer frame_buffer;
                         if (!mov_loader.load_frame(start_frame + i, frame_buffer, load_error)) {
@@ -1379,8 +1362,8 @@ int main(int argc, char* argv[]) {
 
                         EncodingTask task = prepare_task(std::move(frame_buffer), i);
                         
-                        thread_pool->enqueue([task, i, &result_queue, pipeline_ptr, &audio_sources, &audio_mutex, sound_enabled, samples_per_field, parallel_fields]() mutable {
-                            EncodedResult result = encode_single_frame(std::move(task), pipeline_ptr, sound_enabled, audio_sources, samples_per_field, parallel_fields, &audio_mutex);
+                        thread_pool->enqueue([task, i, &result_queue, pipeline_ptr, section_audio_ptr, &audio_mutex]() mutable {
+                            EncodedResult result = encode_single_frame(std::move(task), pipeline_ptr, section_audio_ptr, &audio_mutex);
                             result_queue.push(i, std::move(result));
                         });
                     }
@@ -1400,6 +1383,7 @@ int main(int argc, char* argv[]) {
                     thread_pool->wait_all();
                 } else {
                     // Single-threaded encoding
+                    SectionAudio* section_audio_ptr = sound_enabled ? &section_audio : nullptr;
                     for (int32_t i = 0; i < section_frames; ++i) {
                         FrameBuffer frame_buffer;
                         if (!mov_loader.load_frame(start_frame + i, frame_buffer, load_error)) {
@@ -1409,7 +1393,7 @@ int main(int argc, char* argv[]) {
                         }
 
                         EncodingTask task = prepare_task(std::move(frame_buffer), i);
-                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields, nullptr);
+                        EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), section_audio_ptr, nullptr);
                         if (!write_encoded_frame(result)) {
                             mov_loader.close();
                             return 1;
@@ -1438,6 +1422,7 @@ int main(int argc, char* argv[]) {
                     
                     // Capture pipeline raw pointer by value to avoid dangling reference
                     auto* pipeline_ptr = pipeline.get();
+                    SectionAudio* section_audio_ptr = sound_enabled ? &section_audio : nullptr;
                     for (int32_t batch_start = 0; batch_start < section_frames; batch_start += BATCH_SIZE) {
                         int32_t batch_count = std::min(BATCH_SIZE, section_frames - batch_start);
                         
@@ -1455,8 +1440,8 @@ int main(int argc, char* argv[]) {
                             int32_t frame_index = batch_start + i;
                             EncodingTask task = prepare_task(std::move(frame_buffers[i]), frame_index);
                             
-                            thread_pool->enqueue([task, frame_index, &result_queue, pipeline_ptr, &audio_sources, &audio_mutex, sound_enabled, samples_per_field, parallel_fields]() mutable {
-                                EncodedResult result = encode_single_frame(std::move(task), pipeline_ptr, sound_enabled, audio_sources, samples_per_field, parallel_fields, &audio_mutex);
+                            thread_pool->enqueue([task, frame_index, &result_queue, pipeline_ptr, section_audio_ptr, &audio_mutex]() mutable {
+                                EncodedResult result = encode_single_frame(std::move(task), pipeline_ptr, section_audio_ptr, &audio_mutex);
                                 result_queue.push(frame_index, std::move(result));
                             });
                         }
@@ -1477,6 +1462,7 @@ int main(int argc, char* argv[]) {
                     thread_pool->wait_all();
                 } else {
                     // Single-threaded encoding
+                    SectionAudio* section_audio_ptr = sound_enabled ? &section_audio : nullptr;
                     for (int32_t batch_start = 0; batch_start < section_frames; batch_start += BATCH_SIZE) {
                         int32_t batch_count = std::min(BATCH_SIZE, section_frames - batch_start);
                         
@@ -1493,7 +1479,7 @@ int main(int argc, char* argv[]) {
                         for (int32_t i = 0; i < batch_count; ++i) {
                             int32_t frame_index = batch_start + i;
                             EncodingTask task = prepare_task(std::move(frame_buffers[i]), frame_index);
-                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), sound_enabled, audio_sources, samples_per_field, parallel_fields, nullptr);
+                            EncodedResult result = encode_single_frame(std::move(task), pipeline.get(), section_audio_ptr, nullptr);
                             if (!write_encoded_frame(result)) {
                                 mp4_loader.close();
                                 return 1;

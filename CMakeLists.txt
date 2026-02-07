@@ -259,6 +259,7 @@ set(SOURCES
     src/main.cpp
     src/utils/logging.cpp
     src/utils/thread_pool.cpp
+    src/utils/audio_generator.cpp
     src/config/yaml_config.cpp
     src/pipeline/writers/metadata_writer.cpp
     src/pipeline/writers/audio_writer.cpp
