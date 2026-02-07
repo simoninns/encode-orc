@@ -249,6 +249,9 @@ struct VideoSection {
     
     // Generator-specific metadata (matches pipeline generator types)
     std::optional<BiphaseVBIConfig> biphase_vbi;  // For biphase-vbi generator (LaserDisc)
+    
+    // Section-level pipeline configuration (overrides global pipeline)
+    std::optional<PipelineConfig> pipeline;
 };
 
 /**

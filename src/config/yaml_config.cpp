@@ -14,6 +14,184 @@
 
 namespace encode_orc {
 
+// Helper function to parse pipeline configuration (used for both global and section-level)
+static bool parse_pipeline_config(const YAML::Node& pipeline_node, PipelineConfig& pipeline_cfg, std::string& error_message) {
+    // Parse metadata generators
+    if (pipeline_node["metadata"]) {
+        PipelineMetadataConfig metadata_cfg;
+        YAML::Node metadata_node = pipeline_node["metadata"];
+        
+        if (metadata_node["generators"] && metadata_node["generators"].IsSequence()) {
+            for (const auto& gen_node : metadata_node["generators"]) {
+                PipelineGeneratorConfig gen_cfg;
+                
+                // Required: type
+                if (!gen_node["type"]) {
+                    error_message = "Pipeline generator missing required 'type' field";
+                    return false;
+                }
+                gen_cfg.type = gen_node["type"].as<std::string>();
+                
+                // Optional: enabled (default true)
+                if (gen_node["enabled"]) {
+                    gen_cfg.enabled = gen_node["enabled"].as<bool>();
+                }
+                
+                // Type-specific configuration
+                if (gen_cfg.type == "biphase-vbi") {
+                    // Parse lines array
+                    if (gen_node["lines"] && gen_node["lines"].IsSequence()) {
+                        for (const auto& line_node : gen_node["lines"]) {
+                            gen_cfg.lines.push_back(line_node.as<int32_t>());
+                        }
+                    }
+                    // Parse format (cav or clv)
+                    if (gen_node["format"]) {
+                        gen_cfg.format = gen_node["format"].as<std::string>();
+                    }
+                }
+                
+                if (gen_cfg.type == "vitc") {
+                    // Parse lines array
+                    if (gen_node["lines"] && gen_node["lines"].IsSequence()) {
+                        for (const auto& line_node : gen_node["lines"]) {
+                            gen_cfg.lines.push_back(line_node.as<int32_t>());
+                        }
+                    }
+                    // Parse start_frame_offset
+                    if (gen_node["start_frame_offset"]) {
+                        gen_cfg.start_frame_offset = gen_node["start_frame_offset"].as<int32_t>();
+                    }
+                }
+                
+                if (gen_cfg.type == "vits-pal" || gen_cfg.type == "vits-ntsc") {
+                    // Parse VITS signals array
+                    if (gen_node["signals"] && gen_node["signals"].IsSequence()) {
+                        for (const auto& sig_node : gen_node["signals"]) {
+                            PipelineGeneratorConfig::VITSSignal signal;
+                            
+                            // Line numbers in YAML are 1-indexed and absolute (1-525 for NTSC, 1-625 for PAL)
+                            // Store as-is; conversion happens in main.cpp when creating generators
+                            if (sig_node["line"]) {
+                                signal.line = sig_node["line"].as<int32_t>();
+                            }
+                            if (sig_node["signal"]) {
+                                signal.signal = sig_node["signal"].as<std::string>();
+                            }
+                            
+                            gen_cfg.vits_signals.push_back(signal);
+                        }
+                    }
+                }
+                
+                metadata_cfg.generators.push_back(gen_cfg);
+            }
+        }
+        
+        pipeline_cfg.metadata = metadata_cfg;
+    }
+    
+    // Parse preprocessing configuration (Phase 6)
+    if (pipeline_node["preprocessing"]) {
+        PipelinePreprocessingConfig preprocessing_cfg;
+        YAML::Node preprocessing_node = pipeline_node["preprocessing"];
+        
+        // Parse filters
+        if (preprocessing_node["filters"]) {
+            FilterConfig filter_cfg;
+            YAML::Node filters_node = preprocessing_node["filters"];
+            
+            // Parse chroma filter
+            if (filters_node["chroma"]) {
+                YAML::Node chroma_node = filters_node["chroma"];
+                if (chroma_node["enabled"]) {
+                    filter_cfg.chroma.enabled = chroma_node["enabled"].as<bool>();
+                }
+            }
+            
+            // Parse luma filter
+            if (filters_node["luma"]) {
+                YAML::Node luma_node = filters_node["luma"];
+                if (luma_node["enabled"]) {
+                    filter_cfg.luma.enabled = luma_node["enabled"].as<bool>();
+                }
+            }
+            
+            preprocessing_cfg.filters = filter_cfg;
+        }
+        
+        pipeline_cfg.preprocessing = preprocessing_cfg;
+    }
+    
+    // Parse effects configuration (Phase 6)
+    if (pipeline_node["effects"]) {
+        PipelineEffectsConfig effects_cfg;
+        YAML::Node effects_node = pipeline_node["effects"];
+        
+        if (effects_node.IsSequence()) {
+            for (const auto& effect_node : effects_node) {
+                FieldEffectConfig effect_cfg;
+                
+                // Required: type
+                if (!effect_node["type"]) {
+                    error_message = "Field effect missing required 'type' field";
+                    return false;
+                }
+                effect_cfg.type = effect_node["type"].as<std::string>();
+                
+                // Optional: enabled (default false for effects)
+                if (effect_node["enabled"]) {
+                    effect_cfg.enabled = effect_node["enabled"].as<bool>();
+                }
+                
+                // Noise effect configuration
+                if (effect_cfg.type == "noise") {
+                    if (effect_node["snr_db"]) {
+                        effect_cfg.snr_db = effect_node["snr_db"].as<double>();
+                    }
+                    if (effect_node["noise_level_db"]) {
+                        effect_cfg.noise_level_db = effect_node["noise_level_db"].as<double>();
+                    }
+                }
+                
+                // Dropout effect configuration (random only)
+                if (effect_cfg.type == "dropout") {
+                    if (effect_node["density"]) {
+                        effect_cfg.dropout_density = effect_node["density"].as<double>();
+                    }
+                    if (effect_node["multi_field_probability"]) {
+                        effect_cfg.dropout_multi_field_prob = effect_node["multi_field_probability"].as<double>();
+                    }
+                    if (effect_node["single_field_probability"]) {
+                        effect_cfg.dropout_single_field_prob = effect_node["single_field_probability"].as<double>();
+                    }
+                }
+                
+                // Phase error effect configuration
+                if (effect_cfg.type == "phase-error") {
+                    if (effect_node["phase_jitter_samples"]) {
+                        effect_cfg.phase_jitter_samples = effect_node["phase_jitter_samples"].as<double>();
+                    }
+                    if (effect_node["frequency_hz"]) {
+                        effect_cfg.frequency_hz = effect_node["frequency_hz"].as<double>();
+                    }
+                }
+                
+                // Common configuration
+                if (effect_node["seed"]) {
+                    effect_cfg.seed = effect_node["seed"].as<uint32_t>();
+                }
+                
+                effects_cfg.effects.push_back(effect_cfg);
+            }
+        }
+        
+        pipeline_cfg.effects = effects_cfg;
+    }
+    
+    return true;
+}
+
 
 bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                        std::string& error_message) {
@@ -100,177 +278,8 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
             PipelineConfig pipeline_cfg;
             YAML::Node pipeline_node = root["pipeline"];
             
-            // Parse metadata generators
-            if (pipeline_node["metadata"]) {
-                PipelineMetadataConfig metadata_cfg;
-                YAML::Node metadata_node = pipeline_node["metadata"];
-                
-                if (metadata_node["generators"] && metadata_node["generators"].IsSequence()) {
-                    for (const auto& gen_node : metadata_node["generators"]) {
-                        PipelineGeneratorConfig gen_cfg;
-                        
-                        // Required: type
-                        if (!gen_node["type"]) {
-                            error_message = "Pipeline generator missing required 'type' field";
-                            return false;
-                        }
-                        gen_cfg.type = gen_node["type"].as<std::string>();
-                        
-                        // Optional: enabled (default true)
-                        if (gen_node["enabled"]) {
-                            gen_cfg.enabled = gen_node["enabled"].as<bool>();
-                        }
-                        
-                        // Type-specific configuration
-                        if (gen_cfg.type == "biphase-vbi") {
-                            // Parse lines array
-                            if (gen_node["lines"] && gen_node["lines"].IsSequence()) {
-                                for (const auto& line_node : gen_node["lines"]) {
-                                    gen_cfg.lines.push_back(line_node.as<int32_t>());
-                                }
-                            }
-                            // Parse format (cav or clv)
-                            if (gen_node["format"]) {
-                                gen_cfg.format = gen_node["format"].as<std::string>();
-                            }
-                        }
-                        
-                        if (gen_cfg.type == "vitc") {
-                            // Parse lines array
-                            if (gen_node["lines"] && gen_node["lines"].IsSequence()) {
-                                for (const auto& line_node : gen_node["lines"]) {
-                                    gen_cfg.lines.push_back(line_node.as<int32_t>());
-                                }
-                            }
-                            // Parse start_frame_offset
-                            if (gen_node["start_frame_offset"]) {
-                                gen_cfg.start_frame_offset = gen_node["start_frame_offset"].as<int32_t>();
-                            }
-                        }
-                        
-                        if (gen_cfg.type == "vits-pal" || gen_cfg.type == "vits-ntsc") {
-                            // Parse VITS signals array
-                            if (gen_node["signals"] && gen_node["signals"].IsSequence()) {
-                                for (const auto& sig_node : gen_node["signals"]) {
-                                    PipelineGeneratorConfig::VITSSignal signal;
-                                    
-                                    // Line numbers in YAML are 1-indexed and absolute (1-525 for NTSC, 1-625 for PAL)
-                                    // Store as-is; conversion happens in main.cpp when creating generators
-                                    if (sig_node["line"]) {
-                                        signal.line = sig_node["line"].as<int32_t>();
-                                    }
-                                    if (sig_node["signal"]) {
-                                        signal.signal = sig_node["signal"].as<std::string>();
-                                    }
-                                    
-                                    gen_cfg.vits_signals.push_back(signal);
-                                }
-                            }
-                        }
-                        
-                        metadata_cfg.generators.push_back(gen_cfg);
-                    }
-                }
-                
-                pipeline_cfg.metadata = metadata_cfg;
-            }
-            
-            // Parse preprocessing configuration (Phase 6)
-            if (pipeline_node["preprocessing"]) {
-                PipelinePreprocessingConfig preprocessing_cfg;
-                YAML::Node preprocessing_node = pipeline_node["preprocessing"];
-                
-                // Parse filters
-                if (preprocessing_node["filters"]) {
-                    FilterConfig filter_cfg;
-                    YAML::Node filters_node = preprocessing_node["filters"];
-                    
-                    // Parse chroma filter
-                    if (filters_node["chroma"]) {
-                        YAML::Node chroma_node = filters_node["chroma"];
-                        if (chroma_node["enabled"]) {
-                            filter_cfg.chroma.enabled = chroma_node["enabled"].as<bool>();
-                        }
-                    }
-                    
-                    // Parse luma filter
-                    if (filters_node["luma"]) {
-                        YAML::Node luma_node = filters_node["luma"];
-                        if (luma_node["enabled"]) {
-                            filter_cfg.luma.enabled = luma_node["enabled"].as<bool>();
-                        }
-                    }
-                    
-                    preprocessing_cfg.filters = filter_cfg;
-                }
-                
-                pipeline_cfg.preprocessing = preprocessing_cfg;
-            }
-            
-            // Parse effects configuration (Phase 6)
-            if (pipeline_node["effects"]) {
-                PipelineEffectsConfig effects_cfg;
-                YAML::Node effects_node = pipeline_node["effects"];
-                
-                if (effects_node.IsSequence()) {
-                    for (const auto& effect_node : effects_node) {
-                        FieldEffectConfig effect_cfg;
-                        
-                        // Required: type
-                        if (!effect_node["type"]) {
-                            error_message = "Field effect missing required 'type' field";
-                            return false;
-                        }
-                        effect_cfg.type = effect_node["type"].as<std::string>();
-                        
-                        // Optional: enabled (default false for effects)
-                        if (effect_node["enabled"]) {
-                            effect_cfg.enabled = effect_node["enabled"].as<bool>();
-                        }
-                        
-                        // Noise effect configuration
-                        if (effect_cfg.type == "noise") {
-                            if (effect_node["snr_db"]) {
-                                effect_cfg.snr_db = effect_node["snr_db"].as<double>();
-                            }
-                            if (effect_node["noise_level_db"]) {
-                                effect_cfg.noise_level_db = effect_node["noise_level_db"].as<double>();
-                            }
-                        }
-                        
-                        // Dropout effect configuration (random only)
-                        if (effect_cfg.type == "dropout") {
-                            if (effect_node["density"]) {
-                                effect_cfg.dropout_density = effect_node["density"].as<double>();
-                            }
-                            if (effect_node["multi_field_probability"]) {
-                                effect_cfg.dropout_multi_field_prob = effect_node["multi_field_probability"].as<double>();
-                            }
-                            if (effect_node["single_field_probability"]) {
-                                effect_cfg.dropout_single_field_prob = effect_node["single_field_probability"].as<double>();
-                            }
-                        }
-                        
-                        // Phase error effect configuration
-                        if (effect_cfg.type == "phase-error") {
-                            if (effect_node["phase_jitter_samples"]) {
-                                effect_cfg.phase_jitter_samples = effect_node["phase_jitter_samples"].as<double>();
-                            }
-                            if (effect_node["frequency_hz"]) {
-                                effect_cfg.frequency_hz = effect_node["frequency_hz"].as<double>();
-                            }
-                        }
-                        
-                        // Common configuration
-                        if (effect_node["seed"]) {
-                            effect_cfg.seed = effect_node["seed"].as<uint32_t>();
-                        }
-                        
-                        effects_cfg.effects.push_back(effect_cfg);
-                    }
-                }
-                
-                pipeline_cfg.effects = effects_cfg;
+            if (!parse_pipeline_config(pipeline_node, pipeline_cfg, error_message)) {
+                return false;
             }
             
             config.pipeline = pipeline_cfg;
@@ -491,6 +500,18 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                     }
                     
                     section.biphase_vbi = bv;
+                }
+                
+                // Parse section-level pipeline configuration (overrides global)
+                if (sec_node["pipeline"]) {
+                    PipelineConfig section_pipeline_cfg;
+                    YAML::Node section_pipeline_node = sec_node["pipeline"];
+                    
+                    if (!parse_pipeline_config(section_pipeline_node, section_pipeline_cfg, error_message)) {
+                        return false;
+                    }
+                    
+                    section.pipeline = section_pipeline_cfg;
                 }
                 
                 config.sections.push_back(section);

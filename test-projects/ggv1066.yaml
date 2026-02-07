@@ -426,7 +426,258 @@ sections:
       disc_area: "programme-area"
       chapter: 3
   
-  # Chapter 4: pal-ice-skating.mp4 (with sound)
+  # Chapter 4: SMPTE Bars with Noise (SNR tests)
+  - name: "SMPTE_BARS_SNR_30dB"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_SMPTE_BARS.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 1000
+    pipeline:
+      effects:
+        - type: "noise"
+          enabled: true
+          snr_db: 30
+          seed: 42
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 4
+  
+  - name: "SMPTE_BARS_SNR_25dB"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_SMPTE_BARS.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 1000
+    pipeline:
+      effects:
+        - type: "noise"
+          enabled: true
+          snr_db: 25
+          seed: 43
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 4
+  
+  - name: "SMPTE_BARS_SNR_20dB"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_SMPTE_BARS.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 1000
+    pipeline:
+      effects:
+        - type: "noise"
+          enabled: true
+          snr_db: 20
+          seed: 44
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 4
+  
+  - name: "SMPTE_BARS_SNR_15dB"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_SMPTE_BARS.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 1000
+    pipeline:
+      effects:
+        - type: "noise"
+          enabled: true
+          snr_db: 15
+          seed: 45
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 4
+  
+  # Chapter 5: SMPTE Bars with Dropouts (density tests)
+  - name: "SMPTE_BARS_DROPOUT_0.001"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_SMPTE_BARS.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 500
+    pipeline:
+      effects:
+        - type: "dropout"
+          enabled: true
+          density: 0.001
+          multi_field_probability: 0.3
+          single_field_probability: 0.7
+          seed: 100
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 5
+  
+  - name: "SMPTE_BARS_DROPOUT_0.005"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_SMPTE_BARS.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 500
+    pipeline:
+      effects:
+        - type: "dropout"
+          enabled: true
+          density: 0.005
+          multi_field_probability: 0.3
+          single_field_probability: 0.7
+          seed: 101
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 5
+  
+  - name: "SMPTE_BARS_DROPOUT_0.01"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_SMPTE_BARS.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 500
+    pipeline:
+      effects:
+        - type: "dropout"
+          enabled: true
+          density: 0.01
+          multi_field_probability: 0.3
+          single_field_probability: 0.7
+          seed: 102
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 5
+  
+  - name: "SMPTE_BARS_DROPOUT_0.02"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_SMPTE_BARS.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 500
+    pipeline:
+      effects:
+        - type: "dropout"
+          enabled: true
+          density: 0.02
+          multi_field_probability: 0.3
+          single_field_probability: 0.7
+          seed: 103
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 5
+  
+  # Chapter 6: SMPTE Bars with Combined Noise and Dropouts
+  - name: "SMPTE_BARS_NOISE_DROPOUT_LIGHT"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_SMPTE_BARS.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 750
+    pipeline:
+      effects:
+        - type: "noise"
+          enabled: true
+          snr_db: 35
+          seed: 200
+        - type: "dropout"
+          enabled: true
+          density: 0.001
+          multi_field_probability: 0.3
+          single_field_probability: 0.7
+          seed: 201
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 6
+  
+  - name: "SMPTE_BARS_NOISE_DROPOUT_MODERATE"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_SMPTE_BARS.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 750
+    pipeline:
+      effects:
+        - type: "noise"
+          enabled: true
+          snr_db: 28
+          seed: 202
+        - type: "dropout"
+          enabled: true
+          density: 0.005
+          multi_field_probability: 0.3
+          single_field_probability: 0.7
+          seed: 203
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 6
+  
+  - name: "SMPTE_BARS_NOISE_DROPOUT_HEAVY"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_SMPTE_BARS.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 750
+    pipeline:
+      effects:
+        - type: "noise"
+          enabled: true
+          snr_db: 22
+          seed: 204
+        - type: "dropout"
+          enabled: true
+          density: 0.01
+          multi_field_probability: 0.3
+          single_field_probability: 0.7
+          seed: 205
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 6
+  
+  - name: "SMPTE_BARS_NOISE_DROPOUT_SEVERE"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "testcard-images/pal-raw/625_50_SMPTE_BARS.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 750
+    pipeline:
+      effects:
+        - type: "noise"
+          enabled: true
+          snr_db: 18
+          seed: 206
+        - type: "dropout"
+          enabled: true
+          density: 0.02
+          multi_field_probability: 0.3
+          single_field_probability: 0.7
+          seed: 207
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 6
+  
+  # Chapter 7: pal-ice-skating.mp4 (with sound)
   - name: "Ice Skating"
     source:
       type: "mp4-file"
@@ -436,7 +687,7 @@ sections:
       type: "source"
     biphase-vbi:
       disc_area: "programme-area"
-      chapter: 4
+      chapter: 7
   
   - name: "Lead-out"
     duration: 2

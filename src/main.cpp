@@ -871,10 +871,17 @@ int main(int argc, char* argv[]) {
                 enable_luma_filter = section.filters->luma.enabled;
             }
 
+            // Determine which pipeline configuration to use (section-level overrides global)
+            const PipelineConfig* active_pipeline = &config.pipeline;
+            if (section.pipeline.has_value()) {
+                active_pipeline = &section.pipeline.value();
+                ENCODE_ORC_LOG_DEBUG("Using section-level pipeline configuration for section '{}'", section.name);
+            }
+
             // Instantiate metadata generators from YAML configuration
             std::vector<std::unique_ptr<MetadataGenerator>> generators;
-            if (config.pipeline.metadata.has_value()) {
-                for (const auto& gen_config : config.pipeline.metadata->generators) {
+            if (active_pipeline->metadata.has_value()) {
+                for (const auto& gen_config : active_pipeline->metadata->generators) {
                     if (!gen_config.enabled) {
                         continue;  // Skip disabled generators
                     }
@@ -1024,8 +1031,8 @@ int main(int argc, char* argv[]) {
 
             // Instantiate field effects from YAML configuration
             std::vector<std::unique_ptr<FieldEffect>> effects;
-            if (config.pipeline.effects.has_value()) {
-                for (const auto& effect_config : config.pipeline.effects->effects) {
+            if (active_pipeline->effects.has_value()) {
+                for (const auto& effect_config : active_pipeline->effects->effects) {
                     if (!effect_config.enabled) {
                         continue;  // Skip disabled effects
                     }

@@ -31,7 +31,10 @@ A comprehensive PAL CAV test disc featuring picture number VBI encoding, VITS si
   - Chapter 1: Various test tones (sine waves, square, sawtooth, noise, and log sweeps)
   - Chapter 2: Organ WAV file (342 frames)
   - Chapter 3: Alternating log sweeps (ascending/descending 20 Hz - 20 kHz)
-  - Chapter 4: Ice skating video with original audio
+  - Chapter 4: 1 kHz sine tone with varying noise levels (SNR 30/25/20/15 dB)
+  - Chapter 5: 500 Hz sine tone with varying dropout densities
+  - Chapter 6: 750 Hz sine tone with combined noise and dropouts
+  - Chapter 7: Ice skating video with original audio
 - **Picture Numbering:** Starts at frame 1 (after lead-in)
 
 ### Disc Structure
@@ -77,7 +80,51 @@ One MOV file repeated 10 times (full duration each time) with alternating log sw
   - Odd repetitions (1, 3, 5, 7, 9): **20 Hz → 20 kHz log sweep**
   - Even repetitions (2, 4, 6, 8, 10): **20 kHz → 20 Hz log sweep**
 
-#### Chapter 4: Ice Skating
+#### Chapter 4: SMPTE Bars with Noise - SNR Tests (125 frames each, 500 frames total)
+Four sections testing different noise levels on SMPTE color bars:
+
+1. **SMPTE_BARS_SNR_30dB** (125 frames) - **1 kHz sine tone**
+   - Noise: SNR 30 dB (light noise)
+2. **SMPTE_BARS_SNR_25dB** (125 frames) - **1 kHz sine tone**
+   - Noise: SNR 25 dB (moderate noise)
+3. **SMPTE_BARS_SNR_20dB** (125 frames) - **1 kHz sine tone**
+   - Noise: SNR 20 dB (heavy noise)
+4. **SMPTE_BARS_SNR_15dB** (125 frames) - **1 kHz sine tone**
+   - Noise: SNR 15 dB (severe noise)
+
+#### Chapter 5: SMPTE Bars with Dropouts - Density Tests (125 frames each, 500 frames total)
+Four sections testing different dropout densities on SMPTE color bars:
+
+1. **SMPTE_BARS_DROPOUT_0.001** (125 frames) - **500 Hz sine tone**
+   - Dropout density: 0.001 (light dropouts)
+   - Multi-field: 30%, Single-field: 70%
+2. **SMPTE_BARS_DROPOUT_0.005** (125 frames) - **500 Hz sine tone**
+   - Dropout density: 0.005 (moderate dropouts)
+   - Multi-field: 30%, Single-field: 70%
+3. **SMPTE_BARS_DROPOUT_0.01** (125 frames) - **500 Hz sine tone**
+   - Dropout density: 0.01 (heavy dropouts)
+   - Multi-field: 30%, Single-field: 70%
+4. **SMPTE_BARS_DROPOUT_0.02** (125 frames) - **500 Hz sine tone**
+   - Dropout density: 0.02 (severe dropouts)
+   - Multi-field: 30%, Single-field: 70%
+
+#### Chapter 6: SMPTE Bars with Combined Effects (125 frames each, 500 frames total)
+Four sections testing combined noise and dropouts on SMPTE color bars:
+
+1. **SMPTE_BARS_NOISE_DROPOUT_LIGHT** (125 frames) - **750 Hz sine tone**
+   - Noise: SNR 35 dB
+   - Dropout density: 0.001, Multi-field: 30%, Single-field: 70%
+2. **SMPTE_BARS_NOISE_DROPOUT_MODERATE** (125 frames) - **750 Hz sine tone**
+   - Noise: SNR 28 dB
+   - Dropout density: 0.005, Multi-field: 30%, Single-field: 70%
+3. **SMPTE_BARS_NOISE_DROPOUT_HEAVY** (125 frames) - **750 Hz sine tone**
+   - Noise: SNR 22 dB
+   - Dropout density: 0.01, Multi-field: 30%, Single-field: 70%
+4. **SMPTE_BARS_NOISE_DROPOUT_SEVERE** (125 frames) - **750 Hz sine tone**
+   - Noise: SNR 18 dB
+   - Dropout density: 0.02, Multi-field: 30%, Single-field: 70%
+
+#### Chapter 7: Ice Skating
 - **Video:** `pal-ice-skating.mp4` (full duration, with original audio)
 - **Audio:** PCM format (from source)
 
