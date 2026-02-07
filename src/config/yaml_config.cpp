@@ -516,6 +516,18 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                     section.biphase_vbi = bv;
                 }
                 
+                // Parse section-level VITC configuration
+                if (sec_node["vitc"]) {
+                    YAML::Node vitc_node = sec_node["vitc"];
+                    VITCConfig vitc;
+                    
+                    if (vitc_node["timecode_start"]) {
+                        vitc.timecode_start = vitc_node["timecode_start"].as<std::string>();
+                    }
+                    
+                    section.vitc = vitc;
+                }
+                
                 // Parse section-level pipeline configuration (overrides global)
                 if (sec_node["pipeline"]) {
                     PipelineConfig section_pipeline_cfg;

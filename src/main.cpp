@@ -60,6 +60,7 @@ struct EncodingTask {
     int32_t field_number;
     const encode_orc::VBIData* vbi_data_field1;
     const encode_orc::VBIData* vbi_data_field2;
+    int32_t vitc_frame_offset;  // VITC timecode offset for this section
 };
 
 // Structure to hold the result of encoding
@@ -133,7 +134,8 @@ EncodedResult encode_single_frame(
             task.frame_buffer,
             task.field_number,
             task.vbi_data_field1,
-            task.vbi_data_field2
+            task.vbi_data_field2,
+            task.vitc_frame_offset
         );
         
         result.success = true;
@@ -753,12 +755,26 @@ int main(int argc, char* argv[]) {
     }
 
     int32_t frame_offset = 0;
+    int32_t vitc_frame_offset = 0;  // VITC timecode offset (independent from frame_offset)
     
     // Audio mutex for thread-safe access to section audio cursor
     std::mutex audio_mutex;
 
     for (const auto& section : config.sections) {
         ENCODE_ORC_LOG_INFO("Encoding section: {}", section.name);
+
+        // Calculate VITC frame offset for this section
+        int32_t current_vitc_offset = vitc_frame_offset;
+        if (section.vitc.has_value() && section.vitc->timecode_start.has_value()) {
+            // Parse timecode_start (HH:MM:SS.FF format)
+            int32_t hh = 0, mm = 0, ss = 0, ff = 0;
+            std::sscanf(section.vitc->timecode_start.value().c_str(), "%d:%d:%d.%d", &hh, &mm, &ss, &ff);
+            int32_t fps = (system == VideoSystem::PAL) ? 25 : 30;
+            current_vitc_offset = (hh * 3600 + mm * 60 + ss) * fps + ff;
+            vitc_frame_offset = current_vitc_offset;  // Update running offset
+            ENCODE_ORC_LOG_DEBUG("Section '{}' VITC timecode start: {}:{}:{}.{} (offset: {})", 
+                               section.name, hh, mm, ss, ff, current_vitc_offset);
+        }
 
         // Track actual number of frames encoded in this section
         int32_t section_frames = 0;
@@ -1221,6 +1237,7 @@ int main(int argc, char* argv[]) {
                 task.section_frame = section_frame;
                 task.global_frame = frame_offset + section_frame;
                 task.field_number = task.global_frame * 2;
+                task.vitc_frame_offset = current_vitc_offset;
                 
                 task.vbi_data_field1 = nullptr;
                 task.vbi_data_field2 = nullptr;
@@ -1523,6 +1540,7 @@ int main(int argc, char* argv[]) {
             }
 
             frame_offset += section_frames;
+            vitc_frame_offset += section_frames;  // Advance VITC offset for next section
             ENCODE_ORC_LOG_INFO("  ✓ Encoded {} frames", section_frames);
         }
     }

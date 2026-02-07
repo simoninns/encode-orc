@@ -181,6 +181,13 @@ struct BiphaseVBIConfig {
 };
 
 /**
+ * @brief VITC configuration for a section (consumer tape timecode)
+ */
+struct VITCConfig {
+    std::optional<std::string> timecode_start;  // Format: HH:MM:SS:FF
+};
+
+/**
  * @brief RGB30 raw image source configuration
  */
 struct YUV422ImageSource {
@@ -249,6 +256,7 @@ struct VideoSection {
     
     // Generator-specific metadata (matches pipeline generator types)
     std::optional<BiphaseVBIConfig> biphase_vbi;  // For biphase-vbi generator (LaserDisc)
+    std::optional<VITCConfig> vitc;  // For vitc generator (consumer tape)
     
     // Section-level pipeline configuration (overrides global pipeline)
     std::optional<PipelineConfig> pipeline;

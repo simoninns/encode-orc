@@ -118,11 +118,13 @@ public:
      * @param frame_buffer Input frame in YUV444P16 format
      * @param field_number Starting field number (for timecode, V-switch calculation)
      * @param vbi_data Optional VBI data to encode in VBI lines
+     * @param vitc_frame_offset Frame offset for VITC timecode (default: 0)
      * @return Frame containing two encoded composite fields
      */
     Frame encode_frame(const FrameBuffer& frame_buffer, int32_t field_number,
                       const VBIData* vbi_data_field1 = nullptr,
-                      const VBIData* vbi_data_field2 = nullptr);
+                      const VBIData* vbi_data_field2 = nullptr,
+                      int32_t vitc_frame_offset = 0);
     
     /**
      * @brief Encode a single field
@@ -130,10 +132,12 @@ public:
      * @param field_number Field number
      * @param is_first_field true for field1, false for field2
      * @param vbi_data Optional VBI data
+     * @param vitc_frame_offset Frame offset for VITC timecode (default: 0)
      * @return Encoded composite field
      */
     Field encode_field(const FrameBuffer& frame_buffer, int32_t field_number,
-                      bool is_first_field, const VBIData* vbi_data = nullptr);
+                      bool is_first_field, const VBIData* vbi_data = nullptr,
+                      int32_t vitc_frame_offset = 0);
     
     /**
      * @brief Get the video system
@@ -225,7 +229,8 @@ private:
     Field encode_field_from_yuv(const Field& field_yuv,
                                int32_t field_number,
                                bool is_first_field,
-                               const VBIData* vbi_data);
+                               const VBIData* vbi_data,
+                               int32_t vitc_frame_offset = 0);
 };
 
 }  // namespace encode_orc

@@ -96,8 +96,8 @@ void VITCMetadataGenerator::apply(Field& field, const MetadataContext& context) 
     // VITC doesn't use VBI data - it generates timecode from frame number
     // No check needed
     
-    // VITC uses frame number, not field number
-    int32_t frame_number = context.total_frame;
+    // VITC uses frame number with section-specific offset
+    int32_t frame_number = context.total_frame + context.vitc_frame_offset;
     bool is_second_field = !context.is_first_field;
     
     for (int32_t line : lines_) {

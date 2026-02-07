@@ -117,33 +117,36 @@ VideoEncoderPipeline::VideoEncoderPipeline(const VideoParameters& params,
 
 Frame VideoEncoderPipeline::encode_frame(const FrameBuffer& frame_buffer, int32_t field_number,
                                         const VBIData* vbi_data_field1,
-                                        const VBIData* vbi_data_field2) {
+                                        const VBIData* vbi_data_field2,
+                                        int32_t vitc_frame_offset) {
     Frame frame(params_.field_width, params_.field_height);
     
     // Split frame into fields
     auto field_pair = field_splitter_->split_frame(frame_buffer, field_number, params_);
     
     // Encode both fields
-    frame.field1() = encode_field_from_yuv(field_pair.field1, field_number, true, vbi_data_field1);
-    frame.field2() = encode_field_from_yuv(field_pair.field2, field_number + 1, false, vbi_data_field2);
+    frame.field1() = encode_field_from_yuv(field_pair.field1, field_number, true, vbi_data_field1, vitc_frame_offset);
+    frame.field2() = encode_field_from_yuv(field_pair.field2, field_number + 1, false, vbi_data_field2, vitc_frame_offset);
     
     return frame;
 }
 
 Field VideoEncoderPipeline::encode_field(const FrameBuffer& frame_buffer, int32_t field_number,
-                                        bool is_first_field, const VBIData* vbi_data) {
+                                        bool is_first_field, const VBIData* vbi_data,
+                                        int32_t vitc_frame_offset) {
     // Split frame and extract appropriate field
     auto field_pair = field_splitter_->split_frame(frame_buffer, field_number, params_);
     const Field& field_yuv = is_first_field ? field_pair.field1 : field_pair.field2;
     
     // Encode the field
-    return encode_field_from_yuv(field_yuv, field_number, is_first_field, vbi_data);
+    return encode_field_from_yuv(field_yuv, field_number, is_first_field, vbi_data, vitc_frame_offset);
 }
 
 Field VideoEncoderPipeline::encode_field_from_yuv(const Field& field_yuv,
                                                   int32_t field_number,
                                                   bool is_first_field,
-                                                  const VBIData* vbi_data) {
+                                                  const VBIData* vbi_data,
+                                                  int32_t vitc_frame_offset) {
     // Get field height (field1: 312/262, field2: 313/263)
     int32_t field_height = is_first_field ? params_.field1_height : params_.field2_height;
     VideoSystem system = active_encoder_->get_video_system();
@@ -285,6 +288,7 @@ Field VideoEncoderPipeline::encode_field_from_yuv(const Field& field_yuv,
         ctx.is_first_field = is_first_field;
         ctx.system = system;
         ctx.vbi_data = vbi_data;
+        ctx.vitc_frame_offset = vitc_frame_offset;
 
         // When Y/C output is enabled, route generators to appropriate fields
         if (enable_yc_output_ && y_field_ptr && c_field_ptr) {

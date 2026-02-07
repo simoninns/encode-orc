@@ -33,6 +33,9 @@ struct MetadataContext {
     
     // VBI data (for LaserDisc)
     const VBIData* vbi_data = nullptr;  ///< Optional VBI frame numbers
+    
+    // VITC offset (for consumer tape timecode)
+    int32_t vitc_frame_offset = 0;  ///< Frame offset for VITC timecode
 };
 
 /**
