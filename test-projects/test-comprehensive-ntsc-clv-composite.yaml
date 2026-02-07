@@ -5,7 +5,7 @@ output:
   filename: "../test-output/comprehensive-ntsc-clv-composite"
   format: "ntsc-composite"
   writer: "tbc"
-  metadata_decoder: "encode-orc-test"
+  metadata_decoder: "encode-orc"
   sound_format: "pcm"
 
 laserdisc:

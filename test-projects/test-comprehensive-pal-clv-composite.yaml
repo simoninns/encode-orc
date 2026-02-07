@@ -5,7 +5,7 @@ output:
   filename: "../test-output/comprehensive-pal-clv-composite"
   format: "pal-composite"
   writer: "tbc"
-  metadata_decoder: "encode-orc-test"
+  metadata_decoder: "encode-orc"
   sound_format: "pcm"
 
 laserdisc:

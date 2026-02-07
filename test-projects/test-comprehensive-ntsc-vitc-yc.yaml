@@ -5,7 +5,7 @@ output:
   filename: "../test-output/comprehensive-ntsc-vitc-yc"
   format: "ntsc-yc"
   writer: "tbc"
-  metadata_decoder: "encode-orc-test"
+  metadata_decoder: "encode-orc"
   sound_format: "pcm"
 
 pipeline:
