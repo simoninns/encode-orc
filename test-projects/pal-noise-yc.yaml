@@ -2,7 +2,7 @@ name: "PAL Noise YC"
 description: "PAL test signal with Gaussian noise and separate YC output"
 
 output:
-  filename: "test-output/pal-noise-yc"
+  filename: "../test-output/pal-noise-yc"
   format: "pal-yc"
 
 pipeline:
@@ -32,16 +32,16 @@ sections:
     duration: 1
     source:
       type: "yuv422-image"
-      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
   
   - name: "Test Content"
     duration: 20
     source:
       type: "yuv422-image"
-      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
   
   - name: "Lead-out"
     duration: 1
     source:
       type: "yuv422-image"
-      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"

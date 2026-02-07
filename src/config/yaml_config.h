@@ -298,6 +298,10 @@ struct YAMLProjectConfig {
     PipelineConfig pipeline;
     
     std::vector<VideoSection> sections;
+    
+    // Project root directory (directory containing the YAML file)
+    // Used internally for path resolution - not read from YAML
+    std::string project_root;
 };
 
 /**

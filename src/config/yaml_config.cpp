@@ -8,6 +8,7 @@
  */
 
 #include "yaml_config.h"
+#include "../utils/path_resolver.h"
 #include <yaml-cpp/yaml.h>
 #include <fstream>
 #include <iostream>
@@ -204,6 +205,12 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
         }
         file_check.close();
         
+        // Create path resolver to resolve all paths relative to the YAML file's directory
+        PathResolver path_resolver(filename);
+        
+        // Store project root in config for reference
+        config.project_root = path_resolver.get_project_root().string();
+        
         YAML::Node root = YAML::LoadFile(filename);
         
         // Parse top-level fields
@@ -219,7 +226,9 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
         if (root["output"]) {
             YAML::Node output = root["output"];
             if (output["filename"]) {
-                config.output.filename = output["filename"].as<std::string>();
+                // Resolve output filename relative to project root
+                std::string raw_filename = output["filename"].as<std::string>();
+                config.output.filename = path_resolver.resolve(raw_filename);
             }
             if (output["format"]) {
                 config.output.format = output["format"].as<std::string>();
@@ -324,17 +333,20 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                     
                     if (section.source_type == "yuv422-image" && source["file"]) {
                         YUV422ImageSource yuv422;
-                        yuv422.file = source["file"].as<std::string>();
+                        std::string raw_file = source["file"].as<std::string>();
+                        yuv422.file = path_resolver.resolve(raw_file);
                         section.yuv422_image_source = yuv422;
                     }
                     if (section.source_type == "png-image" && source["file"]) {
                         PNGImageSource png;
-                        png.file = source["file"].as<std::string>();
+                        std::string raw_file = source["file"].as<std::string>();
+                        png.file = path_resolver.resolve(raw_file);
                         section.png_image_source = png;
                     }
                     if (section.source_type == "mov-file" && source["file"]) {
                         MOVFileSource mov;
-                        mov.file = source["file"].as<std::string>();
+                        std::string raw_file = source["file"].as<std::string>();
+                        mov.file = path_resolver.resolve(raw_file);
                         if (source["start_frame"]) {
                             mov.start_frame = source["start_frame"].as<int32_t>();
                         }
@@ -342,7 +354,8 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                     }
                     if (section.source_type == "mp4-file" && source["file"]) {
                         MP4FileSource mp4;
-                        mp4.file = source["file"].as<std::string>();
+                        std::string raw_file = source["file"].as<std::string>();
+                        mp4.file = path_resolver.resolve(raw_file);
                         if (source["start_frame"]) {
                             mp4.start_frame = source["start_frame"].as<int32_t>();
                         }
@@ -393,7 +406,8 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                         }
                     } else if (sound_cfg.type == "wav") {
                         if (sound_node["file"]) {
-                            sound_cfg.file = sound_node["file"].as<std::string>();
+                            std::string raw_file = sound_node["file"].as<std::string>();
+                            sound_cfg.file = path_resolver.resolve(raw_file);
                         }
                     }
                     

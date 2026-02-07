@@ -9,6 +9,59 @@ nav_order: 2
 
 encode-orc uses YAML files to define encoding projects. This document describes all available configuration options.
 
+---
+
+## Path Resolution
+
+**All file paths in the YAML configuration are resolved relative to the YAML file's directory, not the current working directory.** This makes projects portable and allows you to run `encode-orc` from any location.
+
+### Path Resolution Rules
+
+1. **Absolute paths** are used unchanged
+   ```yaml
+   file: "/absolute/path/to/file.raw"
+   ```
+
+2. **Relative paths** are resolved relative to the directory containing the YAML file
+   ```yaml
+   # If YAML is at: /home/user/projects/my-project/project.yaml
+   # This resolves to: /home/user/projects/my-project/testcard-images/bars.raw
+   file: "testcard-images/bars.raw"
+   ```
+
+3. **${PROJECT_ROOT} variable** expands to the YAML file's directory
+   ```yaml
+   # Explicitly reference the project root
+   file: "${PROJECT_ROOT}/resources/image.png"
+   ```
+
+### Examples
+
+```yaml
+# Project structure:
+# /home/user/projects/
+#   └── my-project/
+#       ├── project.yaml
+#       ├── output/
+#       └── resources/
+#           └── testcard.raw
+
+# From anywhere on the system, you can run:
+# $ encode-orc /home/user/projects/my-project/project.yaml
+# or
+# $ cd /tmp && encode-orc ~/projects/my-project/project.yaml
+
+output:
+  filename: "output/video"  # Resolves to: /home/user/projects/my-project/output/video
+
+sections:
+  - name: "Test"
+    source:
+      file: "resources/testcard.raw"  # Resolves to: /home/user/projects/my-project/resources/testcard.raw
+```
+
+---
+
 ## Quick Example
 
 ```yaml

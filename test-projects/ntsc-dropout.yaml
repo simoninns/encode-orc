@@ -2,7 +2,7 @@ name: "NTSC-Dropout Test"
 description: "NTSC test signal with line dropouts for tape damage simulation"
 
 output:
-  filename: "test-output/ntsc-dropout"
+  filename: "../test-output/ntsc-dropout"
   format: "ntsc-composite"
 
 laserdisc:
@@ -56,7 +56,7 @@ sections:
     duration: 20
     source:
       type: "mp4-file"
-      file: "testcard-images/ntsc-mp4/ntsc-nynashamn.mp4"
+      file: "../testcard-images/ntsc-mp4/ntsc-nynashamn.mp4"
     biphase-vbi:
       disc_area: "programme-area"
       picture_start: 1

@@ -2,7 +2,7 @@ name: "PAL Consumer Tape"
 description: "PAL Consumer VHS tape with separate YC output and VITC timecodes"
 
 output:
-  filename: "test-output/pal-consumer-tape"
+  filename: "../test-output/pal-consumer-tape"
   format: "pal-yc"
 
 pipeline:
@@ -26,16 +26,16 @@ sections:
     duration: 1
     source:
       type: "yuv422-image"
-      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
   
   - name: "Test Content"
     duration: 20
     source:
       type: "yuv422-image"
-      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
   
   - name: "Lead-out"
     duration: 1
     source:
       type: "yuv422-image"
-      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"

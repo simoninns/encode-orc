@@ -2,7 +2,7 @@ name: "Amplitude Test"
 description: "Test amplitude control and optional end_freq_hz"
 
 output:
-  filename: "test-output/amplitude-test"
+  filename: "../test-output/amplitude-test"
   format: "pal-composite"
   sound_format: "wav"
 
@@ -17,7 +17,7 @@ sections:
     duration: 50  # 2 seconds
     source:
       type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Red.png"
+      file: "../testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Red.png"
     sound:
       type: "sine"
       start_freq_hz: 1000
@@ -29,7 +29,7 @@ sections:
     duration: 50
     source:
       type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Green.png"
+      file: "../testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Green.png"
     sound:
       type: "sine"
       start_freq_hz: 1000
@@ -40,7 +40,7 @@ sections:
     duration: 50
     source:
       type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Blue.png"
+      file: "../testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Blue.png"
     sound:
       type: "sine"
       start_freq_hz: 1000
@@ -51,7 +51,7 @@ sections:
     duration: 50
     source:
       type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Cyan.png"
+      file: "../testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Cyan.png"
     sound:
       type: "sine"
       start_freq_hz: 1000
@@ -62,7 +62,7 @@ sections:
     duration: 50
     source:
       type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-White.png"
+      file: "../testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-White.png"
     sound:
       type: "sine"
       start_freq_hz: 100
@@ -74,7 +74,7 @@ sections:
     duration: 50
     source:
       type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Magenta.png"
+      file: "../testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Magenta.png"
     sound:
       type: "sine"
       start_freq_hz: 440
@@ -85,7 +85,7 @@ sections:
     duration: 50
     source:
       type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Yellow.png"
+      file: "../testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Yellow.png"
     sound:
       type: "sine"
       start_freq_hz: 440
@@ -96,7 +96,7 @@ sections:
     duration: 50
     source:
       type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-02.png"
+      file: "../testcard-images/pal-wrwetzel-png/PAL-720x576-Geometry-Checkers-02.png"
     sound:
       type: "sine"
       start_freq_hz: 440

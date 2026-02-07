@@ -2,7 +2,7 @@ name: "Source Alignment PAL CAV 1-20"
 description: "PAL CAV with picture numbers 1-20 for source alignment"
 
 output:
-  filename: "test-output/pal-cav-1-20"
+  filename: "../test-output/pal-cav-1-20"
   format: "pal-composite"
 
 laserdisc:
@@ -41,7 +41,7 @@ sections:
     duration: 1
     source:
       type: "yuv422-image"
-      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
     biphase-vbi:
       disc_area: "lead-in"
       user_code: "1986"
@@ -50,7 +50,7 @@ sections:
     duration: 20
     source:
       type: "mp4-file"
-      file: "testcard-images/pal-mp4/pal-ice-skating.mp4"
+      file: "../testcard-images/pal-mp4/pal-ice-skating.mp4"
     biphase-vbi:
       disc_area: "programme-area"
       picture_start: 1
@@ -59,7 +59,7 @@ sections:
     duration: 1
     source:
       type: "yuv422-image"
-      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
     biphase-vbi:
       disc_area: "lead-out"
       user_code: "1986"

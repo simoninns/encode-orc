@@ -2,7 +2,7 @@ name: "PAL Dropout YC Test"
 description: "PAL test signal with dropout effects and separate YC output to verify Y/C synchronization"
 
 output:
-  filename: "test-output/test-pal-dropout-yc"
+  filename: "../test-output/test-pal-dropout-yc"
   format: "pal-yc"
 
 pipeline:
@@ -32,4 +32,4 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "testcard-images/pal-raw/625_50_75_BARS.raw"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"

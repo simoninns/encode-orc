@@ -2,7 +2,7 @@ name: "Balance Test"
 description: "Test stereo balance control"
 
 output:
-  filename: "test-output/balance-test"
+  filename: "../test-output/balance-test"
   format: "pal-composite"
   sound_format: "wav"
 
@@ -17,7 +17,7 @@ sections:
     duration: 25
     source:
       type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Red.png"
+      file: "../testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Red.png"
     sound:
       type: "sine"
       start_freq_hz: 1000
@@ -28,7 +28,7 @@ sections:
     duration: 25
     source:
       type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Blue.png"
+      file: "../testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Blue.png"
     sound:
       type: "sine"
       start_freq_hz: 1000
@@ -39,7 +39,7 @@ sections:
     duration: 25
     source:
       type: "png-image"
-      file: "testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Green.png"
+      file: "../testcard-images/pal-wrwetzel-png/PAL-720x576-Color-One-Green.png"
     sound:
       type: "sine"
       start_freq_hz: 1000
