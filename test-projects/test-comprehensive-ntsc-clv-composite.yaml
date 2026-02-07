@@ -1,0 +1,140 @@
+name: "Comprehensive NTSC CLV Composite Test"
+description: "Comprehensive unit test for NTSC CLV composite format covering maximum functionality"
+
+output:
+  filename: "../test-output/comprehensive-ntsc-clv-composite"
+  format: "ntsc-composite"
+  writer: "tbc"
+  metadata_decoder: "encode-orc-test"
+  sound_format: "pcm"
+
+laserdisc:
+  mode: "clv"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+      luma:
+        enabled: false
+  
+  metadata:
+    generators:
+      - type: "color-burst"
+        enabled: true
+      
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [16, 17, 18, 278, 279, 280]
+        format: "timecode"
+      
+      - type: "vits-ntsc"
+        enabled: true
+        signals:
+          - line: 13
+            signal: "ntc7-composite"
+          - line: 19
+            signal: "vir"
+          - line: 275
+            signal: "ntc7-combination"
+  
+  effects:
+    - type: "noise"
+      enabled: true
+      snr_db: 43.0
+      seed: 66677
+    
+    - type: "dropout"
+      enabled: true
+      density: 0.0012
+      multi_field_probability: 0.35
+      single_field_probability: 0.65
+      seed: 77788
+
+sections:
+  # Lead-in section with user code
+  - name: "Lead-in"
+    duration: 1
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "lead-in"
+      user_code: "7ABC"
+      spec: "amendment-2"
+    sound:
+      type: "silence"
+  
+  # Chapter 1 - Test timecode start
+  - name: "Chapter1_Part1"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      timecode_start: "00:00:00.00"
+      chapter: 1
+    sound:
+      type: "sawtooth"
+      start_freq_hz: 110
+      amplitude: 75
+      balance: 0
+  
+  # Chapter 1 continuation - Auto-increment timecode
+  - name: "Chapter1_Part2"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+    sound:
+      type: "white"
+      amplitude: 55
+      balance: -75
+      seed: 12121
+  
+  # Chapter 2 - Test chapter change without timecode reset
+  - name: "Chapter2"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 2
+    sound:
+      type: "sine"
+      start_freq_hz: 200
+      end_freq_hz: 8000
+      amplitude: 95
+      balance: 75
+  
+  # Chapter 3 - Test pink noise
+  - name: "Chapter3"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 3
+    sound:
+      type: "pink"
+      amplitude: 65
+      seed: 23232
+  
+  # Lead-out section with user code
+  - name: "Lead-out"
+    duration: 1
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "lead-out"
+      user_code: "7ABC"
+    sound:
+      type: "silence"

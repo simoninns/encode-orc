@@ -1,0 +1,143 @@
+name: "Comprehensive NTSC CAV Composite Test"
+description: "Comprehensive unit test for NTSC CAV composite format covering maximum functionality"
+
+output:
+  filename: "../test-output/comprehensive-ntsc-cav-composite"
+  format: "ntsc-composite"
+  writer: "tbc"
+  metadata_decoder: "encode-orc-test"
+  sound_format: "pcm"
+
+laserdisc:
+  mode: "cav"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+      luma:
+        enabled: false
+  
+  metadata:
+    generators:
+      - type: "color-burst"
+        enabled: true
+      
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [16, 17, 18, 278, 279, 280]
+        format: "picture-number"
+      
+      - type: "vits-ntsc"
+        enabled: true
+        signals:
+          - line: 13
+            signal: "ntc7-composite"
+          - line: 19
+            signal: "vir"
+          - line: 275
+            signal: "ntc7-combination"
+          - line: 281
+            signal: "vir"
+  
+  effects:
+    - type: "noise"
+      enabled: true
+      snr_db: 40.0
+      seed: 11122
+    
+    - type: "dropout"
+      enabled: true
+      density: 0.0008
+      multi_field_probability: 0.25
+      single_field_probability: 0.75
+      seed: 33344
+
+sections:
+  # Lead-in section with user code
+  - name: "Lead-in"
+    duration: 1
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "lead-in"
+      user_code: "1234"
+    sound:
+      type: "silence"
+  
+  # Chapter 1 - Test picture numbering start, amendment-2 spec
+  - name: "Chapter1_Part1"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      picture_start: 1
+      chapter: 1
+      spec: "amendment-2"
+    sound:
+      type: "sine"
+      start_freq_hz: 1000
+      amplitude: 80
+      balance: 0
+  
+  # Chapter 1 continuation - Auto-increment picture numbers
+  - name: "Chapter1_Part2"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+    sound:
+      type: "square"
+      start_freq_hz: 440
+      amplitude: 70
+      balance: -100
+  
+  # Chapter 2 - Test chapter change, picture stop enabled
+  - name: "Chapter2"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 2
+      picture_stop: true
+    sound:
+      type: "sine"
+      start_freq_hz: 50
+      end_freq_hz: 15000
+      amplitude: 85
+      balance: 100
+  
+  # Chapter 3 - Test brown noise
+  - name: "Chapter3"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 3
+    sound:
+      type: "brown"
+      amplitude: 60
+      seed: 55566
+  
+  # Lead-out section with user code
+  - name: "Lead-out"
+    duration: 1
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "lead-out"
+      user_code: "1234"
+    sound:
+      type: "silence"

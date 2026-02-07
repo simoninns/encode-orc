@@ -1,0 +1,143 @@
+name: "Comprehensive PAL CAV Composite Test"
+description: "Comprehensive unit test for PAL CAV composite format covering maximum functionality"
+
+output:
+  filename: "../test-output/comprehensive-pal-cav-composite"
+  format: "pal-composite"
+  writer: "tbc"
+  metadata_decoder: "encode-orc-test"
+  sound_format: "pcm"
+
+laserdisc:
+  mode: "cav"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+      luma:
+        enabled: false
+  
+  metadata:
+    generators:
+      - type: "color-burst"
+        enabled: true
+      
+      - type: "biphase-vbi"
+        enabled: true
+        lines: [16, 17, 18, 328, 329, 330]
+        format: "picture-number"
+      
+      - type: "vits-pal"
+        enabled: true
+        signals:
+          - line: 13
+            signal: "multiburst"
+          - line: 19
+            signal: "uk-national"
+          - line: 325
+            signal: "itu-combination"
+          - line: 331
+            signal: "itu-composite"
+  
+  effects:
+    - type: "noise"
+      enabled: true
+      snr_db: 42.0
+      seed: 12345
+    
+    - type: "dropout"
+      enabled: true
+      density: 0.0005
+      multi_field_probability: 0.30
+      single_field_probability: 0.70
+      seed: 67890
+
+sections:
+  # Lead-in section with user code
+  - name: "Lead-in"
+    duration: 1
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "lead-in"
+      user_code: "7BCD"
+    sound:
+      type: "silence"
+  
+  # Chapter 1 - Test picture numbering start and sine wave sound
+  - name: "Chapter1_Part1"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      picture_start: 1
+      chapter: 1
+      spec: "standard"
+    sound:
+      type: "sine"
+      start_freq_hz: 1000
+      amplitude: 75
+      balance: 0
+  
+  # Chapter 1 continuation - Auto-increment picture numbers, square wave
+  - name: "Chapter1_Part2"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+    sound:
+      type: "square"
+      start_freq_hz: 440
+      amplitude: 60
+      balance: -100
+  
+  # Chapter 2 - Test chapter change without picture reset, frequency sweep
+  - name: "Chapter2"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 2
+      picture_stop: false
+    sound:
+      type: "sine"
+      start_freq_hz: 20
+      end_freq_hz: 2000
+      amplitude: 80
+      balance: 100
+  
+  # Chapter 3 - Test pink noise
+  - name: "Chapter3"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 3
+    sound:
+      type: "pink"
+      amplitude: 50
+      seed: 11111
+  
+  # Lead-out section with user code
+  - name: "Lead-out"
+    duration: 1
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "lead-out"
+      user_code: "7BCD"
+    sound:
+      type: "silence"

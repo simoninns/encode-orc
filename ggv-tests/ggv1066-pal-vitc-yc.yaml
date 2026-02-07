@@ -2,7 +2,7 @@ name: "GGV1066 PAL VITC YC"
 description: "PAL LaserDisc CLV virtual test tape with VITC timecode and separate Y/C output"
 
 output:
-  filename: "../test-output/ggv1066-pal-vitc-yc"
+  filename: "../ggv-output/ggv1066-pal-vitc-yc"
   format: "pal-yc"
   sound_format: "pcm"
 

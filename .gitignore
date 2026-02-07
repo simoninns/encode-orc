@@ -61,4 +61,6 @@ result-*
 # Example output TBCs
 test-output/
 tmp/
-Testing/Temporary/CTestCostData.txt
+Testing
+Testing/Temporary
+ggv-output/

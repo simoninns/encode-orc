@@ -2,7 +2,7 @@ name: "GGV1066 PAL CLV Composite"
 description: "PAL LaserDisc CLV virtual test disc"
 
 output:
-  filename: "../test-output/ggv1066-pal-clv-composite"
+  filename: "../ggv-output/ggv1066-pal-clv-composite"
   format: "pal-composite"
   sound_format: "pcm"
 

@@ -1,0 +1,104 @@
+name: "Comprehensive NTSC VITC YC Test"
+description: "Comprehensive unit test for NTSC VITC Y/C format covering maximum functionality"
+
+output:
+  filename: "../test-output/comprehensive-ntsc-vitc-yc"
+  format: "ntsc-yc"
+  writer: "tbc"
+  metadata_decoder: "encode-orc-test"
+  sound_format: "pcm"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+      luma:
+        enabled: true
+  
+  metadata:
+    generators:
+      - type: "color-burst"
+        enabled: true
+      
+      - type: "vitc"
+        enabled: true
+        lines: [14, 19, 276, 281]
+        start_frame_offset: 0
+      
+      - type: "vits-ntsc"
+        enabled: true
+        signals:
+          - line: 13
+            signal: "ntc7-composite"
+          - line: 275
+            signal: "vir"
+  
+  effects:
+    - type: "noise"
+      enabled: true
+      snr_db: 36.0
+      seed: 34343
+
+sections:
+  # Section 1 - Test VITC timecode start and sine wave
+  - name: "Section1_Sine"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    vitc:
+      timecode_start: "00:00:00.00"
+    sound:
+      type: "sine"
+      start_freq_hz: 1000
+      amplitude: 80
+      balance: 0
+  
+  # Section 2 - Auto-increment VITC, square wave
+  - name: "Section2_Square"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    sound:
+      type: "square"
+      start_freq_hz: 660
+      amplitude: 68
+      balance: -60
+  
+  # Section 3 - Frequency sweep with sawtooth
+  - name: "Section3_Sweep"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    sound:
+      type: "sawtooth"
+      start_freq_hz: 30
+      end_freq_hz: 12000
+      amplitude: 88
+      balance: 60
+  
+  # Section 4 - Brown noise
+  - name: "Section4_BrownNoise"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    sound:
+      type: "brown"
+      amplitude: 58
+      seed: 45454
+  
+  # Section 5 - White noise with different balance
+  - name: "Section5_WhiteNoise"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/ntsc-raw/525_5994_75_BARS.raw"
+    sound:
+      type: "white"
+      amplitude: 52
+      balance: 25
+      seed: 56565

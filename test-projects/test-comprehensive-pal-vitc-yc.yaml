@@ -1,0 +1,103 @@
+name: "Comprehensive PAL VITC YC Test"
+description: "Comprehensive unit test for PAL VITC Y/C format covering maximum functionality"
+
+output:
+  filename: "../test-output/comprehensive-pal-vitc-yc"
+  format: "pal-yc"
+  writer: "tbc"
+  metadata_decoder: "encode-orc-test"
+  sound_format: "pcm"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+      luma:
+        enabled: true
+  
+  metadata:
+    generators:
+      - type: "color-burst"
+        enabled: true
+      
+      - type: "vitc"
+        enabled: true
+        lines: [19, 20, 331, 332]
+        start_frame_offset: 0
+      
+      - type: "vits-pal"
+        enabled: true
+        signals:
+          - line: 13
+            signal: "multiburst"
+          - line: 325
+            signal: "itu-composite"
+  
+  effects:
+    - type: "noise"
+      enabled: true
+      snr_db: 38.0
+      seed: 55555
+
+sections:
+  # Section 1 - Test VITC timecode start and multiple sound types
+  - name: "Section1_Sine"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
+    vitc:
+      timecode_start: "00:00:00.00"
+    sound:
+      type: "sine"
+      start_freq_hz: 1000
+      amplitude: 75
+  
+  # Section 2 - Auto-increment VITC, square wave with balance
+  - name: "Section2_Square"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
+    sound:
+      type: "square"
+      start_freq_hz: 880
+      amplitude: 65
+      balance: -50
+  
+  # Section 3 - Frequency sweep with sawtooth
+  - name: "Section3_Sweep"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
+    sound:
+      type: "sawtooth"
+      start_freq_hz: 50
+      end_freq_hz: 5000
+      amplitude: 85
+      balance: 50
+  
+  # Section 4 - Pink noise for acoustic testing
+  - name: "Section4_PinkNoise"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
+    sound:
+      type: "pink"
+      amplitude: 60
+      seed: 77777
+  
+  # Section 5 - White noise
+  - name: "Section5_WhiteNoise"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "../testcard-images/pal-raw/625_50_75_BARS.raw"
+    sound:
+      type: "white"
+      amplitude: 50
+      balance: 0
+      seed: 88888

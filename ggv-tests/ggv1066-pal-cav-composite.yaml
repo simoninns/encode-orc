@@ -2,7 +2,7 @@ name: "GGV1066 PAL CAV Composite"
 description: "PAL LaserDisc CAV virtual test disc"
 
 output:
-  filename: "../test-output/ggv1066-pal-cav-composite"
+  filename: "../ggv-output/ggv1066-pal-cav-composite"
   format: "pal-composite"
   sound_format: "pcm"
 
