@@ -166,6 +166,7 @@ struct BiphaseVBIConfig {
     
     // CAV mode
     std::optional<int32_t> picture_start;
+    bool picture_stop = false;                 // Enable picture stop code (CAV only)
     
     // CLV mode
     std::optional<int32_t> chapter;

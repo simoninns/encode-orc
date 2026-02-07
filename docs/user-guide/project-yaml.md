@@ -950,6 +950,7 @@ For Constant Angular Velocity (CAV) discs with picture numbering.
 biphase-vbi:
   disc_area: "programme-area"
   picture_start: 1            # Starting frame number (only needed for first section)
+  picture_stop: false         # Optional: enable picture stop code (default: false)
   chapter: 1                  # Optional chapter number
 ```
 
@@ -961,6 +962,11 @@ biphase-vbi:
   - Example: Section 1 with `picture_start: 1` and 50 frames → frames 1-50
   - Section 2 (no `picture_start`) with 50 frames → automatically continues as frames 51-100
   - Section 3 with `picture_start: 200` and 30 frames → restarts at frames 200-229
+- `picture_stop`: Enable picture stop code (optional, default: `false`)
+  - When `true`, inserts picture stop code (0x82CFFF) on lines 16/17 (or 279/280 for NTSC) of field 2
+  - Picture stop code enables LaserDisc players to automatically pause on the selected frame
+  - When `false` (default), uses programme status code instead
+  - Only applies to CAV mode with picture numbering
 - `chapter`: Optional chapter/track number for this section
   - Chapter changes do NOT reset picture numbers
   - Picture numbers continue incrementing even when changing chapters

@@ -150,9 +150,11 @@ bool generate_metadata(const YAMLProjectConfig& config,
             int32_t chapter = 0;
             std::string timecode_start = "";
             std::string disc_area = "programme-area";
+            bool picture_stop = false;
             
             if (section.biphase_vbi) {
                 disc_area = section.biphase_vbi->disc_area;
+                picture_stop = section.biphase_vbi->picture_stop;
                 
                 // If picture_start is explicitly set, update current picture number and enter picture mode
                 if (section.biphase_vbi->picture_start) {
@@ -240,9 +242,14 @@ bool generate_metadata(const YAMLProjectConfig& config,
                     vbi_field1.vbi1 = cav;
                     vbi_field1.vbi2 = cav;
 
-                    // Picture stop on the following field (lines 16/17)
-                    vbi_field2.vbi0 = kPictureStop;
-                    vbi_field2.vbi1 = kPictureStop;
+                    // Picture stop on the following field (lines 16/17) - only if enabled
+                    if (picture_stop) {
+                        vbi_field2.vbi0 = kPictureStop;
+                        vbi_field2.vbi1 = kPictureStop;
+                    } else {
+                        vbi_field2.vbi0 = kProgrammeStatusDefault;
+                        vbi_field2.vbi1 = kProgrammeStatusDefault;
+                    }
                     if (chapter > 0) {
                         vbi_field2.vbi2 = encode_chapter_code(chapter);
                     }

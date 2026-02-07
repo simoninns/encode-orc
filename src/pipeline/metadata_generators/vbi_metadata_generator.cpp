@@ -75,6 +75,7 @@ void VBIMetadataGenerator::generate_frame_vbi(
     VideoSystem system,
     Spec spec,
     const std::string& disc_area,
+    bool picture_stop,
     VBIData& field1,
     VBIData& field2
 ) {
@@ -117,9 +118,14 @@ void VBIMetadataGenerator::generate_frame_vbi(
         field1.vbi1 = cav;
         field1.vbi2 = cav;
 
-        // Field 2: picture stop on lines 16/17, chapter (optional) on line 18
-        field2.vbi0 = kPictureStop;
-        field2.vbi1 = kPictureStop;
+        // Field 2: picture stop on lines 16/17 (if enabled), chapter (optional) on line 18
+        if (picture_stop) {
+            field2.vbi0 = kPictureStop;
+            field2.vbi1 = kPictureStop;
+        } else {
+            field2.vbi0 = kProgrammeStatusDefault;
+            field2.vbi1 = kProgrammeStatusDefault;
+        }
         if (chapter > 0) {
             field2.vbi2 = encode_chapter_code(chapter);
         }

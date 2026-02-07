@@ -458,6 +458,10 @@ bool parse_yaml_config(const std::string& filename, YAMLProjectConfig& config,
                         bv.picture_start = bv_node["picture_start"].as<int32_t>();
                     }
                     
+                    if (bv_node["picture_stop"]) {
+                        bv.picture_stop = bv_node["picture_stop"].as<bool>();
+                    }
+                    
                     if (bv_node["chapter"]) {
                         bv.chapter = bv_node["chapter"].as<int32_t>();
                     }

@@ -46,6 +46,7 @@ public:
      * @param chapter Chapter number for CLV
      * @param fps Frame rate (25 for PAL, 30 for NTSC)
      * @param disc_area Disc area: "lead-in", "programme-area", or "lead-out"
+     * @param picture_stop Enable picture stop code (CAV only)
      * @param field1 Output VBI data for field 1
      * @param field2 Output VBI data for field 2
      */
@@ -59,6 +60,7 @@ public:
         VideoSystem system,
         Spec spec,
         const std::string& disc_area,
+        bool picture_stop,
         VBIData& field1,
         VBIData& field2
     );
