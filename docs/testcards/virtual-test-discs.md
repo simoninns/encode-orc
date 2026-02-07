@@ -9,11 +9,11 @@ nav_order: 3
 
 This page documents comprehensive virtual LaserDisc test projects that combine multiple test patterns, video sources, and metadata encoding features into complete disc images.
 
-## GGV1066
+## GGV1066 PAL CAV Composite
 
-**Format:** PAL CAV  
-**Project File:** `test-projects/ggv1066.yaml`  
-**Output:** `test-output/ggv1066.tbc`  
+**Format:** PAL CAV Composite
+**Project File:** `test-projects/ggv1066-pal-cav-composite.yaml`  
+**Output:** `test-output/ggv1066-pal-cav-composite.tbc`  
 **User Code:** 1066
 
 A comprehensive PAL CAV test disc featuring picture number VBI encoding, VITS signals, and a wide variety of test content including static patterns, video sequences, and audio testing.

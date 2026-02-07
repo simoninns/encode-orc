@@ -327,7 +327,7 @@ Encodes LaserDisc metadata (picture numbers or timecode) using biphase modulatio
   - NTSC: Lines 16-18 (field 1), 278-280 (field 2)
 - `format`: Data format
   - `"picture-number"` - CAV frame numbering
-  - `"timecode"` - CLV timecode (HH:MM:SS:FF)
+  - `"timecode"` - CLV timecode (HH:MM:SS.FF)
 
 **Used with:** LaserDisc encoding projects  
 **See also:** Section-level `biphase-vbi` configuration
@@ -1037,14 +1037,14 @@ For Constant Linear Velocity (CLV) discs with timecode.
 biphase-vbi:
   disc_area: "programme-area"
   chapter: 1                        # Optional chapter number
-  timecode_start: "00:00:00:00"     # Starting timecode (HH:MM:SS:FF)
+  timecode_start: "00:00:00.00"     # Starting timecode (HH:MM:SS.FF)
 ```
 
 **Fields:**
 - `chapter`: Optional chapter/track number for this section
   - Can be used in both CAV and CLV modes
   - Chapter changes do NOT reset timecode or picture numbers
-- `timecode_start`: Starting timecode in format `HH:MM:SS:FF`
+- `timecode_start`: Starting timecode in format `HH:MM:SS.FF`
   - HH: Hours (00-99)
   - MM: Minutes (00-59)
   - SS: Seconds (00-59)

@@ -178,8 +178,8 @@ bool generate_metadata(const YAMLProjectConfig& config,
             if (!timecode_start.empty()) {
                 // Explicit timecode specified - update the global offset
                 int32_t hh = 0, mm = 0, ss = 0, ff = 0;
-                std::sscanf(timecode_start.c_str(), "%d:%d:%d:%d", &hh, &mm, &ss, &ff);
-                global_timecode_offset = hh * 3600 * fps + mm * 60 * fps + ss * fps + ff;
+                std::sscanf(timecode_start.c_str(), "%d:%d:%d.%d", &hh, &mm, &ss, &ff);
+                global_timecode_offset = (hh * 3600 * fps + mm * 60 * fps + ss * fps + ff) - frame_num;
                 has_timecode_mode = true;
             }
             // If no timecode_start specified but we're in timecode mode, 

@@ -170,7 +170,7 @@ struct BiphaseVBIConfig {
     
     // CLV mode
     std::optional<int32_t> chapter;
-    std::optional<std::string> timecode_start;  // Format: HH:MM:SS:FF
+    std::optional<std::string> timecode_start;  // Format: HH:MM:SS.FF
     
     // Picture-numbers mode
     std::optional<int32_t> start;
