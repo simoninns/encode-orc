@@ -35,6 +35,8 @@ public:
      * 
      * Resolution rules:
      * - If path is absolute, return it unchanged
+     * - If path contains ${ENCODE_ORC_ASSETS}, expand it to the assets directory
+     * - If path contains ${ENCODE_ORC_OUTPUT_ROOT}, expand it to the output root directory
      * - If path contains ${PROJECT_ROOT}, expand it to the project root directory
      * - If path is relative, resolve it relative to the project root
      * 

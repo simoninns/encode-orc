@@ -25,8 +25,16 @@ if [ ! -f "$ENCODE_ORC" ]; then
     exit 1
 fi
 
+# Output root can be provided as first argument or via ENCODE_ORC_OUTPUT_ROOT
+OUTPUT_ROOT="${ENCODE_ORC_OUTPUT_ROOT:-$SCRIPT_DIR/ggv-output}"
+if [ -n "${1:-}" ]; then
+    OUTPUT_ROOT="$1"
+fi
+
+export ENCODE_ORC_OUTPUT_ROOT="$OUTPUT_ROOT"
+
 # Create output directory if it doesn't exist
-mkdir -p ggv-output
+mkdir -p "$OUTPUT_ROOT"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Encoding GGV Test Projects${NC}"

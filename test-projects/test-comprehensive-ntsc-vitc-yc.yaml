@@ -2,7 +2,7 @@ name: "Comprehensive NTSC VITC YC Test"
 description: "Comprehensive unit test for NTSC VITC Y/C format covering maximum functionality"
 
 output:
-  filename: "../test-output/comprehensive-ntsc-vitc-yc"
+  filename: "${ENCODE_ORC_OUTPUT_ROOT}/comprehensive-ntsc-vitc-yc"
   format: "ntsc-yc"
   writer: "tbc"
   metadata_decoder: "encode-orc"
@@ -46,7 +46,7 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "../assets/ntsc-raw/525_5994_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/ntsc-raw/525_5994_75_BARS.raw"
     vitc:
       timecode_start: "00:00:00.00"
     sound:
@@ -60,7 +60,7 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "../assets/ntsc-raw/525_5994_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/ntsc-raw/525_5994_75_BARS.raw"
     sound:
       type: "square"
       start_freq_hz: 660
@@ -72,7 +72,7 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "../assets/ntsc-raw/525_5994_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/ntsc-raw/525_5994_75_BARS.raw"
     sound:
       type: "sawtooth"
       start_freq_hz: 30
@@ -85,7 +85,7 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "../assets/ntsc-raw/525_5994_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/ntsc-raw/525_5994_75_BARS.raw"
     sound:
       type: "brown"
       amplitude: 58
@@ -96,7 +96,7 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "../assets/ntsc-raw/525_5994_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/ntsc-raw/525_5994_75_BARS.raw"
     sound:
       type: "white"
       amplitude: 52

@@ -10,6 +10,7 @@
 #include "path_resolver.h"
 #include <stdexcept>
 #include <regex>
+#include <cstdlib>
 
 namespace encode_orc {
 
@@ -42,11 +43,63 @@ std::string PathResolver::resolve(const std::string& yaml_path) const {
         return path.lexically_normal().string();
     }
     
-    // Handle ${PROJECT_ROOT} variable expansion
+    // Handle ${ENCODE_ORC_ASSETS} variable expansion
     std::string expanded_path = yaml_path;
+    const std::string assets_var = "${ENCODE_ORC_ASSETS}";
+
+    size_t pos = expanded_path.find(assets_var);
+    if (pos != std::string::npos) {
+        const char* assets_env = std::getenv("ENCODE_ORC_ASSETS");
+        std::string assets_root;
+        if (assets_env && assets_env[0] != '\0') {
+            assets_root = assets_env;
+        } else {
+            assets_root = (project_root_ / ".." / "assets").lexically_normal().string();
+        }
+
+        expanded_path.replace(pos, assets_var.length(), assets_root);
+
+        // After replacement, the path might be absolute already
+        path = std::filesystem::path(expanded_path);
+        if (path.is_absolute()) {
+            return path.lexically_normal().string();
+        }
+    }
+
+    // Handle ${ENCODE_ORC_OUTPUT_ROOT} variable expansion
+    const std::string output_root_var = "${ENCODE_ORC_OUTPUT_ROOT}";
+
+    pos = expanded_path.find(output_root_var);
+    if (pos != std::string::npos) {
+        const char* output_env = std::getenv("ENCODE_ORC_OUTPUT_ROOT");
+        std::string output_root;
+        if (output_env && output_env[0] != '\0') {
+            output_root = output_env;
+        } else {
+            std::filesystem::path parent_root = project_root_.parent_path();
+            std::string project_dir = project_root_.filename().string();
+            if (project_dir == "test-projects") {
+                output_root = (parent_root / "test-output").lexically_normal().string();
+            } else if (project_dir == "ggv-tests") {
+                output_root = (parent_root / "ggv-output").lexically_normal().string();
+            } else {
+                output_root = (parent_root / "output").lexically_normal().string();
+            }
+        }
+
+        expanded_path.replace(pos, output_root_var.length(), output_root);
+
+        // After replacement, the path might be absolute already
+        path = std::filesystem::path(expanded_path);
+        if (path.is_absolute()) {
+            return path.lexically_normal().string();
+        }
+    }
+
+    // Handle ${PROJECT_ROOT} variable expansion
     const std::string project_root_var = "${PROJECT_ROOT}";
     
-    size_t pos = expanded_path.find(project_root_var);
+    pos = expanded_path.find(project_root_var);
     if (pos != std::string::npos) {
         // Replace ${PROJECT_ROOT} with the actual project root path
         expanded_path.replace(pos, project_root_var.length(), project_root_.string());

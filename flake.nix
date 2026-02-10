@@ -37,7 +37,11 @@
 
           postInstall = ''
             wrapProgram $out/bin/encode-orc \
-              --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.ffmpeg ]}
+              --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.ffmpeg ]} \
+              --set ENCODE_ORC_ASSETS $out/share/encode-orc/assets
+
+            install -d $out/share/encode-orc
+            cp -r assets $out/share/encode-orc/assets
           '';
 
           meta = with pkgs.lib; {
