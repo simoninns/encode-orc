@@ -11,13 +11,6 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        # Documentation Python environment
-        docsEnv = pkgs.python3.withPackages (ps: with ps; [
-          mkdocs
-          mkdocs-material
-          mkdocs-awesome-nav
-        ]);
-
         encode-orc = pkgs.stdenv.mkDerivation {
           pname = "encode-orc";
           version = "1.0.0";
@@ -73,23 +66,6 @@
 
         devShells.default = pkgs.mkShell {
           inputsFrom = [ encode-orc ];
-          packages = with pkgs; [
-            # Development tools
-            gdb
-            clang-tools
-            ccache
-            nodejs_20
-            # Documentation tools
-            docsEnv
-          ];
-
-          shellHook = ''
-            echo "encode-orc nix development environment"
-            echo ""
-            echo "Documentation commands:"
-            echo "  cd docs && mkdocs serve  - Start docs dev server"
-            echo "  cd docs && mkdocs build  - Build documentation"
-          '';
         };
 
         apps.default = {
