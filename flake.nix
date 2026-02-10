@@ -1,5 +1,5 @@
 {
-  description = "encode-orc - LaserDisc video encoder";
+  description = "encode-orc - LaserDisc and tape video encoder";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -45,7 +45,7 @@
           '';
 
           meta = with pkgs.lib; {
-            description = "LaserDisc video encoder for generating TBC files";
+            description = "encode-orc - LaserDisc and tape video encoder";
             homepage = "https://github.com/simoninns/encode-orc";
             license = licenses.gpl3Plus;
             platforms = platforms.linux ++ platforms.darwin;
