@@ -268,9 +268,7 @@ set(SOURCES
     src/pipeline/metadata_generators/color_burst_generator.cpp
     src/pipeline/field_splitting/field_splitter.cpp
     src/pipeline/structure_generation/field_structure_generator.cpp
-    
     src/pipeline/metadata_generators/pal_vits_generator.cpp
-    
     src/pipeline/metadata_generators/ntsc_vits_generator.cpp
     src/pipeline/metadata_generators/encoders/biphase_encoder.cpp
     src/pipeline/metadata_generators/encoders/manchester_encoder.cpp
@@ -281,19 +279,15 @@ set(SOURCES
     src/pipeline/loaders/png_loader.cpp
     src/pipeline/loaders/mov_loader.cpp
     src/pipeline/loaders/mp4_loader.cpp
-    
-    # Phase 4: Pipeline metadata generators
     src/pipeline/metadata_generators/vbi_metadata_generator.cpp
     src/pipeline/metadata_generators/color_burst_pipeline_generator.cpp
     src/pipeline/metadata_generators/vitc_pipeline_generator.cpp
     src/pipeline/metadata_generators/vits_pipeline_generator.cpp
     src/pipeline/metadata_generators/biphase_vbi_generator.cpp
     src/pipeline/metadata_generators/pipeline_generators.cpp
-    # Phase 5: Active video encoding refactoring
     src/pipeline/active_encoding/pal_active_encoder.cpp
     src/pipeline/active_encoding/ntsc_active_encoder.cpp
     src/pipeline/orchestrator/video_encoder_pipeline.cpp
-    # Phase 6: Field effects and preprocessing
     src/pipeline/effects/field_effect.cpp
     src/pipeline/preprocessing/field_preprocessor.cpp
 )
@@ -333,15 +327,9 @@ install(TARGETS encode-orc
     COMPONENT Runtime
 )
 
-# Install example projects
-install(DIRECTORY test-projects/
-    DESTINATION share/encode-orc/test-projects
-    FILES_MATCHING PATTERN "*.yaml"
-)
-
 # Install testcard images
-install(DIRECTORY testcard-images/
-    DESTINATION share/encode-orc/testcard-images
+install(DIRECTORY assets/
+    DESTINATION share/encode-orc/assets
     FILES_MATCHING 
         PATTERN "*.png"
         PATTERN "*.raw"
@@ -355,99 +343,3 @@ install(FILES README.md LICENSE
     DESTINATION share/doc/encode-orc
     COMPONENT Runtime
 )
-
-# On Windows, install vcpkg DLLs alongside the executable
-if(WIN32)
-    # Install script to copy vcpkg DLLs during installation
-    install(CODE "
-        # Ensure bin directory exists
-        file(MAKE_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/bin\")
-        
-        # Copy vcpkg runtime DLLs
-        set(VCPKG_INSTALLED_DIR \"\${VCPKG_INSTALLED_DIR}\")
-        set(VCPKG_TARGET_TRIPLET \"\${VCPKG_TARGET_TRIPLET}\")
-        if(NOT VCPKG_INSTALLED_DIR OR VCPKG_INSTALLED_DIR STREQUAL \"\")
-            set(VCPKG_INSTALLED_DIR \"\${CMAKE_BINARY_DIR}/vcpkg_installed\")
-        endif()
-        if(NOT VCPKG_TARGET_TRIPLET OR VCPKG_TARGET_TRIPLET STREQUAL \"\")
-            set(VCPKG_TARGET_TRIPLET \"x64-windows\")
-        endif()
-        set(VCPKG_BIN_DIR \"\${VCPKG_INSTALLED_DIR}/\${VCPKG_TARGET_TRIPLET}/bin\")
-        if(EXISTS \"\${VCPKG_BIN_DIR}\")
-            message(STATUS \"Installing vcpkg runtime dependencies...\")
-            
-            # List of required DLL patterns
-            set(DLL_PATTERNS
-                yaml-cpp
-                spdlog
-                libpng16
-                sqlite3
-                zlib1
-                avcodec
-                avformat
-                avutil
-                swscale
-                swresample
-                x264
-                x265
-            )
-            
-            foreach(DLL_PATTERN \${DLL_PATTERNS})
-                file(GLOB DLL_FILES \"\${VCPKG_BIN_DIR}/\${DLL_PATTERN}*.dll\")
-                foreach(DLL_FILE \${DLL_FILES})
-                    get_filename_component(DLL_NAME \"\${DLL_FILE}\" NAME)
-                    message(STATUS \"  Installing \${DLL_NAME}\")
-                    file(INSTALL \"\${DLL_FILE}\" DESTINATION \"\${CMAKE_INSTALL_PREFIX}/bin\")
-                endforeach()
-            endforeach()
-            
-            message(STATUS \"vcpkg DLLs installed successfully\")
-        else()
-            message(WARNING \"vcpkg bin directory not found at: \${VCPKG_BIN_DIR}\")
-            message(WARNING \"DLLs may need to be copied manually\")
-        endif()
-    " COMPONENT Runtime)
-endif()
-
-# =============================================================================
-# CPack configuration for installer generation
-# =============================================================================
-
-set(CPACK_PACKAGE_NAME "Encode Orc")
-set(CPACK_PACKAGE_VENDOR "Simon Inns")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "TBC encoder for LaserDisc and tape mastering workflows")
-set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
-set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
-set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
-set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "EncodeOrc")
-set(CPACK_PACKAGE_EXECUTABLES "encode-orc;Encode Orc")
-
-# License and readme
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
-
-# WiX specific settings for MSI generation on Windows
-if(WIN32)
-    set(CPACK_GENERATOR "WIX")
-    set(CPACK_WIX_UPGRADE_GUID "A1B2C3D4-E5F6-7890-A1B2-C3D4E5F67890")
-    set(CPACK_WIX_PRODUCT_GUID "*") # Generate new GUID for each version
-    
-    # Set license in RTF format (created by GitHub Actions workflow)
-    set(CPACK_WIX_LICENSE_RTF "${CMAKE_BINARY_DIR}/LICENSE.rtf")
-    
-    set(CPACK_WIX_PROGRAM_MENU_FOLDER "Encode Orc")
-    
-    # Create start menu shortcuts
-    set(CPACK_PACKAGE_EXECUTABLES "encode-orc;Encode Orc")
-    
-    # Add to Programs and Features
-    set(CPACK_WIX_PROPERTY_ARPURLINFOABOUT "https://github.com/simoninns/encode-orc")
-    set(CPACK_WIX_PROPERTY_ARPHELPLINK "https://simoninns.github.io/encode-orc/")
-    
-    # Generate RTF license from plain text LICENSE file
-    # Note: This will be created by the GitHub Actions workflow
-    # This will be done in the GitHub Actions workflow
-endif()
-
-include(CPack)
