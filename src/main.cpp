@@ -486,6 +486,8 @@ int main(int argc, char* argv[]) {
         system = VideoSystem::PAL;
     } else if (config.output.format == "ntsc-composite" || config.output.format == "ntsc-yc") {
         system = VideoSystem::NTSC;
+    } else if (config.output.format == "palm-composite" || config.output.format == "palm-yc") {
+        system = VideoSystem::PAL_M;
     } else {
         ENCODE_ORC_LOG_ERROR("Unsupported format: {}", config.output.format);
         return 1;
@@ -614,6 +616,8 @@ int main(int argc, char* argv[]) {
     // Build video parameters (with optional overrides)
     VideoParameters params = (system == VideoSystem::PAL) ?
         VideoParameters::create_pal_composite() :
+        (system == VideoSystem::PAL_M) ?
+        VideoParameters::create_palm_composite() :
         VideoParameters::create_ntsc_composite();
 
     if (has_video_level_overrides) {
@@ -643,7 +647,7 @@ int main(int argc, char* argv[]) {
     // Open audio writer if sound output is enabled
     std::unique_ptr<AudioWriter> audio_writer;
     bool sound_enabled = config.output.sound_format.has_value();
-    int32_t samples_per_field = (system == VideoSystem::PAL) ? 882 : 735;
+    int32_t samples_per_field = (system == VideoSystem::PAL) ? 882 : 735;  // NTSC and PAL-M use 735, PAL uses 882
     if (sound_enabled) {
         std::string audio_base = output_filename;
         if (audio_base.size() >= 4 && audio_base.substr(audio_base.size() - 4) == ".tbc") {
@@ -769,7 +773,7 @@ int main(int argc, char* argv[]) {
             // Parse timecode_start (HH:MM:SS.FF format)
             int32_t hh = 0, mm = 0, ss = 0, ff = 0;
             std::sscanf(section.vitc->timecode_start.value().c_str(), "%d:%d:%d.%d", &hh, &mm, &ss, &ff);
-            int32_t fps = (system == VideoSystem::PAL) ? 25 : 30;
+            int32_t fps = (system == VideoSystem::PAL) ? 25 : 30;  // NTSC and PAL-M use 30 fps, PAL uses 25
             current_vitc_offset = (hh * 3600 + mm * 60 + ss) * fps + ff;
             vitc_frame_offset = current_vitc_offset;  // Update running offset
             ENCODE_ORC_LOG_DEBUG("Section '{}' VITC timecode start: {}:{}:{}.{} (offset: {})", 

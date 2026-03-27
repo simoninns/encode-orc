@@ -580,8 +580,10 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
     
     if (config.output.format != "pal-composite" && 
         config.output.format != "ntsc-composite" &&
+        config.output.format != "palm-composite" &&
         config.output.format != "pal-yc" && 
-        config.output.format != "ntsc-yc") {
+        config.output.format != "ntsc-yc" &&
+        config.output.format != "palm-yc") {
         error_message = "Invalid output format: " + config.output.format;
         return false;
     }

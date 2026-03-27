@@ -135,6 +135,36 @@ struct VideoParameters {
     }
     
     /**
+     * @brief Initialize PAL-M parameters (subcarrier-locked)
+     * 
+     * PAL-M is used in Brazil. It combines:
+     * - 525-line interlaced geometry with 59.94 fields/second frame rate (NTSC timing)
+     * - PAL-style color modulation with PAL-M subcarrier frequency
+     */
+    static VideoParameters create_palm_composite() {
+        VideoParameters params;
+        params.system = VideoSystem::PAL_M;
+        params.fSC = 3575611.0;  // PAL-M subcarrier frequency in Hz
+        params.sample_rate = 14302444.0;  // Exact 4×fSC for PAL-M
+        params.field_width = 910;  // Same as NTSC (525-line geometry)
+        params.field_height = 263;  // Default (for backward compatibility)
+        params.field1_height = 262; // First field (even field): 262 lines
+        params.field2_height = 263; // Second field (odd field): 263 lines
+        params.colour_burst_start = 74;   // Using NTSC burst timing as baseline
+        params.colour_burst_end = 110;    // Using NTSC burst timing as baseline
+        params.active_video_start = 134;  // Using NTSC active region as baseline
+        params.active_video_end = 894;    // Using NTSC active region as baseline
+        // Signal levels: Using PAL defaults initially (may be adjusted based on measurements)
+        params.white_16b_ire = 0xD300;      // 54016 (PAL-style peak white)
+        params.black_16b_ire = 0x42E5;      // 17125 (PAL-style black)
+        params.blanking_16b_ire = 0x42E5;   // 17125 (PAL-style blanking)
+        params.is_subcarrier_locked = false;
+        params.is_mapped = false;
+        params.is_widescreen = false;
+        return params;
+    }
+    
+    /**
      * @brief Apply video level overrides to parameters
      * @param params VideoParameters to modify
      * @param blanking_override Optional blanking level override
