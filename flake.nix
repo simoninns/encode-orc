@@ -23,6 +23,7 @@
 
           nativeBuildInputs = with pkgs; [
             cmake
+            ccache
             pkg-config
             makeWrapper
           ];
