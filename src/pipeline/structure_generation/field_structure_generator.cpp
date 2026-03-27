@@ -14,6 +14,40 @@
 
 namespace encode_orc {
 
+namespace {
+
+constexpr int32_t kPalVsyncLines = 5;
+constexpr int32_t kPalVbiStart = 6;
+constexpr int32_t kPalVbiEnd = 22;
+constexpr int32_t kPalActiveStart = 23;
+
+constexpr int32_t kNtscVsyncLines = 9;
+constexpr int32_t kNtscVbiStart = 10;
+constexpr int32_t kNtscVbiEnd = 20;
+constexpr int32_t kNtscActiveStart = 21;
+
+bool uses_ntsc_field_layout(VideoSystem system) {
+    return uses_525_line_geometry(system);
+}
+
+int32_t get_vsync_lines(VideoSystem system) {
+    return uses_ntsc_field_layout(system) ? kNtscVsyncLines : kPalVsyncLines;
+}
+
+int32_t get_vbi_start(VideoSystem system) {
+    return uses_ntsc_field_layout(system) ? kNtscVbiStart : kPalVbiStart;
+}
+
+int32_t get_vbi_end(VideoSystem system) {
+    return uses_ntsc_field_layout(system) ? kNtscVbiEnd : kPalVbiEnd;
+}
+
+int32_t get_active_start(VideoSystem system) {
+    return uses_ntsc_field_layout(system) ? kNtscActiveStart : kPalActiveStart;
+}
+
+}
+
 // Define the sync pattern lookup tables
 constexpr decltype(FieldStructureGenerator::PAL_SYNC_PATTERN) FieldStructureGenerator::PAL_SYNC_PATTERN;
 constexpr decltype(FieldStructureGenerator::NTSC_SYNC_PATTERN) FieldStructureGenerator::NTSC_SYNC_PATTERN;
@@ -152,7 +186,7 @@ FieldStructureGenerator::get_sync_pattern_for_line(
     // Convert field-relative line (0-indexed) to absolute frame line (1-indexed)
     int32_t absolute_frame_line;
     
-    if (system == VideoSystem::NTSC) {
+    if (uses_ntsc_field_layout(system)) {
         // NTSC: 525 lines total, fields both have 263 lines (with line 263 shared)
         // Field 1 (first_field=true): frame lines 1-263 (0-indexed field: 0-262)
         // Field 2 (first_field=false): frame lines 263-525 (0-indexed field: 0-262)
@@ -205,8 +239,8 @@ void FieldStructureGenerator::generate_sync_line(uint16_t* line_buffer,
     
     // Pulse timing in microseconds
     double normal_sync = 4.7;      // 4.7 µs for both PAL and NTSC
-    double eq_sync = (system == VideoSystem::PAL) ? 2.35 : 2.3;  // 2.35 µs PAL, 2.3 µs NTSC
-    double broad_sync = (system == VideoSystem::PAL) ? 27.3 : 27.1; // 27.3 µs PAL, 27.1 µs NTSC
+    double eq_sync = uses_ntsc_field_layout(system) ? 2.3 : 2.35;
+    double broad_sync = uses_ntsc_field_layout(system) ? 27.1 : 27.3;
     
     double sample_duration = 1.0 / sample_rate_;
     int32_t half_line = params_.field_width / 2;
@@ -294,9 +328,9 @@ void FieldStructureGenerator::add_color_burst_with_center(uint16_t* line_buffer,
     // Calculate burst amplitude based on video system
     // PAL: 300mV peak-to-peak = 150mV amplitude = 3/14 of luma range
     // NTSC: 20% of luma range per standard
-    int32_t burst_amplitude = (system == VideoSystem::PAL) ? 
-        static_cast<int32_t>((3.0 / 14.0) * luma_range) :
-        static_cast<int32_t>((20.0 / 100.0) * luma_range);
+    int32_t burst_amplitude = (system == VideoSystem::NTSC) ?
+        static_cast<int32_t>((20.0 / 100.0) * luma_range) :
+        static_cast<int32_t>((3.0 / 14.0) * luma_range);
     
     if (system == VideoSystem::NTSC) {
         burst_gen.generate_ntsc_burst(line_buffer, line_number, field_number, center_level, burst_amplitude);
@@ -305,13 +339,14 @@ void FieldStructureGenerator::add_color_burst_with_center(uint16_t* line_buffer,
     }
 }
 
-LineMap FieldStructureGenerator::create_line_map(bool /* is_first_field */, VideoSystem system) {
+LineMap FieldStructureGenerator::create_line_map(bool is_first_field, VideoSystem system) {
     LineMap line_map;
-    
-    int32_t vsync_lines = (system == VideoSystem::PAL) ? PAL_VSYNC_LINES : NTSC_VSYNC_LINES;
-    int32_t vbi_start = (system == VideoSystem::PAL) ? PAL_VBI_START : NTSC_VBI_START;
-    int32_t vbi_end = (system == VideoSystem::PAL) ? PAL_VBI_END : NTSC_VBI_END;
-    int32_t active_start = (system == VideoSystem::PAL) ? PAL_ACTIVE_START : NTSC_ACTIVE_START;
+
+    int32_t field_height = is_first_field ? params_.field1_height : params_.field2_height;
+    int32_t vsync_lines = get_vsync_lines(system);
+    int32_t vbi_start = get_vbi_start(system);
+    int32_t vbi_end = get_vbi_end(system);
+    int32_t active_start = get_active_start(system);
     
     // Mark vsync lines
     for (int32_t line = 0; line < vsync_lines; ++line) {
@@ -324,7 +359,7 @@ LineMap FieldStructureGenerator::create_line_map(bool /* is_first_field */, Vide
     }
     
     // Mark active video lines
-    for (int32_t line = active_start; line < params_.field_height; ++line) {
+    for (int32_t line = active_start; line < field_height; ++line) {
         line_map[line] = LineType::ACTIVE_VIDEO;
     }
     
@@ -336,18 +371,20 @@ LineMap FieldStructureGenerator::create_line_map(bool /* is_first_field */, Vide
     return line_map;
 }
 
-LineRange FieldStructureGenerator::determine_vbi_range(bool /* is_first_field */, VideoSystem system) {
-    int32_t vbi_start = (system == VideoSystem::PAL) ? PAL_VBI_START : NTSC_VBI_START;
-    int32_t vbi_end = (system == VideoSystem::PAL) ? PAL_VBI_END : NTSC_VBI_END;
-    
+LineRange FieldStructureGenerator::determine_vbi_range(bool is_first_field, VideoSystem system) {
+    int32_t field_height = is_first_field ? params_.field1_height : params_.field2_height;
+    int32_t vbi_start = get_vbi_start(system);
+    int32_t vbi_end = std::min(get_vbi_end(system), field_height - 1);
+
     return LineRange(vbi_start, vbi_end);
 }
 
-LineRange FieldStructureGenerator::determine_active_video_range(bool /* is_first_field */, VideoSystem system) {
-    int32_t active_start = (system == VideoSystem::PAL) ? PAL_ACTIVE_START : NTSC_ACTIVE_START;
-    
+LineRange FieldStructureGenerator::determine_active_video_range(bool is_first_field, VideoSystem system) {
+    int32_t field_height = is_first_field ? params_.field1_height : params_.field2_height;
+    int32_t active_start = get_active_start(system);
+
     // Active video continues to the end of the field
-    return LineRange(active_start, params_.field_height - 1);
+    return LineRange(active_start, field_height - 1);
 }
 
 } // namespace encode_orc

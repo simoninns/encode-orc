@@ -632,12 +632,16 @@ int main(int argc, char* argv[]) {
     // Handle filename for different output formats
     std::string output_filename = config.output.filename;
     std::string base_filename = config.output.filename;  // Base name for metadata
-    if (config.output.format == "pal-composite" || config.output.format == "ntsc-composite") {
+    if (config.output.format == "pal-composite" ||
+        config.output.format == "ntsc-composite" ||
+        config.output.format == "palm-composite") {
         // Add .tbc extension if not already present
         if (output_filename.length() < 4 || output_filename.substr(output_filename.length() - 4) != ".tbc") {
             output_filename += ".tbc";
         }
-    } else if (config.output.format == "pal-yc" || config.output.format == "ntsc-yc") {
+    } else if (config.output.format == "pal-yc" ||
+               config.output.format == "ntsc-yc" ||
+               config.output.format == "palm-yc") {
         // For Y/C formats, remove any .tbc extension (will be handled by Y/C writer)
         if (output_filename.length() >= 4 && output_filename.substr(output_filename.length() - 4) == ".tbc") {
             output_filename = output_filename.substr(0, output_filename.length() - 4);
@@ -647,7 +651,7 @@ int main(int argc, char* argv[]) {
     // Open audio writer if sound output is enabled
     std::unique_ptr<AudioWriter> audio_writer;
     bool sound_enabled = config.output.sound_format.has_value();
-    int32_t samples_per_field = (system == VideoSystem::PAL) ? 882 : 735;  // NTSC and PAL-M use 735, PAL uses 882
+    int32_t samples_per_field = get_audio_samples_per_field(system);
     if (sound_enabled) {
         std::string audio_base = output_filename;
         if (audio_base.size() >= 4 && audio_base.substr(audio_base.size() - 4) == ".tbc") {
@@ -672,7 +676,9 @@ int main(int argc, char* argv[]) {
     std::unique_ptr<Writer> writer;
     std::unique_ptr<YCTBCWriter> yc_writer;
     
-    if (config.output.format == "pal-yc" || config.output.format == "ntsc-yc") {
+    if (config.output.format == "pal-yc" ||
+        config.output.format == "ntsc-yc" ||
+        config.output.format == "palm-yc") {
         // Use Y/C writer for separate Y and C output
         yc_writer = std::make_unique<YCTBCWriter>(YCTBCWriter::NamingMode::MODERN);
         if (!yc_writer->open(output_filename)) {
@@ -773,7 +779,7 @@ int main(int argc, char* argv[]) {
             // Parse timecode_start (HH:MM:SS.FF format)
             int32_t hh = 0, mm = 0, ss = 0, ff = 0;
             std::sscanf(section.vitc->timecode_start.value().c_str(), "%d:%d:%d.%d", &hh, &mm, &ss, &ff);
-            int32_t fps = (system == VideoSystem::PAL) ? 25 : 30;  // NTSC and PAL-M use 30 fps, PAL uses 25
+            int32_t fps = get_integer_fps(system);
             current_vitc_offset = (hh * 3600 + mm * 60 + ss) * fps + ff;
             vitc_frame_offset = current_vitc_offset;  // Update running offset
             ENCODE_ORC_LOG_DEBUG("Section '{}' VITC timecode start: {}:{}:{}.{} (offset: {})", 
@@ -1138,7 +1144,9 @@ int main(int argc, char* argv[]) {
                             .enable_luma_filter(enable_luma_filter);
             
             // Enable Y/C output if format is Y/C
-            if (config.output.format == "pal-yc" || config.output.format == "ntsc-yc") {
+            if (config.output.format == "pal-yc" ||
+                config.output.format == "ntsc-yc" ||
+                config.output.format == "palm-yc") {
                 pipeline_builder.enable_yc_output(true);
             }
 
@@ -1265,7 +1273,7 @@ int main(int argc, char* argv[]) {
                 section_frames = section.duration.value();
 
                 int32_t img_width = 720;
-                int32_t img_height = (system == VideoSystem::PAL) ? 576 : 480;
+                int32_t img_height = get_expected_active_height(system);
 
                 YUV422Loader yuv422_loader;
                 if (!yuv422_loader.open(yuv422_file, img_width, img_height)) {
@@ -1574,7 +1582,9 @@ int main(int argc, char* argv[]) {
     ENCODE_ORC_LOG_INFO("Successfully generated {} frames", total_frames);
     
     // Log output file(s)
-    if (config.output.format == "pal-yc" || config.output.format == "ntsc-yc") {
+    if (config.output.format == "pal-yc" ||
+        config.output.format == "ntsc-yc" ||
+        config.output.format == "palm-yc") {
         ENCODE_ORC_LOG_INFO("Output files: {}.tbcy, {}.tbcc", output_filename, output_filename);
     } else {
         ENCODE_ORC_LOG_INFO("Output file: {}", output_filename);

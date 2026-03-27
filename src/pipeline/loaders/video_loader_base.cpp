@@ -167,7 +167,7 @@ bool VideoLoaderUtils::validate_frame_rate(double frame_rate, VideoSystem system
 }
 
 double VideoLoaderUtils::get_expected_frame_rate(VideoSystem system) {
-    return (system == VideoSystem::PAL) ? 25.0 : 29.97;
+    return encode_orc::get_expected_frame_rate(system);
 }
 
 bool VideoLoaderBase::validate_dimensions(int32_t expected_width, int32_t expected_height,

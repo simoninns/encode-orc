@@ -37,6 +37,26 @@ inline std::string video_system_to_string(VideoSystem system) {
     }
 }
 
+inline bool uses_525_line_geometry(VideoSystem system) {
+    return system == VideoSystem::NTSC || system == VideoSystem::PAL_M;
+}
+
+inline int32_t get_integer_fps(VideoSystem system) {
+    return system == VideoSystem::PAL ? 25 : 30;
+}
+
+inline double get_expected_frame_rate(VideoSystem system) {
+    return system == VideoSystem::PAL ? 25.0 : 29.97;
+}
+
+inline int32_t get_audio_samples_per_field(VideoSystem system) {
+    return system == VideoSystem::PAL ? 882 : 735;
+}
+
+inline int32_t get_expected_active_height(VideoSystem system) {
+    return system == VideoSystem::PAL ? 576 : 480;
+}
+
 /**
  * @brief Video parameters matching ld-decode's VideoParameters structure
  * 

@@ -82,7 +82,7 @@ bool generate_metadata(const YAMLProjectConfig& config,
                        const CaptureMetadata* input_metadata) {
     try {
         int32_t total_fields = total_frames * 2;
-        int32_t fps = (system == VideoSystem::PAL) ? 25 : 30;  // PAL-M uses 30 fps like NTSC
+        int32_t fps = get_integer_fps(system);
         
         VideoParameters params = (system == VideoSystem::PAL)
             ? VideoParameters::create_pal_composite()
@@ -120,7 +120,7 @@ bool generate_metadata(const YAMLProjectConfig& config,
             audio_params.sample_rate = 44100.0;
             combined.audio_params = audio_params;
 
-            int32_t samples_per_field = (system == VideoSystem::PAL) ? 882 : 735;  // NTSC and PAL-M use 735, PAL uses 882
+            int32_t samples_per_field = get_audio_samples_per_field(system);
             for (auto& field : combined.fields) {
                 field.audio_samples = samples_per_field;
             }

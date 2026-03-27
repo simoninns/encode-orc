@@ -354,7 +354,7 @@ bool MOVLoader::load_frames(int32_t start_frame,
     if (!VideoLoaderUtils::validate_frame_rate(frame_rate_, params.system, 0.1)) {
         error_message = "MOV frame rate mismatch: expected " + 
                        std::to_string(VideoLoaderUtils::get_expected_frame_rate(params.system)) + 
-                       " fps for " + (params.system == VideoSystem::PAL ? "PAL" : "NTSC") +
+                       " fps for " + video_system_to_string(params.system) +
                        ", got " + std::to_string(frame_rate_) + " fps";
         return false;
     }

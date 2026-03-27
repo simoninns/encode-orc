@@ -159,10 +159,12 @@ Field VideoEncoderPipeline::encode_field_from_yuv(const Field& field_yuv,
         vsync_lines = 5;          // Lines 0-4
         active_lines_start = 23;  // Line 23
         active_lines_end = field_height - 3;  // 3 lines from bottom (blanking)
-    } else {
+    } else if (uses_525_line_geometry(system)) {
         vsync_lines = 3;          // Lines 0-2
         active_lines_start = 21;  // Line 21
         active_lines_end = field_height - 2;  // 2 lines from bottom (blanking)
+    } else {
+        throw std::runtime_error("Unsupported video system in encode_field_from_yuv");
     }
     
     // Stage 1: Generate field structure (sync, blanking, color burst)
