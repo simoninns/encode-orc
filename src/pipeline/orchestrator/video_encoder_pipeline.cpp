@@ -77,7 +77,9 @@ std::unique_ptr<VideoEncoderPipeline> VideoEncoderPipeline::Builder::build() {
     // Create appropriate active video encoder based on system
     std::unique_ptr<ActiveVideoEncoder> active_encoder;
     
-    if (system_ == VideoSystem::PAL) {
+    if (system_ == VideoSystem::PAL || system_ == VideoSystem::PAL_M) {
+        // PAL and PAL-M both use PAL-style color encoding with V-switch behavior
+        // The difference is in frame/field geometry which is handled at the parameter level
         active_encoder = std::make_unique<PALActiveEncoder>(params_, enable_chroma_filter_, enable_luma_filter_);
     } else if (system_ == VideoSystem::NTSC) {
         active_encoder = std::make_unique<NTSCActiveEncoder>(params_, enable_chroma_filter_, enable_luma_filter_);

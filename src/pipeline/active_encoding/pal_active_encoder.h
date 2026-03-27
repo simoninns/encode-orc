@@ -21,16 +21,18 @@
 namespace encode_orc {
 
 /**
- * @brief PAL active video encoder
+ * @brief PAL/PAL-M active video encoder
  * 
- * Implements Phase 5 active video encoding for PAL:
+ * Implements Phase 5 active video encoding for PAL and PAL-M:
  * - YUV to composite conversion with subcarrier modulation
  * - PAL V-switch handling (alternates V component sign each line)
  * - Optional chroma (1.3 MHz) and luma low-pass filtering
+ * - Supports both 625-line PAL and 525-line PAL-M with PAL-style color encoding
  * 
  * The phase calculation follows ld-chroma-encoder's approach:
  * - 8-field sequence determines absolute phase position
  * - V-switch alternates based on frame line number
+ * - For PAL-M, uses 525-line geometry with PAL-M subcarrier timing
  */
 class PALActiveEncoder : public ActiveVideoEncoder {
 public:
@@ -45,7 +47,7 @@ public:
                              bool enable_luma_filter = false);
     
     /**
-     * @brief Encode a single line of active video (PAL)
+     * @brief Encode a single line of active video (PAL/PAL-M)
      */
     void encode_active_line(uint16_t* line_buffer,
                            const uint16_t* y_line,
@@ -73,7 +75,7 @@ public:
     /**
      * @brief Get video system
      */
-    VideoSystem get_video_system() const override { return VideoSystem::PAL; }
+    VideoSystem get_video_system() const override { return params_.system; }
 
 private:
     VideoParameters params_;

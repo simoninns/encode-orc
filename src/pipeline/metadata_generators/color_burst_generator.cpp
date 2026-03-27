@@ -58,6 +58,27 @@ double ColorBurstGenerator::calculate_pal_phase(int32_t field_number, int32_t li
     return 2.0 * PI * prev_cycles + time_phase;
 }
 
+double ColorBurstGenerator::calculate_palm_phase(int32_t field_number, int32_t line_number, int32_t sample) const {
+    // PAL-M uses 525-line geometry (like NTSC) with PAL-M subcarrier timing
+    // Model absolute line count as a double to preserve the half-line offset between fields
+    const double lines_per_field = 262.5;
+    
+    // PAL-M cycles per line: subcarrier_freq / (field_rate * lines_per_field)
+    // field_rate = 59.94 Hz, lines_per_field = 262.5
+    // cycles_per_line = 3575611 / (59.94 * 262.5) ≈ 227.35
+    const double cycles_per_line = 227.35;  // PAL-M subcarrier cycles per line
+    
+    // Absolute lines elapsed before this line within the full sequence
+    double prev_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line_number);
+    
+    // Total subcarrier cycles elapsed before this sample
+    double prev_cycles = prev_lines * cycles_per_line;
+    
+    // Phase for this sample
+    double time_phase = 2.0 * PI * subcarrier_freq_ * sample / sample_rate_;
+    return 2.0 * PI * prev_cycles + time_phase;
+}
+
 int32_t ColorBurstGenerator::get_pal_v_switch(int32_t field_number, int32_t line_number) const {
     // Calculate absolute line number
     bool is_first_field = (field_number % 2) == 0;
@@ -65,6 +86,19 @@ int32_t ColorBurstGenerator::get_pal_v_switch(int32_t field_number, int32_t line
     
     int32_t field_id = field_number % 8;
     int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
+    
+    // V-switch alternates every line
+    return (prev_lines % 2) == 0 ? 1 : -1;
+}
+
+int32_t ColorBurstGenerator::get_palm_v_switch(int32_t field_number, int32_t line_number) const {
+    // PAL-M uses 525-line geometry (like NTSC) but with PAL-style V-switch behavior
+    bool is_first_field = (field_number % 2) == 0;
+    int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
+    
+    // For PAL-M, maintain the 8-field sequence compatibility
+    int32_t field_id = field_number % 8;
+    int32_t prev_lines = ((field_id / 2) * 525) + ((field_id % 2) * 263) + (frame_line / 2);
     
     // V-switch alternates every line
     return (prev_lines % 2) == 0 ? 1 : -1;
@@ -217,6 +251,72 @@ void ColorBurstGenerator::generate_pal_burst(uint16_t* line_buffer, int32_t line
     // Generate burst with envelope and write with center offset
     for (int32_t sample = std::max(0, rise_start); sample < std::min(static_cast<int32_t>(params_.field_width), fall_end); ++sample) {
         double phase = calculate_pal_phase(field_number, line_number, sample) + burst_phase_offset;
+        double burst_signal = std::sin(phase);
+        
+        // Apply envelope shaping
+        double envelope = 0.0;
+        if (sample >= rise_start && sample < rise_end) {
+            double position_in_rise = static_cast<double>(sample - rise_start);
+            double t_env = position_in_rise / rise_samples;
+            t_env = std::min(1.0, t_env);
+            envelope = (1.0 - std::cos(PI * t_env)) / 2.0;
+        } else if (sample >= rise_end && sample < fall_start) {
+            envelope = 1.0;
+        } else if (sample >= fall_start && sample < fall_end) {
+            double position_in_fall = static_cast<double>(sample - fall_start);
+            double t_env = position_in_fall / fall_samples;
+            t_env = std::min(1.0, t_env);
+            envelope = (1.0 + std::cos(PI * t_env)) / 2.0;
+        } else {
+            envelope = 0.0;
+        }
+        
+        // Shift burst signal to center level
+        int32_t sample_value = center_level + static_cast<int32_t>(amplitude * envelope * burst_signal);
+        line_buffer[sample] = clamp_to_16bit(sample_value);
+    }
+}
+
+void ColorBurstGenerator::generate_palm_burst(uint16_t* line_buffer, int32_t line_number,
+                                               int32_t field_number, int32_t center_level,
+                                               int32_t amplitude) {
+    // Generate PAL-M color burst with envelope shaping
+    // PAL-M uses 525-line geometry with PAL-style V-switch behavior
+    // The burst signal is generated relative to 0, then offset to center_level
+    
+    int32_t burst_start = params_.colour_burst_start;
+    int32_t burst_end = params_.colour_burst_end;
+    
+    // Calculate PAL-M phase with V-switch (using 525-line geometry)
+    bool is_first_field = (field_number % 2) == 0;
+    int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
+    int32_t field_id = field_number % 8;
+    int32_t prev_lines = ((field_id / 2) * 525) + ((field_id % 2) * 263) + (frame_line / 2);
+    int32_t v_switch = (prev_lines % 2 == 0) ? 1 : -1;
+    double burst_phase_offset = v_switch * (135.0 * PI / 180.0);
+    
+    // Envelope shaping: 3 cycles rise/fall with cosine S-curve
+    double cycle_time_ns = (1.0 / subcarrier_freq_) * 1e9;
+    const double rise_time_ns = 3.0 * cycle_time_ns;
+    const double fall_time_ns = 3.0 * cycle_time_ns;
+    
+    // Calculate ramp positions: 2 cycles outside, 1 cycle inside
+    double rise_samples = (rise_time_ns / 1e9) * sample_rate_;
+    double fall_samples = (fall_time_ns / 1e9) * sample_rate_;
+    rise_samples = std::max(rise_samples, 1.0);
+    fall_samples = std::max(fall_samples, 1.0);
+    
+    int32_t rise_start = burst_start - static_cast<int32_t>(rise_samples * 2.0 / 3.0);
+    int32_t rise_end = burst_start + static_cast<int32_t>(rise_samples / 3.0);
+    int32_t fall_start = burst_end - static_cast<int32_t>(fall_samples / 3.0);
+    int32_t fall_end = burst_end + static_cast<int32_t>(fall_samples * 2.0 / 3.0);
+    
+    // NOTE: Do NOT fill the line - the sync pattern and base level are already set!
+    // The color burst is added ONLY in the burst region, not filling before/after
+    
+    // Generate burst with envelope and write with center offset
+    for (int32_t sample = std::max(0, rise_start); sample < std::min(static_cast<int32_t>(params_.field_width), fall_end); ++sample) {
+        double phase = calculate_palm_phase(field_number, line_number, sample) + burst_phase_offset;
         double burst_signal = std::sin(phase);
         
         // Apply envelope shaping

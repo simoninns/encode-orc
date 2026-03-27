@@ -27,16 +27,17 @@ ColorBurstMetadataGenerator::ColorBurstMetadataGenerator(const VideoParameters& 
 void ColorBurstMetadataGenerator::apply(Field& field, const MetadataContext& context) {
     // Add color burst to all lines except pure sync lines
     // For PAL: lines 1-22 get burst (VBI region), lines 23+ get burst (active video)
+    // For PAL-M: uses NTSC-like line numbering (525-line geometry)
     // For NTSC: similar pattern
     
-    int32_t first_burst_line = (system_ == VideoSystem::PAL) ? 6 : 10;
+    int32_t first_burst_line = (system_ == VideoSystem::PAL) ? 6 : 10;  // PAL-M uses NTSC line numbering
     int32_t last_line = field.height() - 1;
     
     // Calculate burst amplitude based on video system and luma range
-    // PAL: 300mV peak-to-peak = 150mV amplitude = 3/14 of luma range
+    // PAL and PAL-M: 300mV peak-to-peak = 150mV amplitude = 3/14 of luma range
     // NTSC: 20% of luma range per standard
     int32_t luma_range = params_.white_16b_ire - params_.black_16b_ire;
-    int32_t burst_amplitude = (system_ == VideoSystem::PAL) ? 
+    int32_t burst_amplitude = (system_ == VideoSystem::PAL || system_ == VideoSystem::PAL_M) ? 
         static_cast<int32_t>((3.0 / 14.0) * luma_range) :
         static_cast<int32_t>((20.0 / 100.0) * luma_range);
     
@@ -50,6 +51,9 @@ void ColorBurstMetadataGenerator::apply(Field& field, const MetadataContext& con
         if (system_ == VideoSystem::PAL) {
             generator_->generate_pal_burst(line_buffer, line, context.field_number,
                                           center_level, burst_amplitude);
+        } else if (system_ == VideoSystem::PAL_M) {
+            generator_->generate_palm_burst(line_buffer, line, context.field_number,
+                                           center_level, burst_amplitude);
         } else {
             generator_->generate_ntsc_burst(line_buffer, line, context.field_number,
                                            center_level, burst_amplitude);
@@ -60,8 +64,8 @@ void ColorBurstMetadataGenerator::apply(Field& field, const MetadataContext& con
 std::vector<int32_t> ColorBurstMetadataGenerator::affected_lines() const {
     // Returns all lines that get color burst
     std::vector<int32_t> lines;
-    int32_t first_burst_line = (system_ == VideoSystem::PAL) ? 6 : 10;
-    int32_t height = (system_ == VideoSystem::PAL) ? 313 : 263;
+    int32_t first_burst_line = (system_ == VideoSystem::PAL) ? 6 : 10;  // PAL-M uses NTSC line numbering
+    int32_t height = (system_ == VideoSystem::PAL) ? 313 : 263;  // PAL-M uses 525-line geometry (263 per field)
     
     for (int32_t line = first_burst_line; line < height; line++) {
         lines.push_back(line);
@@ -85,6 +89,10 @@ VITCMetadataGenerator::VITCMetadataGenerator(const VideoParameters& params,
         if (system_ == VideoSystem::PAL) {
             // PAL: lines 19 and 21 (0-indexed: 18, 20)
             lines_ = {18, 20};
+        } else if (system_ == VideoSystem::PAL_M) {
+            // PAL-M: uses NTSC-like line positions (525-line geometry)
+            // Lines 14 and 16 (0-indexed: 13, 15)
+            lines_ = {13, 15};
         } else {
             // NTSC: lines 14 and 16 (0-indexed: 13, 15)
             lines_ = {13, 15};
@@ -122,6 +130,8 @@ VITSMetadataGenerator::VITSMetadataGenerator(const VideoParameters& params)
     if (system_ == VideoSystem::PAL) {
         pal_generator_ = std::make_unique<PALVITSGenerator>(params);
     } else {
+        // Both NTSC and PAL-M use NTSC-style VITS generation
+        // (PAL-M has NTSC-like geometry with 525 lines and 59.94 fps)
         ntsc_generator_ = std::make_unique<NTSCVITSGenerator>(params);
     }
 }
@@ -148,7 +158,8 @@ void VITSMetadataGenerator::apply(Field& field, const MetadataContext& context) 
             pal_generator_->generate_itu_its(line333, field_number);
         }
     } else {
-        // NTSC VITS on lines 19, 20 for field 1; lines 282, 283 for field 2
+        // NTSC and PAL-M both use NTSC-style VITS on lines 19, 20 for field 1; lines 282, 283 for field 2
+        // (PAL-M has 525-line geometry so uses NTSC line numbering)
         if (is_first_field) {
             // Field 1: lines 19 and 20 (0-indexed: 18, 19)
             uint16_t* line19 = field.line_data(18);
