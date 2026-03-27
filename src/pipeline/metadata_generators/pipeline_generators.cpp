@@ -127,11 +127,10 @@ std::vector<int32_t> VITCMetadataGenerator::affected_lines() const {
 VITSMetadataGenerator::VITSMetadataGenerator(const VideoParameters& params)
     : params_(params), system_(params.system) {
     
-    if (system_ == VideoSystem::PAL) {
+    if (system_ == VideoSystem::PAL || system_ == VideoSystem::PAL_M) {
         pal_generator_ = std::make_unique<PALVITSGenerator>(params);
     } else {
-        // Both NTSC and PAL-M use NTSC-style VITS generation
-        // (PAL-M has NTSC-like geometry with 525 lines and 59.94 fps)
+        // NTSC uses NTSC-style VITS generation
         ntsc_generator_ = std::make_unique<NTSCVITSGenerator>(params);
     }
 }
@@ -140,7 +139,7 @@ void VITSMetadataGenerator::apply(Field& field, const MetadataContext& context) 
     bool is_first_field = context.is_first_field;
     int32_t field_number = context.field_number;
     
-    if (system_ == VideoSystem::PAL) {
+    if (system_ == VideoSystem::PAL || system_ == VideoSystem::PAL_M) {
         // PAL VITS on lines 19, 20 for field 1; lines 332, 333 for field 2
         if (is_first_field) {
             // Field 1: lines 19 and 20 (0-indexed: 18, 19)
@@ -158,8 +157,7 @@ void VITSMetadataGenerator::apply(Field& field, const MetadataContext& context) 
             pal_generator_->generate_itu_its(line333, field_number);
         }
     } else {
-        // NTSC and PAL-M both use NTSC-style VITS on lines 19, 20 for field 1; lines 282, 283 for field 2
-        // (PAL-M has 525-line geometry so uses NTSC line numbering)
+        // NTSC uses NTSC-style VITS on lines 19, 20 for field 1; lines 282, 283 for field 2
         if (is_first_field) {
             // Field 1: lines 19 and 20 (0-indexed: 18, 19)
             uint16_t* line19 = field.line_data(18);

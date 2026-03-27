@@ -21,6 +21,7 @@
 #include "field_effect.h"
 #include "video_parameters.h"
 #include "metadata.h"
+#include "source_video_standard.h"
 #include "logging.h"
 #include "yuv422_loader.h"
 #include "png_loader.h"
@@ -289,6 +290,131 @@ bool extract_mp4_audio_pcm(const std::string& filename, std::vector<int16_t>& ou
     std::error_code ec;
     std::filesystem::remove(temp_file, ec);
     return ok;
+}
+
+bool determine_source_standard_for_metadata(const encode_orc::PipelineMetadataConfig* metadata_config,
+                                           encode_orc::VideoSystem system,
+                                           encode_orc::SourceVideoStandard& source_standard,
+                                           std::string& error_message) {
+    using namespace encode_orc;
+
+    bool has_biphase_vbi = false;
+    bool has_vitc = false;
+    bool has_vits = false;
+
+    if (metadata_config != nullptr) {
+        for (const auto& gen : metadata_config->generators) {
+            if (!gen.enabled) {
+                continue;
+            }
+
+            if (gen.type == "biphase-vbi") {
+                has_biphase_vbi = true;
+            } else if (gen.type == "vitc") {
+                has_vitc = true;
+            } else if (gen.type == "vits" || gen.type == "vits-pal" || gen.type == "vits-ntsc") {
+                has_vits = true;
+            }
+        }
+    }
+
+    if (has_biphase_vbi && has_vitc) {
+        error_message = "Invalid metadata policy: cannot mix LaserDisc biphase-vbi with consumer-tape vitc";
+        return false;
+    }
+    if (has_vits && has_vitc) {
+        error_message = "Invalid metadata policy: cannot mix VITS generators with consumer-tape vitc";
+        return false;
+    }
+
+    if (has_biphase_vbi || has_vits) {
+        if (system == VideoSystem::PAL || system == VideoSystem::PAL_M) {
+            source_standard = SourceVideoStandard::IEC60857_1986;
+        } else {
+            source_standard = SourceVideoStandard::IEC60856_1986;
+        }
+    } else if (has_vitc) {
+        source_standard = SourceVideoStandard::ConsumerTape;
+    } else {
+        source_standard = SourceVideoStandard::None;
+    }
+
+    return true;
+}
+
+bool validate_generator_for_system_and_standard(const encode_orc::PipelineGeneratorConfig& gen_config,
+                                                encode_orc::VideoSystem system,
+                                                encode_orc::SourceVideoStandard source_standard,
+                                                std::string& error_message) {
+    using namespace encode_orc;
+
+    if (!gen_config.enabled) {
+        return true;
+    }
+
+    if (gen_config.type == "biphase-vbi") {
+        if (system == VideoSystem::PAL_M) {
+            error_message = "Generator 'biphase-vbi' is not supported for PAL-M. "
+                            "PAL-M first release supports consumer-tape VITC and NTSC-style VITS only.";
+            return false;
+        }
+        if (!standard_supports_vbi(source_standard, system)) {
+            error_message = "Generator 'biphase-vbi' is not allowed by source standard '" +
+                source_video_standard_to_string(source_standard) + "' for system '" + video_system_to_string(system) + "'";
+            return false;
+        }
+        return true;
+    }
+
+    if (gen_config.type == "vitc") {
+        if (!standard_supports_vitc(source_standard, system)) {
+            error_message = "Generator 'vitc' is not allowed by source standard '" +
+                source_video_standard_to_string(source_standard) + "' for system '" + video_system_to_string(system) + "'";
+            return false;
+        }
+        return true;
+    }
+
+    if (gen_config.type == "vits") {
+        if (system == VideoSystem::PAL_M) {
+            error_message = "Generator 'vits' is ambiguous for PAL-M. Use 'vits-pal' explicitly for PAL-M projects.";
+            return false;
+        }
+        if (!standard_supports_vits(source_standard, system)) {
+            error_message = "Generator 'vits' is not allowed by source standard '" +
+                source_video_standard_to_string(source_standard) + "' for system '" + video_system_to_string(system) + "'";
+            return false;
+        }
+        return true;
+    }
+
+    if (gen_config.type == "vits-pal") {
+        if (system == VideoSystem::NTSC) {
+            error_message = "Generator 'vits-pal' can only be used with PAL or PAL-M output";
+            return false;
+        }
+        if (!standard_supports_vits(source_standard, system)) {
+            error_message = "Generator 'vits-pal' is not allowed by source standard '" +
+                source_video_standard_to_string(source_standard) + "' for system '" + video_system_to_string(system) + "'";
+            return false;
+        }
+        return true;
+    }
+
+    if (gen_config.type == "vits-ntsc") {
+        if (system == VideoSystem::PAL || system == VideoSystem::PAL_M) {
+            error_message = "Generator 'vits-ntsc' cannot be used with PAL or PAL-M output";
+            return false;
+        }
+        if (!standard_supports_vits(source_standard, system)) {
+            error_message = "Generator 'vits-ntsc' is not allowed by source standard '" +
+                source_video_standard_to_string(source_standard) + "' for system '" + video_system_to_string(system) + "'";
+            return false;
+        }
+        return true;
+    }
+
+    return true;
 }
 
 } // namespace
@@ -924,9 +1050,29 @@ int main(int argc, char* argv[]) {
             // Instantiate metadata generators from YAML configuration
             std::vector<std::unique_ptr<MetadataGenerator>> generators;
             if (metadata_config != nullptr) {
+                SourceVideoStandard source_standard = SourceVideoStandard::None;
+                std::string source_policy_error;
+                if (!determine_source_standard_for_metadata(metadata_config, system, source_standard, source_policy_error)) {
+                    ENCODE_ORC_LOG_ERROR("Section '{}' metadata policy error: {}", section.name, source_policy_error);
+                    return 1;
+                }
+
+                ENCODE_ORC_LOG_DEBUG("Section '{}' metadata source standard policy: {}",
+                                     section.name, source_video_standard_to_string(source_standard));
+
                 for (const auto& gen_config : metadata_config->generators) {
                     if (!gen_config.enabled) {
                         continue;  // Skip disabled generators
+                    }
+
+                    std::string generator_policy_error;
+                    if (!validate_generator_for_system_and_standard(gen_config,
+                                                                   system,
+                                                                   source_standard,
+                                                                   generator_policy_error)) {
+                        ENCODE_ORC_LOG_ERROR("Section '{}' invalid metadata generator '{}': {}",
+                                             section.name, gen_config.type, generator_policy_error);
+                        return 1;
                     }
 
                     if (gen_config.type == "color-burst") {
