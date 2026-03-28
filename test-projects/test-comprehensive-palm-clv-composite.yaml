@@ -24,20 +24,15 @@ pipeline:
       - type: "color-burst"
         enabled: true
       
-      - type: "biphase-vbi"
-        enabled: true
-        lines: [16, 17, 18, 278, 279, 280]
-        format: "timecode"
-      
-      - type: "vits-ntsc"
+      - type: "vits-pal"
         enabled: true
         signals:
           - line: 13
-            signal: "ntc7-composite"
+            signal: "multiburst"
           - line: 19
-            signal: "vir"
+            signal: "uk-national"
           - line: 275
-            signal: "ntc7-combination"
+            signal: "itu-combination"
   
   effects:
     - type: "noise"

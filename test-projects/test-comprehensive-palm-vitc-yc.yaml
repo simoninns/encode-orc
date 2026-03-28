@@ -25,14 +25,6 @@ pipeline:
         enabled: true
         lines: [14, 19, 276, 281]
         start_frame_offset: 0
-      
-      - type: "vits-ntsc"
-        enabled: true
-        signals:
-          - line: 13
-            signal: "ntc7-composite"
-          - line: 275
-            signal: "vir"
   
   effects:
     - type: "noise"

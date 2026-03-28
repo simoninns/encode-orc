@@ -17,22 +17,17 @@ pipeline:
   
   metadata:
     generators:
-      - type: "biphase-vbi"
-        enabled: true
-        lines: [16, 17, 18, 278, 279, 280]
-        format: "picture-number"
-      
-      - type: "vits-ntsc"
+      - type: "vits-pal"
         enabled: true
         signals:
           - line: 13
-            signal: "ntc7-composite"
+            signal: "multiburst"
           - line: 19
-            signal: "vir"
+            signal: "uk-national"
           - line: 275
-            signal: "ntc7-combination"
+            signal: "itu-combination"
           - line: 281
-            signal: "vir"
+            signal: "itu-composite"
       
       - type: "color-burst"
         enabled: true

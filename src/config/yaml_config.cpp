@@ -632,7 +632,7 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
                 has_biphase_vbi = true;
                 if (output_system == VideoSystem::PAL_M) {
                     error_message = "Generator 'biphase-vbi' is not supported for PAL-M in " + scope_name +
-                                    ". PAL-M currently supports consumer-tape VITC and NTSC-style VITS only.";
+                                    ". PAL-M currently supports consumer-tape VITC and PAL-style VITS only.";
                     return false;
                 }
             } else if (gen.type == "vitc") {

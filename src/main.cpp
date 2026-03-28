@@ -355,7 +355,7 @@ bool validate_generator_for_system_and_standard(const encode_orc::PipelineGenera
     if (gen_config.type == "biphase-vbi") {
         if (system == VideoSystem::PAL_M) {
             error_message = "Generator 'biphase-vbi' is not supported for PAL-M. "
-                            "PAL-M first release supports consumer-tape VITC and NTSC-style VITS only.";
+                            "PAL-M first release supports consumer-tape VITC and PAL-style VITS only.";
             return false;
         }
         if (!standard_supports_vbi(source_standard, system)) {
