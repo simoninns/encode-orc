@@ -38,7 +38,7 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/pal-raw/625_50_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/pal/raw/625_50_75_BARS.raw"
     vitc:
       timecode_start: "00:00:00.00"
     sound:
@@ -51,7 +51,7 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/pal-raw/625_50_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/pal/raw/625_50_75_BARS.raw"
     sound:
       type: "square"
       start_freq_hz: 880
@@ -63,7 +63,7 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/pal-raw/625_50_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/pal/raw/625_50_75_BARS.raw"
     sound:
       type: "sawtooth"
       start_freq_hz: 50
@@ -76,7 +76,7 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/pal-raw/625_50_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/pal/raw/625_50_75_BARS.raw"
     sound:
       type: "pink"
       amplitude: 60
@@ -87,7 +87,7 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/pal-raw/625_50_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/pal/raw/625_50_75_BARS.raw"
     sound:
       type: "white"
       amplitude: 50
