@@ -26,184 +26,184 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/75_BARS.raw"
     vitc:
       timecode_start: "00:00:00.00"
   
   # Chapter 1: NTSC Raw Test Images (50 frames each)
-  - name: "525_5994_100_BARS"
+  - name: "100_BARS"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_100_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/100_BARS.raw"
     vitc:
       timecode_start: "00:00:00.00"
     sound:
       type: "sine"
       start_freq_hz: 50
   
-  - name: "525_5994_75_BARS"
+  - name: "75_BARS"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/75_BARS.raw"
     sound:
       type: "sine"
       start_freq_hz: 100
   
-  - name: "525_5994_75_BARS_RED"
+  - name: "75_BARS_RED"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_75_BARS_RED.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/75_BARS_RED.raw"
     sound:
       type: "sine"
       start_freq_hz: 315
   
-  - name: "525_5994_CHROMA_RAMP"
+  - name: "CHROMA_RAMP"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_CHROMA_RAMP.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/CHROMA_RAMP.raw"
     sound:
       type: "sine"
       start_freq_hz: 400
   
-  - name: "525_5994_FULL_RAMP"
+  - name: "FULL_RAMP"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_FULL_RAMP.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/FULL_RAMP.raw"
     sound:
       type: "sine"
       start_freq_hz: 1000
   
-  - name: "525_5994_GREY_10H_STEP"
+  - name: "GREY_10H_STEP"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_GREY_10H_STEP.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/GREY_10H_STEP.raw"
     sound:
       type: "sine"
       start_freq_hz: 2000
   
-  - name: "525_5994_GREY_10V_STEP"
+  - name: "GREY_10V_STEP"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_GREY_10V_STEP.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/GREY_10V_STEP.raw"
     sound:
       type: "sine"
       start_freq_hz: 3150
   
-  - name: "525_5994_GREY_5H_STEP"
+  - name: "GREY_5H_STEP"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_GREY_5H_STEP.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/GREY_5H_STEP.raw"
     sound:
       type: "sine"
       start_freq_hz: 5000
   
-  - name: "525_5994_GREY_5V_STEP"
+  - name: "GREY_5V_STEP"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_GREY_5V_STEP.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/GREY_5V_STEP.raw"
     sound:
       type: "sine"
       start_freq_hz: 8000
   
-  - name: "525_5994_LEGAL_RAMP"
+  - name: "LEGAL_RAMP"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_LEGAL_RAMP.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/LEGAL_RAMP.raw"
     sound:
       type: "sine"
       start_freq_hz: 10000
   
-  - name: "525_5994_LUMA_RAMP"
+  - name: "LUMA_RAMP"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_LUMA_RAMP.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/LUMA_RAMP.raw"
     sound:
       type: "sine"
       start_freq_hz: 12500
   
-  - name: "525_5994_LUMA_RAMP_DOWN"
+  - name: "LUMA_RAMP_DOWN"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_LUMA_RAMP_DOWN.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/LUMA_RAMP_DOWN.raw"
     sound:
       type: "sine"
       start_freq_hz: 15000
   
-  - name: "525_5994_MULTIBURST"
+  - name: "MULTIBURST"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_MULTIBURST.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/MULTIBURST.raw"
     sound:
       type: "sine"
       start_freq_hz: 20
       end_freq_hz: 20000
   
-  - name: "525_5994_PLUGE"
+  - name: "PLUGE"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_PLUGE.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/PLUGE.raw"
     sound:
       type: "square"
       start_freq_hz: 440
   
-  - name: "525_5994_SMPTE_BARS_001"
+  - name: "SMPTE_BARS_001"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/SMPTE_BARS_001.raw"
     sound:
       type: "sawtooth"
       start_freq_hz: 220
   
-  - name: "525_5994_TARTAN"
+  - name: "TARTAN"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_TARTAN.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/TARTAN.raw"
     sound:
       type: "pink"
       amplitude: 75
       seed: 42
   
-  - name: "525_5994_VALID_RAMPS"
+  - name: "VALID_RAMPS"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_VALID_RAMPS.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/VALID_RAMPS.raw"
     sound:
       type: "white"
       amplitude: 50
       seed: 123
   
-  - name: "525_5994_VERT_LUMA_RAMP"
+  - name: "VERT_LUMA_RAMP"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_VERT_LUMA_RAMP.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/VERT_LUMA_RAMP.raw"
     sound:
       type: "brown"
       amplitude: 75
       seed: 456
   
-  - name: "525_5994_Y_CB_CR_RAMPS"
+  - name: "Y_CB_CR_RAMPS"
     duration: 50
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_Y_CB_CR_RAMPS.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/Y_CB_CR_RAMPS.raw"
     sound:
       type: "sine"
       start_freq_hz: 100
@@ -214,106 +214,106 @@ sections:
     duration: 342
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/SMPTE_BARS_001.raw"
     sound:
       type: "wav"
       file: "${ENCODE_ORC_ASSETS}/sound/organ.wav"
   
   # Chapter 3: MOV Files (each repeated 10 times)
-  - name: "525_5994_MOVING_ZONE_2H (1/10)"
+  - name: "Moving-Zone-2H (1/10)"
     source:
       type: "mov-file"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      file: "${ENCODE_ORC_ASSETS}/704x480/video/mov_29_97/MOVING_ZONE_2H.mov"
       start_frame: 0
     sound:
       type: "sine"
       start_freq_hz: 20
       end_freq_hz: 20000
   
-  - name: "525_5994_MOVING_ZONE_2H (2/10)"
+  - name: "Moving-Zone-2H (2/10)"
     source:
       type: "mov-file"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      file: "${ENCODE_ORC_ASSETS}/704x480/video/mov_29_97/MOVING_ZONE_2H.mov"
       start_frame: 0
     sound:
       type: "sine"
       start_freq_hz: 20000
       end_freq_hz: 20
   
-  - name: "525_5994_MOVING_ZONE_2H (3/10)"
+  - name: "Moving-Zone-2H (3/10)"
     source:
       type: "mov-file"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      file: "${ENCODE_ORC_ASSETS}/704x480/video/mov_29_97/MOVING_ZONE_2H.mov"
       start_frame: 0
     sound:
       type: "sine"
       start_freq_hz: 20
       end_freq_hz: 20000
   
-  - name: "525_5994_MOVING_ZONE_2H (4/10)"
+  - name: "Moving-Zone-2H (4/10)"
     source:
       type: "mov-file"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      file: "${ENCODE_ORC_ASSETS}/704x480/video/mov_29_97/MOVING_ZONE_2H.mov"
       start_frame: 0
     sound:
       type: "sine"
       start_freq_hz: 20000
       end_freq_hz: 20
   
-  - name: "525_5994_MOVING_ZONE_2H (5/10)"
+  - name: "Moving-Zone-2H (5/10)"
     source:
       type: "mov-file"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      file: "${ENCODE_ORC_ASSETS}/704x480/video/mov_29_97/MOVING_ZONE_2H.mov"
       start_frame: 0
     sound:
       type: "sine"
       start_freq_hz: 20
       end_freq_hz: 20000
   
-  - name: "525_5994_MOVING_ZONE_2H (6/10)"
+  - name: "Moving-Zone-2H (6/10)"
     source:
       type: "mov-file"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      file: "${ENCODE_ORC_ASSETS}/704x480/video/mov_29_97/MOVING_ZONE_2H.mov"
       start_frame: 0
     sound:
       type: "sine"
       start_freq_hz: 20000
       end_freq_hz: 20
   
-  - name: "525_5994_MOVING_ZONE_2H (7/10)"
+  - name: "Moving-Zone-2H (7/10)"
     source:
       type: "mov-file"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      file: "${ENCODE_ORC_ASSETS}/704x480/video/mov_29_97/MOVING_ZONE_2H.mov"
       start_frame: 0
     sound:
       type: "sine"
       start_freq_hz: 20
       end_freq_hz: 20000
   
-  - name: "525_5994_MOVING_ZONE_2H (8/10)"
+  - name: "Moving-Zone-2H (8/10)"
     source:
       type: "mov-file"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      file: "${ENCODE_ORC_ASSETS}/704x480/video/mov_29_97/MOVING_ZONE_2H.mov"
       start_frame: 0
     sound:
       type: "sine"
       start_freq_hz: 20000
       end_freq_hz: 20
   
-  - name: "525_5994_MOVING_ZONE_2H (9/10)"
+  - name: "Moving-Zone-2H (9/10)"
     source:
       type: "mov-file"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      file: "${ENCODE_ORC_ASSETS}/704x480/video/mov_29_97/MOVING_ZONE_2H.mov"
       start_frame: 0
     sound:
       type: "sine"
       start_freq_hz: 20
       end_freq_hz: 20000
   
-  - name: "525_5994_MOVING_ZONE_2H (10/10)"
+  - name: "Moving-Zone-2H (10/10)"
     source:
       type: "mov-file"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      file: "${ENCODE_ORC_ASSETS}/704x480/video/mov_29_97/MOVING_ZONE_2H.mov"
       start_frame: 0
     sound:
       type: "sine"
@@ -325,7 +325,7 @@ sections:
     duration: 125
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/SMPTE_BARS_001.raw"
     sound:
       type: "sine"
       start_freq_hz: 1000
@@ -340,7 +340,7 @@ sections:
     duration: 125
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/SMPTE_BARS_001.raw"
     sound:
       type: "sine"
       start_freq_hz: 1000
@@ -355,7 +355,7 @@ sections:
     duration: 125
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/SMPTE_BARS_001.raw"
     sound:
       type: "sine"
       start_freq_hz: 1000
@@ -370,7 +370,7 @@ sections:
     duration: 125
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/SMPTE_BARS_001.raw"
     sound:
       type: "sine"
       start_freq_hz: 1000
@@ -386,7 +386,7 @@ sections:
     duration: 125
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/SMPTE_BARS_001.raw"
     sound:
       type: "sine"
       start_freq_hz: 500
@@ -403,7 +403,7 @@ sections:
     duration: 125
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/SMPTE_BARS_001.raw"
     sound:
       type: "sine"
       start_freq_hz: 500
@@ -420,7 +420,7 @@ sections:
     duration: 125
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/SMPTE_BARS_001.raw"
     sound:
       type: "sine"
       start_freq_hz: 500
@@ -437,7 +437,7 @@ sections:
     duration: 125
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/SMPTE_BARS_001.raw"
     sound:
       type: "sine"
       start_freq_hz: 500
@@ -455,7 +455,7 @@ sections:
     duration: 125
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/SMPTE_BARS_001.raw"
     sound:
       type: "sine"
       start_freq_hz: 750
@@ -476,7 +476,7 @@ sections:
     duration: 125
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/SMPTE_BARS_001.raw"
     sound:
       type: "sine"
       start_freq_hz: 750
@@ -497,7 +497,7 @@ sections:
     duration: 125
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/SMPTE_BARS_001.raw"
     sound:
       type: "sine"
       start_freq_hz: 750
@@ -518,7 +518,7 @@ sections:
     duration: 125
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/SMPTE_BARS_001.raw"
     sound:
       type: "sine"
       start_freq_hz: 750
@@ -539,7 +539,7 @@ sections:
   - name: "Ice Skating"
     source:
       type: "mp4-file"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/mp4/ntsc-ice-skating.mp4"
+      file: "${ENCODE_ORC_ASSETS}/720x480/video/mp4_29_97/ice-skating.mp4"
       start_frame: 0
     sound:
       type: "source"
@@ -548,4 +548,4 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/75_BARS.raw"
