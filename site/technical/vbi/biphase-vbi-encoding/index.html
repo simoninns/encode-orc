@@ -1,0 +1,2183 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://simoninns.github.io/encode-orc/technical/vbi/biphase-vbi-encoding/">
+      
+      
+        <link rel="prev" href="../biphase-vbi-data/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../favicon/favicon.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Vertical Interval Control and Address Signals - encode-orc Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/custom.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#vertical-interval-control-and-address-signals" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="encode-orc Documentation" class="md-header__button md-logo" aria-label="encode-orc Documentation" data-md-component="logo">
+      
+  <img src="../../../assets/encode-orc_logotype.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            encode-orc Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Vertical Interval Control and Address Signals
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/simoninns/encode-orc" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    simoninns/encode-orc
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="encode-orc Documentation" class="md-nav__button md-logo" aria-label="encode-orc Documentation" data-md-component="logo">
+      
+  <img src="../../../assets/encode-orc_logotype.svg" alt="logo">
+
+    </a>
+    encode-orc Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/simoninns/encode-orc" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    simoninns/encode-orc
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user-guide/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user-guide/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation and Asset Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user-guide/project-yaml/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    YAML Project Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user-guide/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command Line Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user-guide/input-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Input Formats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user-guide/output-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output Formats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user-guide/video-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Video Formats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadata
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Metadata
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../metadata/ld-decode-metadata-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LD-Decode Metadata Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testcards
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Testcards
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testcards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testcards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testcards/raw-testcard-images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testcard Raw Y'CbCr 4:2:2 Assets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testcards/png-testcard-images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testcard PNG Assets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testcards/comprehensive-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comprehensive Unit Tests for encode-orc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testcards/virtual-test-discs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Virtual Test Discs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testcards/virtual-test-discs-pal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PAL Virtual Test Discs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testcards/virtual-test-discs-ntsc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    NTSC Virtual Test Discs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testcards/virtual-test-discs-palm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PAL-M Virtual Test Discs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VITS-Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    VITS-Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vits-guide/ntsc-vits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LaserDisc NTSC VITS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vits-guide/pal-vits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LaserDisc PAL VITS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VBI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    VBI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../biphase-vbi-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PAL and NTSC biphase code
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vertical Interval Control and Address Signals
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vertical Interval Control and Address Signals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#24-bit-biphase-coded-signal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24-bit Biphase Coded Signal
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="24-bit Biphase Coded Signal">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lead-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lead-in
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lead-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lead-out
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#picture-numbers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Picture Numbers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#picture-stop-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Picture Stop Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chapter-numbers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Numbers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#programme-time-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Programme Time Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#constant-linear-velocity-clv-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constant Linear Velocity (CLV) Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#programme-status-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Programme Status Code
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Programme Status Code">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#definition-of-the-data-in-programme-status-code-8-dcba-x3-x4-x5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Definition of the data in programme status code 8 DC/BA X3, X4, X5
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hamming-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hamming Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#users-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Users Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clv-picture-number" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLV Picture Number
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#24-bit-biphase-coded-signal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24-bit Biphase Coded Signal
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="24-bit Biphase Coded Signal">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lead-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lead-in
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lead-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lead-out
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#picture-numbers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Picture Numbers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#picture-stop-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Picture Stop Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chapter-numbers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Numbers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#programme-time-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Programme Time Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#constant-linear-velocity-clv-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constant Linear Velocity (CLV) Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#programme-status-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Programme Status Code
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Programme Status Code">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#definition-of-the-data-in-programme-status-code-8-dcba-x3-x4-x5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Definition of the data in programme status code 8 DC/BA X3, X4, X5
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hamming-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hamming Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#users-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Users Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clv-picture-number" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLV Picture Number
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="vertical-interval-control-and-address-signals">Vertical Interval Control and Address Signals<a class="headerlink" href="#vertical-interval-control-and-address-signals" title="Permanent link">&para;</a></h1>
+<p>These requirements are according to IEC 60856-1986 Laservision PAL and IEC 60857-1986 Laservision NTSC.</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>The code signals on the video disk provide special information which can be utilized by the player to control special functions and to provide picture frame or time information.</p>
+<p>The CAV format has the following types of codes:</p>
+<ol>
+<li>Lead-in  </li>
+<li>Lead-out  </li>
+<li>Picture numbers  </li>
+<li>Picture stop  </li>
+<li>Chapter numbers  </li>
+<li>Programme status code  </li>
+<li>Users code  </li>
+</ol>
+<p>On CLV format the codes are:</p>
+<ol>
+<li>Lead-in  </li>
+<li>Lead-out  </li>
+<li>Programme time code  </li>
+<li>CLV code  </li>
+<li>Chapter numbers  </li>
+<li>CLV picture number  </li>
+<li>Programme status code  </li>
+<li>Users code  </li>
+</ol>
+<h2 id="24-bit-biphase-coded-signal">24-bit Biphase Coded Signal<a class="headerlink" href="#24-bit-biphase-coded-signal" title="Permanent link">&para;</a></h2>
+<p>This signal is inserted in selected video lines during the vertical interval. It is subdivided into 6 groups of 4 bits and each group can be any hexadecimal word. The first group of 4 bits is the key and starts with a logic one. Each bit cell is 2µs long with the digital level between 30% and 100% (0 to 100 IRE for NTSC).</p>
+<h3 id="lead-in">Lead-in<a class="headerlink" href="#lead-in" title="Permanent link">&para;</a></h3>
+<p>The lead-in code indicates the start of the programme. The 24-bit biphase lead-in code with a hexadecimal value of "88FFFF" is inserted into lines 17, 18, 330 and 331 (17, 18, 280 and 281 for NTSC) during at least a number of tracks corresponding to 1.5 mm prior to the active programme start.</p>
+<h3 id="lead-out">Lead-out<a class="headerlink" href="#lead-out" title="Permanent link">&para;</a></h3>
+<p>The lead-out code indicates the end of the programme. The 24-bit biphase lead-out code with a hexadecimal value of "80EEEE" is inserted in lines 17, 18, 330 and 331 (17, 18, 280 and 281 for NTSC) during at least 2mm after the end of the active programme.</p>
+<h3 id="picture-numbers">Picture Numbers<a class="headerlink" href="#picture-numbers" title="Permanent link">&para;</a></h3>
+<p>The picture numbers shall be present during the active programme on CAV disks. They are unique and in a normal count sequence starting with number 1 at the beginning of the active programme.</p>
+<p>The picture numbers shall be inserted into lines 17 and 18 or in lines 330 and 331, (17 and 18 or into lines 280 and 281 for NTSC) depending on which field is the first of the picture. The hexadecimal value is: FX<sub>1</sub>X<sub>2</sub>X<sub>3</sub>X<sub>4</sub>X<sub>5</sub>  where X<sub>1</sub> through X<sub>5</sub> represent the picture number, X<sub>5</sub> being the least significant digit. The maximum available picture number is 99999 (79999 for NTSC).</p>
+<h3 id="picture-stop-code">Picture Stop Code<a class="headerlink" href="#picture-stop-code" title="Permanent link">&para;</a></h3>
+<p>On CAV disks, the picture stop code enables the playback equipment to switch automatically to the still picture mode from normal speed or slow motion. The 24-bit biphase picture stop code with a hexadecimal value of "82CFFF" is inserted in lines 16 and 17 or 329 and 330 (16 and 17 or 279 and 280 for NTSC) of the field immediately following the field in which the 24-bit picture number was inserted to enable stopping on the selected picture. On CLV disks there is no picture stop code.</p>
+<h3 id="chapter-numbers">Chapter Numbers<a class="headerlink" href="#chapter-numbers" title="Permanent link">&para;</a></h3>
+<p>Chapter numbers indicate parts of the programme as a chapter and are optional. They are unique and in a normal count sequence starting with a selectable number at the beginning of the active programme (i.e. number "0" or "1" or a pre-set number consecutive to the last number of a previous disk with the same programme content). The 24-bit biphase coded chapter numbers, if present, are inserted in lines 17, 18 and 330, 331 (17, 18 and 280, 281 for NTSC) in the fields of the whole active programme area which do not have an insertion of picture numbers on CAV disks. However, for lines 17 and 330 (17 and 280 for NTSC), picture stop code has priority.</p>
+<p>On CLV disks, they are inserted in line 18 or 331 (18 or 281 for NTSC) in the fields of the whole active programme area which do not have an insertion of programme time code and CLV picture number.</p>
+<p>Each chapter number starts with a stop-bit (the first bit after the key) at a zero-logic value during 400 tracks followed by at least 400 tracks with a stop-bit at a one-logic value until the next chapter starts. The zero value stop-bit is intended to disable the search action of the player. The first chapter directly after the lead-in area shall not have a stop-bit of zero-logic value. The hexadecimal value is "8X<sub>1</sub>X<sub>2</sub>DDD". X<sub>1</sub> and X<sub>2</sub> are the chapter numbers. The maximum number is 79.</p>
+<p>On disks with chapters shorter than 800 tracks the stop bit of each chapter number shall have the logic value "one". The minimum length of a chapter will be 30 tracks.</p>
+<h3 id="programme-time-code">Programme Time Code<a class="headerlink" href="#programme-time-code" title="Permanent link">&para;</a></h3>
+<p>The programme time code is always present on-CLV disks during the active programme and indicates the running time (expressed in hours and minutes). The 24-bit biphase programme time code with a hexadecimal value of "FX<sub>1</sub> DDX<sub>2</sub>X<sub>3</sub> " is inserted in lines 17 and 18 or 330 and 331 (17 and 18 or 280 and 281 for NTSC) depending on which field is the first field of the picture.</p>
+<p>X<sub>1</sub> indicates the hours
+X<sub>2</sub> and X<sub>3</sub> indicate the minutes</p>
+<h3 id="constant-linear-velocity-clv-code">Constant Linear Velocity (CLV) Code<a class="headerlink" href="#constant-linear-velocity-clv-code" title="Permanent link">&para;</a></h3>
+<p>The CLV code is always present in the active programme on a CLV disk.</p>
+<p>It indicates the CLV format. The 24-bit CLV code with a hexadecimal value of "87FFFF" is inserted in line 330 or 17 (280 or 17 for NTSC) in the fields of the whole active programme area which do not have an insertion of programme time code and CLV picture number.</p>
+<h3 id="programme-status-code">Programme Status Code<a class="headerlink" href="#programme-status-code" title="Permanent link">&para;</a></h3>
+<p>The programme status code identifies the use of the audio and video channels and will be inserted in the active programme area.</p>
+<p>Code: 8 DC/BA X3, X4, X5 (see "Definition of the data in programme status code" below for explanation)</p>
+<p>Insertion on CLV disks is: line 329 or 16 (279 or 16 for NTSC), in the same fields where CLV code is inserted.</p>
+<p>On CAV disks the insertion is: lines 16 and 329 (16 and 279 for NTSC).</p>
+<p>Note: Picture stop code has priority over the programme status code.</p>
+<h4 id="definition-of-the-data-in-programme-status-code-8-dcba-x3-x4-x5">Definition of the data in programme status code <code>8 DC/BA X3, X4, X5</code><a class="headerlink" href="#definition-of-the-data-in-programme-status-code-8-dcba-x3-x4-x5" title="Permanent link">&para;</a></h4>
+<p><strong>DC</strong>  CX noise reduction on<br />
+<strong>BA</strong>  CX noise reduction off  </p>
+<p><strong>X31</strong> indicates disk size:<br />
+- <code>0</code> = 12-inch<br />
+- <code>1</code> = 8-inch  </p>
+<p><strong>X32</strong> indicates disk side:<br />
+- <code>0</code> = first side<br />
+- <code>1</code> = second side  </p>
+<p><strong>X33</strong> indicates if there are teletext signals present anywhere on the disk or not:<br />
+- <code>0</code> = teletext signals absent<br />
+- <code>1</code> = teletext signals present  </p>
+<p><strong>X34</strong> indicates if the audio signal is FM–FM multiplex modulated or not:<br />
+- <code>0</code> = FM–FM multiplex off<br />
+- <code>1</code> = FM–FM multiplex on  </p>
+<p><strong>X42</strong> indicates if the video format contains normal analogue video signal or, during the<br />
+active parts of the line, a digital signal:  </p>
+<ul>
+<li><code>0</code> = analogue video  </li>
+<li><code>1</code> = digital signal  </li>
+</ul>
+<p><strong>Note.</strong> — This indication of these digital signals in the video is not mandatory but can be an option for the programme maker.</p>
+<p><strong>X41, X43, X44</strong> together with <strong>X34</strong> indicate the status of the audio channels according to the following table:</p>
+<table>
+<thead>
+<tr>
+<th>X41</th>
+<th>X34</th>
+<th>X43</th>
+<th>X44</th>
+<th>Programme dump</th>
+<th>FM–FM multiplex</th>
+<th>Channel I</th>
+<th>Channel II</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>off</td>
+<td>off</td>
+<td>stereo</td>
+<td>stereo</td>
+</tr>
+<tr>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+<td>off</td>
+<td>off</td>
+<td>mono</td>
+<td>mono</td>
+</tr>
+<tr>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+<td>off</td>
+<td>off</td>
+<td>future use</td>
+<td>future use</td>
+</tr>
+<tr>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+<td>1</td>
+<td>off</td>
+<td>off</td>
+<td>bilingual</td>
+<td>bilingual</td>
+</tr>
+<tr>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>off</td>
+<td>on</td>
+<td>stereo</td>
+<td>stereo</td>
+</tr>
+<tr>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+<td>off</td>
+<td>on</td>
+<td>stereo</td>
+<td>bilingual</td>
+</tr>
+<tr>
+<td>0</td>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+<td>off</td>
+<td>on</td>
+<td>cross channel stereo</td>
+<td>cross channel stereo</td>
+</tr>
+<tr>
+<td>0</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+<td>off</td>
+<td>on</td>
+<td>bilingual</td>
+<td>bilingual</td>
+</tr>
+<tr>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>on</td>
+<td>off</td>
+<td>mono dump</td>
+<td>mono dump</td>
+</tr>
+<tr>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+<td>on</td>
+<td>off</td>
+<td>mono dump</td>
+<td>mono dump</td>
+</tr>
+<tr>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+<td>on</td>
+<td>off</td>
+<td>future use</td>
+<td>future use</td>
+</tr>
+<tr>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+<td>1</td>
+<td>on</td>
+<td>off</td>
+<td>mono dump</td>
+<td>mono dump</td>
+</tr>
+<tr>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>on</td>
+<td>on</td>
+<td>stereo dump</td>
+<td>stereo dump</td>
+</tr>
+<tr>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+<td>on</td>
+<td>on</td>
+<td>stereo dump</td>
+<td>stereo dump</td>
+</tr>
+<tr>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+<td>on</td>
+<td>on</td>
+<td>bilingual dump</td>
+<td>bilingual dump</td>
+</tr>
+<tr>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+<td>on</td>
+<td>on</td>
+<td>bilingual dump</td>
+<td>bilingual dump</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Note.</strong> — The indication of programme dump (<strong>X41</strong>) is not mandatory, but an option for the<br />
+programme maker.</p>
+<p><strong>X5</strong> is an error check code on <strong>X4</strong> with even parity bit, according to <strong>Hamming Code</strong>.</p>
+<p><strong>X51</strong> is the parity with <strong>X41, X42 and X44</strong>  </p>
+<p><strong>X52</strong> is the parity with <strong>X41, X43 and X44</strong>  </p>
+<p><strong>X53</strong> is the parity with <strong>X42, X43 and X44</strong></p>
+<h4 id="hamming-code">Hamming Code<a class="headerlink" href="#hamming-code" title="Permanent link">&para;</a></h4>
+<p>— Information vector X<sub>4</sub>:  A = [a<sub>1</sub>, a<sub>2</sub>, a<sub>3</sub>, a<sub>4</sub>]<br />
+— Check vector X<sub>5</sub>: C = [c<sub>1</sub>, c<sub>2</sub>, c<sub>3</sub>]  </p>
+<p>with parity bit: 
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>           4        3
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>     c4 =  Σ ai  +  Σ cj  (modulus 2)
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>          i = 1     j = 1
+</code></pre></div></p>
+<p>— Encoding   V = A · G = [a<sub>1</sub>, a<sub>2</sub>, a<sub>3</sub>, a<sub>4</sub>, c<sub>1</sub>, c<sub>2</sub>, c<sub>3</sub>]</p>
+<div class="highlight"><pre><span></span><code>Where G is the matrix:
+
+⎡1 0 0 0 1 1 0⎤
+⎢0 1 0 0 1 0 1⎥
+⎢0 0 1 0 0 1 1⎥
+⎣0 0 0 1 1 1 1⎦
+</code></pre></div>
+<p>— Read out code U = [a<sub>1</sub>, a<sub>2</sub>, a<sub>3</sub>, a<sub>4</sub>, c<sub>1</sub>, c<sub>2</sub>, c<sub>3</sub>] </p>
+<p>— Decoding: Syndrome:  S = U · M = [s<sub>1</sub>, s<sub>2</sub>, s<sub>3</sub>]</p>
+<p>Where M is the matrix:</p>
+<div class="highlight"><pre><span></span><code>⎡1 1 0⎤
+⎢1 0 1⎥
+⎢0 1 1⎥
+⎢1 1 1⎥
+⎢1 0 0⎥
+⎢0 1 0⎥
+⎣0 0 1⎦
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">s<sub>1</sub></th>
+<th style="text-align: right;">s<sub>2</sub></th>
+<th style="text-align: right;">s<sub>3</sub></th>
+<th>Correction if 1 bit error</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td>No error</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td>c<sub>1</sub></td>
+</tr>
+<tr>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td>c<sub>2</sub></td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td>a<sub>1</sub></td>
+</tr>
+<tr>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td>c<sub>3</sub></td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td>a<sub>2</sub></td>
+</tr>
+<tr>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td>a<sub>3</sub></td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td>a<sub>4</sub></td>
+</tr>
+</tbody>
+</table>
+<p>— Error detection with parity (c<sub>4</sub>):</p>
+<div class="highlight"><pre><span></span><code>1. If S = 0 then U is valid  
+2. If S ≠ 0 and parity is error, then U can be corrected from S  
+3. If S ≠ 0 but parity is valid, then U includes a two bit error not to be correc
+</code></pre></div>
+<h3 id="users-code">Users Code<a class="headerlink" href="#users-code" title="Permanent link">&para;</a></h3>
+<p>The users code is intended for filing and identification and can be inserted as an option in the lead-in and lead-out area. The data content is up to the disk manufacturer.</p>
+<p>Code: 8 X1 D X3 X4 X5</p>
+<p>X1 = 0 through 7; X3, X4, X5 = 0 through F.</p>
+<p>Insertion in lead-in and/or lead-out area in the lines 16, 329 (16, 279 for NTSC).</p>
+<h3 id="clv-picture-number">CLV Picture Number<a class="headerlink" href="#clv-picture-number" title="Permanent link">&para;</a></h3>
+<p>On the CLV disk the CLV picture number identifies each video frame and can also be used to detect hang-ups.</p>
+<p>Code: 8 X1 E X3 X4 X5</p>
+<p>X1 = A through F: X3 = 0 through 9</p>
+<p>X1 and X3 indicate the seconds of the run time together with the hours and minutes of the programme time code.</p>
+<p>X4 and X5 are the picture numbers within 1s, thus:</p>
+<p>X4 = 0 through 2 and X5 = 0 through 9.</p>
+<p>The CLV picture number shall be inserted into line 16 or 329 (16 or 279 for NTSC) depending on which field is the first field of the picture.</p>
+<h1 id="amendment-2">Amendment 2<a class="headerlink" href="#amendment-2" title="Permanent link">&para;</a></h1>
+<p>Both the PAL and NTSC IEC specification have additional requirements in the "amendment 2" documents.</p>
+<h2 id="clv-picture-number_1">CLV picture number<a class="headerlink" href="#clv-picture-number_1" title="Permanent link">&para;</a></h2>
+<p>Replace the text of the previous "CLV Picture Number" definition with the following text:</p>
+<p>On the CLV disk the CLV picture number identifies each video frame and can also be used to detect hang-ups.</p>
+<p>Code: 8 X1 E X3 X4 X5</p>
+<p>X1 = A to F and X3 = 0 to 9.</p>
+<p>X1 and X3 indicate the seconds of the run time together with the hours and minutes of the programme time code.</p>
+<p>X4 and X5 are the picture numbers within 1s, thus:</p>
+<p>X4 = 0 to 2 and X5 = 0 to 9.</p>
+<p>The CLV picture number shall be inserted into line 16 or 329 (16 or 279 for NTSC) depending on which field is the first field of the picture.</p>
+<p>The start of the programme time code is zero hour and zero minute, and that of CLV picture number is zero second and zero picture at the beginning of the active programme.</p>
+<h3 id="clv-picture-number-ntsc-only">CLV picture number (NTSC only)<a class="headerlink" href="#clv-picture-number-ntsc-only" title="Permanent link">&para;</a></h3>
+<p>To resolve the colour time error, the seconds count within the CLV picture number should jump to the next value (X1, X3 part incremented by 1; X4 and X5 part reset to zero) at the first following renewal of the CLV picture number, each time the accumulated number of video frames (N) equals one of the numbers in the following sequence:</p>
+<p>N = 8991 X L + 899 x M</p>
+<p>where Land M are integer, and 0 &lt;= L and 0 &lt;= M &lt;= 9</p>
+<p>For example:</p>
+<p>N = 899, 1798, ... , 8091, 8991, 9890, ...</p>
+<h2 id="definition-of-the-data-in-programme-status-code">Definition of the data in programme status code<a class="headerlink" href="#definition-of-the-data-in-programme-status-code" title="Permanent link">&para;</a></h2>
+<p>DC = CX noise reduction on
+BA = CX noise reduction off</p>
+<p>X31 indicates disk size:
+0 = 12 inch; 1 = 8 inch</p>
+<p>X32 indicates disk side:
+0 = first side; 1 = second side</p>
+<p>X33 indicates if there are teletext signals present anywhere on the disk or not:
+0 = teletext signal absent; 1 = teletext signal present</p>
+<p>X34 indicates if it is allowed to copy the programme:
+0 = copy prohibited; 1 = copy permitted</p>
+<p>X41, X42, X43 together with X44 indicate the status of the analogue audio channels and
+the video signal according to the following table:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Mode</th>
+<th>X41, X42, X43, X44</th>
+<th>Videosignal</th>
+<th>Channel 1 Channel 2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">0</td>
+<td>0000</td>
+<td>Standard</td>
+<td>Stereo</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td>0001</td>
+<td>Standard</td>
+<td>Mono</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td>0010</td>
+<td>Standard</td>
+<td>Audio subcarriers off</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td>0011</td>
+<td>Standard</td>
+<td>Bilingual</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td>0100</td>
+<td>Future use</td>
+<td>Future use</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td>0101</td>
+<td>Future use</td>
+<td>Future use</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td>0110</td>
+<td>Future use</td>
+<td>Future use</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td>0111</td>
+<td>Future use</td>
+<td>Future use</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td>1000</td>
+<td>Standard</td>
+<td>Mono Dump</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td>1001</td>
+<td>Future use</td>
+<td>Future use</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td>1010</td>
+<td>Future use</td>
+<td>Future use</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td>1011</td>
+<td>Future use</td>
+<td>Future use</td>
+</tr>
+<tr>
+<td style="text-align: right;">12</td>
+<td>1100</td>
+<td>Future use</td>
+<td>Future use</td>
+</tr>
+<tr>
+<td style="text-align: right;">13</td>
+<td>1101</td>
+<td>Future use</td>
+<td>Future use</td>
+</tr>
+<tr>
+<td style="text-align: right;">14</td>
+<td>1110</td>
+<td>Future use</td>
+<td>Future use</td>
+</tr>
+<tr>
+<td style="text-align: right;">15</td>
+<td>1111</td>
+<td>Future use</td>
+<td>Future use</td>
+</tr>
+</tbody>
+</table>
+<h2 id="picture-numbers-ntsc-only">Picture numbers (NTSC only)<a class="headerlink" href="#picture-numbers-ntsc-only" title="Permanent link">&para;</a></h2>
+<p>The picture numbers are always present on CAV disks. They are unique and in normal count sequence, starting with the number 1 at the beginning of the active programme. The maximum available picture number is 79999.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "toc.follow"], "search": "../../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>

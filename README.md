@@ -1,6 +1,6 @@
 # encode-orc
 
-![](docs/assets/encode-orc_logotype.png)
+![](docs/encode-orc/assets/encode-orc_logotype.png)
 
 Encode-Orc is a PAL and NTSC encoder capable of producing ld-decode and vhs-decode compatible TBC files (and SQLite metadata) to assist with testing.
 
@@ -25,7 +25,7 @@ The first PAL-M release has an explicit metadata policy:
 
 The PAL-M comprehensive and GGV fixtures in this repository use NTSC source assets intentionally to validate that PAL-M accepts NTSC-like source dimensions while still producing PAL-M output metadata.
 
-Please see the [Encode-Orc Documentation](https://simoninns.github.io/decode-orc-docs/encode-orc/) for details.
+Please see the [Encode-Orc Documentation](https://simoninns.github.io/encode-orc/) for details.
 
 Note that encode-orc is designed to be a sub-module to the decode-orc project.
 
