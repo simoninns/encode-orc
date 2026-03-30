@@ -24,7 +24,7 @@ sections:
   - name: "Test"
     source:
       # This works automatically - ENCODE_ORC_ASSETS is already set by Nix
-      file: "${ENCODE_ORC_ASSETS}/pal/raw/625_50_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x576/stills/raw/75_BARS.raw"
 ```
 
 The Nix flake will wrap the binary with:
@@ -120,7 +120,7 @@ output:
 sections:
   - name: "Content"
     source:
-      file: "${ENCODE_ORC_ASSETS}/pal/raw/625_50_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x576/stills/raw/75_BARS.raw"
 ```
 
 This makes projects portable across different installation locations and deployment scenarios.
