@@ -281,7 +281,6 @@ set(SOURCES
     src/pipeline/loaders/mp4_loader.cpp
     src/pipeline/metadata_generators/vbi_metadata_generator.cpp
     src/pipeline/metadata_generators/color_burst_pipeline_generator.cpp
-    src/pipeline/metadata_generators/vitc_pipeline_generator.cpp
     src/pipeline/metadata_generators/vits_pipeline_generator.cpp
     src/pipeline/metadata_generators/biphase_vbi_generator.cpp
     src/pipeline/metadata_generators/pipeline_generators.cpp

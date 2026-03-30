@@ -1,0 +1,50 @@
+name: "Comprehensive NTSC VITC Composite Test"
+description: "Comprehensive unit test for NTSC VITC composite format covering VITC line semantics"
+
+output:
+  filename: "${ENCODE_ORC_OUTPUT_ROOT}/comprehensive-ntsc-vitc-composite"
+  format: "ntsc-composite"
+  writer: "tbc"
+  metadata_decoder: "encode-orc"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+  
+  metadata:
+    generators:
+      - type: "color-burst"
+        enabled: true
+      
+      - type: "vitc"
+        enabled: true
+        # Default NTSC VITC lines [13, 15] (0-indexed, field-relative)
+        # These map to lines 14, 16 in 1-indexed composite numbering
+
+sections:
+  # Section 1 - Explicit timecode start
+  - name: "Section1_Intro"
+    duration: 60
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/75_BARS.raw"
+    vitc:
+      timecode_start: "00:00:00.00"
+
+  # Section 2 - Auto-continue timecode
+  - name: "Section2_Main"
+    duration: 120
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/100_BARS.raw"
+
+  # Section 3 - Restart timecode at different value
+  - name: "Section3_Scene2"
+    duration: 60
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/720x480/stills/raw/75_BARS.raw"
+    vitc:
+      timecode_start: "00:01:00.00"

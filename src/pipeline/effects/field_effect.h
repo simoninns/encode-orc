@@ -18,6 +18,7 @@
 #include <tuple>
 #include <vector>
 #include <mutex>
+#include <condition_variable>
 
 namespace encode_orc {
 

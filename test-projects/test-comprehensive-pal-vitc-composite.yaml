@@ -1,0 +1,50 @@
+name: "Comprehensive PAL VITC Composite Test"
+description: "Comprehensive unit test for PAL VITC composite format covering VITC line semantics"
+
+output:
+  filename: "${ENCODE_ORC_OUTPUT_ROOT}/comprehensive-pal-vitc-composite"
+  format: "pal-composite"
+  writer: "tbc"
+  metadata_decoder: "encode-orc"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+  
+  metadata:
+    generators:
+      - type: "color-burst"
+        enabled: true
+      
+      - type: "vitc"
+        enabled: true
+        # Default PAL VITC lines [18, 20] (0-indexed, field-relative)
+        # These map to lines 19, 20 in 1-indexed composite numbering
+
+sections:
+  # Section 1 - Explicit timecode start
+  - name: "Section1_Intro"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/720x576/stills/raw/75_BARS.raw"
+    vitc:
+      timecode_start: "00:00:00.00"
+
+  # Section 2 - Auto-continue timecode
+  - name: "Section2_Main"
+    duration: 100
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/720x576/stills/raw/100_BARS.raw"
+
+  # Section 3 - Restart timecode at different value
+  - name: "Section3_Scene2"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/720x576/stills/raw/75_BARS.raw"
+    vitc:
+      timecode_start: "00:01:00.00"

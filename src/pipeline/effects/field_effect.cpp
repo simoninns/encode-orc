@@ -119,40 +119,48 @@ DropoutSimulator::DropoutSimulator(double density, uint32_t seed)
 void DropoutSimulator::apply(Field& field, const FieldEffectContext& context) {
     if (!enabled_) return;
     if (density_ <= 0.0) return;
-    
-    // Lock for thread safety - entire method modifies shared state
-    std::lock_guard<std::mutex> lock(dropout_mutex_);
-    
-    // For YC mode: if this is C field and we have cached Y dropouts, use them
-    if (context.field_type == FieldType::C && 
-        cached_y_field_number_ == context.field_number && 
-        !cached_y_dropouts_.empty()) {
-        // Apply cached dropouts from Y field to C field
-        apply_cached_dropouts(field, context);
-        return;
-    }
-    
-    // Clear dropouts from previous field
-    last_field_dropouts_.clear();
-    
-    // For YC mode: if this is Y field, clear cache to prepare for new dropouts
-    if (context.field_type == FieldType::Y) {
-        cached_y_dropouts_.clear();
-        cached_y_field_number_ = context.field_number;
-    }
-    
+
     auto& data = field.data();
     int32_t width = field.width();
     int32_t height = field.height();
 
     if (width <= 0 || height <= 0) return;
 
-    // Random generator seeded per field for reproducibility
-    std::mt19937 rng(seed_ + context.field_number);
-    std::uniform_real_distribution<double> uniform01(0.0, 1.0);
+    // Deterministic dropout generation: derive RNG state from
+    // (seed, field number, line, event index) so output is independent of
+    // worker thread scheduling order.
+    auto make_rng = [this](int32_t field_number, int32_t line, int32_t event_index, uint32_t salt) -> std::mt19937 {
+        uint64_t x = static_cast<uint64_t>(seed_);
+        x ^= (static_cast<uint64_t>(field_number) + 0x9e3779b97f4a7c15ULL);
+        x ^= (static_cast<uint64_t>(line) << 32);
+        x ^= (static_cast<uint64_t>(event_index) << 1);
+        x ^= static_cast<uint64_t>(salt) * 0xbf58476d1ce4e5b9ULL;
+        x ^= (x >> 30);
+        x *= 0xbf58476d1ce4e5b9ULL;
+        x ^= (x >> 27);
+        x *= 0x94d049bb133111ebULL;
+        x ^= (x >> 31);
+        return std::mt19937(static_cast<uint32_t>(x & 0xffffffffULL));
+    };
 
-    // Dropout length distribution: mostly short (5-10), sometimes longer
-    auto sample_dropout_length = [&](int32_t max_width) -> int32_t {
+    // Model dropouts as rapid amplitude excursions with noisy edges
+    std::normal_distribution<double> body_noise(0.0, 800.0);
+    std::normal_distribution<double> edge_noise(0.0, 1600.0);
+
+    std::vector<std::tuple<int32_t, int32_t, int32_t>> field_dropouts_local;
+    const bool track_metadata = (context.field_type != FieldType::C);
+
+    constexpr int32_t kMaxMultiFieldDuration = 12;
+    constexpr double kAverageDropoutLength = 8.0;
+    const double event_rate = (density_ * static_cast<double>(width)) / kAverageDropoutLength;
+
+    double probability_sum = multi_field_prob_ + single_field_prob_;
+    if (probability_sum <= 0.0) probability_sum = 1.0;
+    const double multi_ratio = multi_field_prob_ / probability_sum;
+    const double single_ratio = single_field_prob_ / probability_sum;
+
+    auto sample_dropout_length = [&](std::mt19937& rng, int32_t max_width) -> int32_t {
+        std::uniform_real_distribution<double> uniform01(0.0, 1.0);
         double r = uniform01(rng);
         if (r < 0.90) {
             std::uniform_int_distribution<int32_t> short_len(5, 10);
@@ -167,33 +175,21 @@ void DropoutSimulator::apply(Field& field, const FieldEffectContext& context) {
         return std::min(long_len(rng), max_width);
     };
 
-    // Model dropouts as rapid amplitude excursions with noisy edges
-    std::normal_distribution<double> body_noise(0.0, 800.0);
-    std::normal_distribution<double> edge_noise(0.0, 1600.0);
-
     auto clamp_sample = [](double value) -> uint16_t {
         value = std::max(0.0, std::min(65535.0, value));
         return static_cast<uint16_t>(value + 0.5);
     };
 
     auto apply_dropout = [&](int32_t line, int32_t start, int32_t length,
-                             double base_excursion, double amplitude, 
-                             int32_t edge_len) {
+                             double base_excursion, double amplitude,
+                             int32_t edge_len,
+                             std::mt19937& rng,
+                             bool track_this_dropout) {
         if (line < 0 || line >= height || start < 0 || start + length > width) return;
 
         // Track the dropout location
-        last_field_dropouts_.emplace_back(line, start, start + length);
-        
-        // For YC mode: if this is Y field, cache the dropout parameters
-        if (context.field_type == FieldType::Y) {
-            CachedDropout cached;
-            cached.line = line;
-            cached.start = start;
-            cached.length = length;
-            cached.base_excursion = base_excursion;
-            cached.amplitude = amplitude;
-            cached.edge_len = edge_len;
-            cached_y_dropouts_.push_back(cached);
+        if (track_this_dropout) {
+            field_dropouts_local.emplace_back(line, start, start + length);
         }
 
         std::normal_distribution<double> modulation_step(0.0, amplitude * 0.08);
@@ -228,194 +224,132 @@ void DropoutSimulator::apply(Field& field, const FieldEffectContext& context) {
         }
     };
 
-    // Generate new single-field and multi-field dropouts if this field hasn't been processed
-    if (context.field_number > last_processed_field_) {
-        last_processed_field_ = context.field_number;
-
-        // Track occupied regions per line to prevent overlaps
-        // Each entry is a pair of (start, end) positions
-        std::vector<std::vector<std::pair<int32_t, int32_t>>> occupied_regions(height);
-        
-        // First, mark regions occupied by active multi-field dropouts
-        for (auto& mfd : multi_field_dropouts_) {
-            int32_t field_offset = context.field_number - mfd.start_field;
-            if (field_offset < 0 || field_offset >= mfd.duration_fields) continue;
-
-            double progress = static_cast<double>(field_offset) / static_cast<double>(mfd.duration_fields);
-            double growth_factor = 1.0 + 0.5 * std::sin(M_PI * progress);
-            int32_t current_length = static_cast<int32_t>(mfd.initial_length * growth_factor);
-            
-            int32_t left_extent = current_length / 2;
-            int32_t start = std::max(0, mfd.center_x - left_extent);
-            int32_t end = std::min(width, start + current_length);
-            
-            if (mfd.line_number >= 0 && mfd.line_number < height && end > start) {
-                occupied_regions[mfd.line_number].emplace_back(start, end);
+    auto has_overlap = [](const std::vector<std::pair<int32_t, int32_t>>& regions,
+                          int32_t start, int32_t end) -> bool {
+        for (const auto& region : regions) {
+            if (start < region.second && end > region.first) {
+                return true;
             }
         }
+        return false;
+    };
 
-        // Lambda to check if a region overlaps with any occupied regions
-        auto has_overlap = [](const std::vector<std::pair<int32_t, int32_t>>& regions, 
-                             int32_t start, int32_t end) -> bool {
-            for (const auto& region : regions) {
-                // Check for overlap: [start, end) overlaps with [region.first, region.second)
-                if (start < region.second && end > region.first) {
-                    return true;
-                }
+    std::vector<std::vector<std::pair<int32_t, int32_t>>> occupied_regions(height);
+
+    // Replay active multi-field events deterministically from prior start fields.
+    for (int32_t line = 0; line < height; ++line) {
+        for (int32_t start_field = std::max(0, context.field_number - kMaxMultiFieldDuration + 1);
+             start_field <= context.field_number;
+             ++start_field) {
+            if (multi_field_prob_ <= 0.0) {
+                continue;
             }
-            return false;
-        };
 
-        // Interpret density as expected fraction of samples affected per line
-        constexpr double average_dropout_length = 8.0;
-
-        for (int32_t line = 0; line < height; ++line) {
-            // Calculate available space (non-occupied)
-            int32_t occupied_samples = 0;
-            for (const auto& region : occupied_regions[line]) {
-                occupied_samples += region.second - region.first;
+            std::mt19937 count_rng = make_rng(start_field, line, 0, 0xA11CEu);
+            std::poisson_distribution<int> multi_event_count(std::max(0.0, event_rate * multi_ratio));
+            int events = multi_event_count(count_rng);
+            if (events <= 0) {
+                continue;
             }
-            int32_t available_samples = std::max(0, width - occupied_samples);
-            
-            if (available_samples <= 0) continue;
-            
-            double adjusted_density = (density_ * static_cast<double>(available_samples)) / static_cast<double>(width);
-            double adjusted_events = (adjusted_density * static_cast<double>(width)) / average_dropout_length;
-            
-            std::poisson_distribution<int> event_count(std::max(0.0, adjusted_events));
-            int events = event_count(rng);
-            if (events <= 0) continue;
 
             for (int e = 0; e < events; ++e) {
-                // Decide if this dropout should span multiple fields
-                bool is_multi_field = uniform01(rng) < (multi_field_prob_ / (multi_field_prob_ + single_field_prob_));
+                std::mt19937 rng = make_rng(start_field, line, e, 0xD09u);
+                std::uniform_real_distribution<double> uniform01(0.0, 1.0);
 
-                if (is_multi_field && multi_field_prob_ > 0.0) {
-                    int32_t initial_length = sample_dropout_length(width);
-                    if (initial_length <= 0) continue;
-
-                    // Try to find a non-overlapping position (max 10 attempts)
-                    bool found_position = false;
-                    int32_t center_x = 0;
-                    for (int attempt = 0; attempt < 10; ++attempt) {
-                        center_x = std::uniform_int_distribution<int32_t>(initial_length / 2, width - 1 - initial_length / 2)(rng);
-                        int32_t left_extent = initial_length / 2;
-                        int32_t test_start = std::max(0, center_x - left_extent);
-                        int32_t test_end = std::min(width, test_start + initial_length);
-                        
-                        if (!has_overlap(occupied_regions[line], test_start, test_end)) {
-                            found_position = true;
-                            break;
-                        }
-                    }
-                    
-                    if (!found_position) continue;  // Skip if couldn't find non-overlapping position
-
-                    std::uniform_int_distribution<int32_t> duration_dist(5, 12);
-                    int32_t duration = duration_dist(rng);
-
-                    MultiFieldDropout mfd;
-                    mfd.start_field = context.field_number;
-                    mfd.duration_fields = duration;
-                    mfd.line_number = line;
-                    mfd.center_x = center_x;
-                    mfd.initial_length = initial_length;
-                    
-                    double sign = (uniform01(rng) < 0.5) ? -1.0 : 1.0;
-                    mfd.amplitude = (0.05 + 0.95 * uniform01(rng)) * 32768.0;
-                    mfd.base_excursion = sign * mfd.amplitude;
-
-                    multi_field_dropouts_.push_back(mfd);
-                    
-                    // Mark this region as occupied
-                    int32_t left_extent = initial_length / 2;
-                    int32_t start = std::max(0, center_x - left_extent);
-                    int32_t end = std::min(width, start + initial_length);
-                    occupied_regions[line].emplace_back(start, end);
-                    
-                } else if (!is_multi_field && single_field_prob_ > 0.0) {
-                    // Create single-field dropout immediately
-                    int32_t length = sample_dropout_length(width);
-                    if (length <= 0) continue;
-
-                    // Try to find a non-overlapping position (max 10 attempts)
-                    bool found_position = false;
-                    int32_t start = 0;
-                    for (int attempt = 0; attempt < 10; ++attempt) {
-                        start = std::uniform_int_distribution<int32_t>(0, width - 1)(rng);
-                        int32_t end = std::min(width, start + length);
-                        length = end - start;
-                        
-                        if (length > 0 && !has_overlap(occupied_regions[line], start, end)) {
-                            found_position = true;
-                            break;
-                        }
-                    }
-                    
-                    if (!found_position || length <= 0) continue;  // Skip if couldn't find non-overlapping position
-
-                    double sign = (uniform01(rng) < 0.5) ? -1.0 : 1.0;
-                    double amplitude = (0.05 + 0.95 * uniform01(rng)) * 32768.0;
-                    double base_excursion = sign * amplitude;
-
-                    int32_t min_edge = (length >= 40) ? 3 : 1;
-                    int32_t max_edge = (length >= 80) ? 12 : (length >= 40 ? 8 : 4);
-                    std::uniform_int_distribution<int32_t> edge_len_dist(min_edge, max_edge);
-                    int32_t edge_len = std::min<int32_t>(length / 2, edge_len_dist(rng));
-                    if (edge_len < 1) edge_len = 1;
-
-                    apply_dropout(line, start, length, base_excursion, amplitude, edge_len);
-                    
-                    // Mark this region as occupied
-                    occupied_regions[line].emplace_back(start, start + length);
+                int32_t initial_length = sample_dropout_length(rng, width);
+                if (initial_length <= 0) {
+                    continue;
                 }
+
+                std::uniform_int_distribution<int32_t> duration_dist(5, 12);
+                int32_t duration = duration_dist(rng);
+                int32_t field_offset = context.field_number - start_field;
+                if (field_offset < 0 || field_offset >= duration) {
+                    continue;
+                }
+
+                int32_t center_low = initial_length / 2;
+                int32_t center_high = std::max(center_low, width - 1 - initial_length / 2);
+                std::uniform_int_distribution<int32_t> center_dist(center_low, center_high);
+                int32_t center_x = center_dist(rng);
+
+                double progress = static_cast<double>(field_offset) / static_cast<double>(duration);
+                double growth_factor = 1.0 + 0.5 * std::sin(M_PI * progress);
+                int32_t current_length = static_cast<int32_t>(initial_length * growth_factor);
+                int32_t left_extent = current_length / 2;
+                int32_t start = std::max(0, center_x - left_extent);
+                int32_t end = std::min(width, start + current_length);
+                current_length = end - start;
+                if (current_length <= 0 || has_overlap(occupied_regions[line], start, end)) {
+                    continue;
+                }
+
+                double sign = (uniform01(rng) < 0.5) ? -1.0 : 1.0;
+                double amplitude = (0.05 + 0.95 * uniform01(rng)) * 32768.0;
+                double base_excursion = sign * amplitude;
+
+                int32_t min_edge = (current_length >= 40) ? 3 : 1;
+                int32_t max_edge = (current_length >= 80) ? 12 : (current_length >= 40 ? 8 : 4);
+                std::uniform_int_distribution<int32_t> edge_len_dist(min_edge, max_edge);
+                int32_t edge_len = std::min<int32_t>(current_length / 2, edge_len_dist(rng));
+                if (edge_len < 1) edge_len = 1;
+
+                apply_dropout(line, start, current_length, base_excursion, amplitude, edge_len, rng, track_metadata);
+                occupied_regions[line].emplace_back(start, end);
             }
         }
     }
 
-    // Apply multi-field dropouts that are active for this field
-    for (auto& mfd : multi_field_dropouts_) {
-        int32_t field_offset = context.field_number - mfd.start_field;
-        if (field_offset < 0 || field_offset >= mfd.duration_fields) continue;
-
-        // Growth/shrinkage profile: peak at mid-point, shrinks towards edges
-        double progress = static_cast<double>(field_offset) / static_cast<double>(mfd.duration_fields);
-        double growth_factor = 1.0 + 0.5 * std::sin(M_PI * progress);  // Peaks at 1.5x at mid-point
-        int32_t current_length = static_cast<int32_t>(mfd.initial_length * growth_factor);
-
-        // Calculate spread left and right from center
-        int32_t left_extent = current_length / 2;
-
-        int32_t start = mfd.center_x - left_extent;
-        if (start < 0) {
-            start = 0;
+    // Generate single-field events for this field only.
+    for (int32_t line = 0; line < height; ++line) {
+        if (single_field_prob_ <= 0.0) {
+            continue;
         }
-        if (start + current_length > width) {
-            current_length = width - start;
+
+        std::mt19937 count_rng = make_rng(context.field_number, line, 0, 0x51A6E0u);
+        std::poisson_distribution<int> single_event_count(std::max(0.0, event_rate * single_ratio));
+        int events = single_event_count(count_rng);
+        if (events <= 0) {
+            continue;
         }
-        if (current_length <= 0) continue;
 
-        // Use the stored excursion characteristics (generated when dropout was created)
-        int32_t min_edge = (current_length >= 40) ? 3 : 1;
-        int32_t max_edge = (current_length >= 80) ? 12 : (current_length >= 40 ? 8 : 4);
-        int32_t edge_len = std::min<int32_t>(current_length / 2,
-                                              std::uniform_int_distribution<int32_t>(min_edge, max_edge)(rng));
-        if (edge_len < 1) edge_len = 1;
+        for (int e = 0; e < events; ++e) {
+            std::mt19937 rng = make_rng(context.field_number, line, e, 0x51A6E1u);
+            std::uniform_real_distribution<double> uniform01(0.0, 1.0);
 
-        apply_dropout(mfd.line_number, start, current_length, mfd.base_excursion, mfd.amplitude, edge_len);
+            int32_t length = sample_dropout_length(rng, width);
+            if (length <= 0) {
+                continue;
+            }
+
+            std::uniform_int_distribution<int32_t> start_dist(0, std::max(0, width - 1));
+            int32_t start = start_dist(rng);
+            int32_t end = std::min(width, start + length);
+            length = end - start;
+            if (length <= 0 || has_overlap(occupied_regions[line], start, end)) {
+                continue;
+            }
+
+            double sign = (uniform01(rng) < 0.5) ? -1.0 : 1.0;
+            double amplitude = (0.05 + 0.95 * uniform01(rng)) * 32768.0;
+            double base_excursion = sign * amplitude;
+
+            int32_t min_edge = (length >= 40) ? 3 : 1;
+            int32_t max_edge = (length >= 80) ? 12 : (length >= 40 ? 8 : 4);
+            std::uniform_int_distribution<int32_t> edge_len_dist(min_edge, max_edge);
+            int32_t edge_len = std::min<int32_t>(length / 2, edge_len_dist(rng));
+            if (edge_len < 1) edge_len = 1;
+
+            apply_dropout(line, start, length, base_excursion, amplitude, edge_len, rng, track_metadata);
+            occupied_regions[line].emplace_back(start, end);
+        }
     }
 
-    // Remove expired multi-field dropouts
-    multi_field_dropouts_.erase(
-        std::remove_if(multi_field_dropouts_.begin(), multi_field_dropouts_.end(),
-                      [context](const MultiFieldDropout& mfd) {
-                          return context.field_number >= mfd.start_field + mfd.duration_fields;
-                      }),
-        multi_field_dropouts_.end()
-    );
-
-    // Store dropouts for this field (already protected by method-level mutex)
-    field_dropouts_[context.field_number] = last_field_dropouts_;
+    if (track_metadata) {
+        std::lock_guard<std::mutex> lock(dropout_mutex_);
+        last_field_dropouts_ = field_dropouts_local;
+        field_dropouts_[context.field_number] = field_dropouts_local;
+    }
 }
 
 void DropoutSimulator::apply_cached_dropouts(Field& field, const FieldEffectContext& context) {

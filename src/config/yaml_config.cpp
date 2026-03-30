@@ -53,16 +53,13 @@ static bool parse_pipeline_config(const YAML::Node& pipeline_node, PipelineConfi
                 }
                 
                 if (gen_cfg.type == "vitc") {
-                    // Parse lines array
+                    // Parse lines array (optional; if empty, system defaults apply)
                     if (gen_node["lines"] && gen_node["lines"].IsSequence()) {
                         for (const auto& line_node : gen_node["lines"]) {
                             gen_cfg.lines.push_back(line_node.as<int32_t>());
                         }
                     }
-                    // Parse start_frame_offset
-                    if (gen_node["start_frame_offset"]) {
-                        gen_cfg.start_frame_offset = gen_node["start_frame_offset"].as<int32_t>();
-                    }
+                    // Note: timecode offset is controlled via section-level vitc.timecode_start
                 }
                 
                 if (gen_cfg.type == "vits-pal" || gen_cfg.type == "vits-ntsc") {

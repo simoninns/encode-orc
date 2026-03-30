@@ -24,7 +24,6 @@ pipeline:
       - type: "vitc"
         enabled: true
         lines: [19, 20, 331, 332]
-        start_frame_offset: 0
   
   effects:
     - type: "noise"

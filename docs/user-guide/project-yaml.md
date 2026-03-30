@@ -1162,79 +1162,205 @@ biphase-vbi:
 
 ---
 
-## VITC Configuration
+## VITC (Vertical Interval Timecode) Configuration
 
-Section-level VITC (Vertical Interval Time Code) configuration for consumer tape formats. Used with `vitc` generator.
+VITC encodes consumer-tape timecode within the blanking period of video frames. Timecode is controlled at the **section level** using `vitc.timecode_start`. Line placement is controlled at the **pipeline level** using the `vitc` generator.
+
+### Canonical VITC Semantics
+
+**Line Numbering:**
+- Line numbers in the VITC generator config are **0-indexed** and **field-relative**
+- Both field 1 (odd) and field 2 (even) have their own blanking areas with distinct line numbers
+- If no explicit lines are specified, system-standard defaults apply:
+  - **PAL**: lines [18, 20] (VITC ATC position per EBU R98-1997)
+  - **NTSC**: lines [13, 15] (VITC position per SMPTE 12M-1999)
+  - **PAL-M**: lines [13, 15] (NTSC-compatible geometry on 525-line signal)
+
+**Timecode Control:**
+- Timecode is managed at the **section level** via `vitc.timecode_start` (format: `HH:MM:SS:FF`)
+- Each section's starting timecode is explicit or inherited from the previous section
+- Timecode increments automatically each frame according to the video frame rate
+- To restart/jump timecode, specify `timecode_start` again in a later section
+- If no section specifies `timecode_start`, VITC begins from 00:00:00:00
+
+### Generator Configuration
+
+```yaml
+pipeline:
+  metadata:
+    generators:
+      # Use default lines for the video system (recommended)
+      - type: "vitc"
+        enabled: true
+      
+      # OR specify custom lines (advanced)
+      - type: "vitc"
+        enabled: true
+        lines: [18, 20]  # PAL example: 0-indexed, field-relative
+```
+
+### Section Configuration
 
 ```yaml
 sections:
   - name: "Lead-in"
-    duration: 2
+    duration: 25  # 1 second at 25 fps (PAL)
+    source:
+      type: "yuv422-image"
+      file: "assets/720x576/stills/raw/75_BARS.raw"
+    vitc:
+      timecode_start: "00:00:00.00"  # Explicitly set starting timecode
+  
+  - name: "Content"
+    duration: 2500  # 100 seconds at 25 fps (PAL)
+    source:
+      type: "mov-file"
+      file: "assets/720x576/video/mov_25_00/content.mov"
+    # No VITC block needed - continues from previous section's ending timecode
+  
+  - name: "Credits"
+    duration: 250  # 10 seconds
+    source:
+      type: "yuv422-image"
+      file: "assets/720x576/stills/raw/75_BARS.raw"
+    vitc:
+      timecode_start: "00:02:00.00"  # Restart/jump to 2 minutes
+```
+
+### `timecode_start` (optional)
+**Type:** String  
+**Format:** `HH:MM:SS:FF`
+
+Starting timecode for this section:
+- **HH**: Hours (00-99)
+- **MM**: Minutes (00-59)
+- **SS**: Seconds (00-59)
+- **FF**: Frames (00-24 for PAL, 00-29 for NTSC/PAL-M)
+
+**Behavior:**
+- Only required for the **first** section using VITC
+- Subsequent sections automatically continue from the previous section's ending timecode
+- To restart timecode at a different value, specify `timecode_start` again
+- Omitting `timecode_start` on all sections defaults to starting at 00:00:00:00
+
+**Important Notes:**
+- Frame count (FF) must not exceed the system's maximum frames per second minus 1
+  - PAL: FF must be 00-24 (25 fps)
+  - NTSC: FF must be 00-29 (≈30 fps)
+  - PAL-M: FF must be 00-29 (29.97 fps)
+- If no section specifies `timecode_start`, VITC will start from 00:00:00:00
+- The pipeline-level `vitc` generator must be **enabled** in metadata.generators
+
+### Examples
+
+**PAL with Timecode Continuation (Recommended)**
+
+```yaml
+name: "PAL VITC Multi-Section"
+description: "Demonstrates timecode continuation across sections"
+
+output:
+  filename: "${ENCODE_ORC_OUTPUT_ROOT}/pal-vitc-example"
+  format: "pal-composite"
+
+pipeline:
+  metadata:
+    generators:
+      - type: "color-burst"
+        enabled: true
+      - type: "vitc"
+        enabled: true  # Uses default PAL lines [18, 20]
+
+sections:
+  # Section 1: Starts at 00:00:00.00, duration 125 frames → ends at 00:00:05.00 (PAL)
+  - name: "Intro"
+    duration: 125
     source:
       type: "yuv422-image"
       file: "assets/720x576/stills/raw/75_BARS.raw"
     vitc:
       timecode_start: "00:00:00.00"
   
-  - name: "Content"
-    duration: 50
+  # Section 2: Automatically continues from 00:00:05.00
+  - name: "Main"
+    duration: 500
+    source:
+      type: "mov-file"
+      file: "assets/720x576/video/mov_25_00/content.mov"
+    # No VITC block - timecode auto-continues
+  
+  # Section 3: Auto-continue from ~00:00:25.00
+  - name: "Credits"
+    duration: 100
     source:
       type: "yuv422-image"
       file: "assets/720x576/stills/raw/100_BARS.raw"
-    vitc:
-      timecode_start: "00:00:00.00"
+    # No VITC block
 ```
 
-### `timecode_start` (optional)
-**Type:** String  
-**Format:** `HH:MM:SS.FF`
+**NTSC with Timecode Restart**
 
-Starting timecode for this section in format `HH:MM:SS.FF`:
-- HH: Hours (00-99)
-- MM: Minutes (00-59)
-- SS: Seconds (00-59)
-- FF: Frames (00-24 for PAL, 00-29 for NTSC)
-
-**Behavior:**
-- Only required for the **first** section that uses VITC timecode
-- Subsequent sections automatically continue from the previous section's ending timecode
-- To restart timecode at a different value, specify `timecode_start` again in a later section
-
-**Example:**
 ```yaml
+name: "NTSC VITC Restart Example"
+description: "Demonstrates timecode restart mid-project"
+
+output:
+  filename: "${ENCODE_ORC_OUTPUT_ROOT}/ntsc-vitc-restart"
+  format: "ntsc-composite"
+
+pipeline:
+  metadata:
+    generators:
+      - type: "color-burst"
+        enabled: true
+      - type: "vitc"
+        enabled: true  # Uses default NTSC lines [13, 15]
+
 sections:
-  # Section 1: Starts at 00:00:00.00, duration 50 frames → ends at 00:00:02.00 (PAL)
-  - name: "Intro"
-    duration: 50
+  - name: "Scene A"
+    duration: 300  # ≈10 seconds at 29.97 fps
     source:
       type: "yuv422-image"
-      file: "intro.raw"
+      file: "assets/720x480/stills/raw/75_BARS.raw"
     vitc:
       timecode_start: "00:00:00.00"
   
-  # Section 2: Automatically continues from 00:00:02.00
-  - name: "Main"
-    duration: 100
-    source:
-      type: "mov-file"
-      file: "main.mov"
-    # No vitc block needed - continues from previous section
-  
-  # Section 3: Restart at a specific timecode
-  - name: "Credits"
-    duration: 50
+  - name: "Scene B"
+    duration: 300
     source:
       type: "yuv422-image"
-      file: "credits.raw"
+      file: "assets/720x480/stills/raw/100_BARS.raw"
     vitc:
-      timecode_start: "01:00:00.00"  # Jump to 1 hour
+      timecode_start: "00:10:00.00"  # Jump to 10 minutes (new scene/take)
 ```
 
-**Important Notes:**
-- Timecode increments automatically based on frame rate (25 fps for PAL, ~30 fps for NTSC)
-- Timecode increments automatically based on frame rate (25 fps for PAL, ~30 fps for NTSC and PAL-M)
-- If no section specifies `timecode_start`, VITC will start from frame 0 (00:00:00.00)
-- The pipeline-level `vitc` generator must be enabled with appropriate VBI lines
+**PAL-M Example (NTSC-compatible line placement)**
+
+```yaml
+name: "PAL-M VITC Example"
+description: "PAL-M output with consumer-tape timecode"
+
+output:
+  filename: "${ENCODE_ORC_OUTPUT_ROOT}/palm-vitc"
+  format: "palm-composite"
+
+pipeline:
+  metadata:
+    generators:
+      - type: "color-burst"
+        enabled: true
+      - type: "vitc"
+        enabled: true  # Uses default PAL-M lines [13, 15] (NTSC geometry)
+
+sections:
+  - name: "Content"
+    duration: 250  # ~8.4 seconds at 29.97 fps
+    source:
+      type: "yuv422-image"
+      file: "assets/720x480/stills/raw/test-pattern.raw"
+    vitc:
+      timecode_start: "00:00:00.00"
+```
 
 ---
 

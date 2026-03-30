@@ -57,11 +57,15 @@ struct PipelineGeneratorConfig {
     // Configuration specific to generator type
     
     // For biphase-vbi:
-    std::vector<int32_t> lines;  // Lines to encode VBI data on (0-indexed)
+    std::vector<int32_t> lines;  // Lines to encode VBI data on (0-indexed, field-relative per video system)
     std::string format = "picture-number";  // "picture-number" or "timecode"
     
     // For vitc:
-    int32_t start_frame_offset = 0;  // Frame number offset for timecode
+    // Note: Line positions are 0-indexed and field-relative. If empty, system defaults are used:
+    //   - PAL: lines [18, 20]   (VITC ATC position per EBU R98)
+    //   - NTSC: lines [13, 15]  (VITC ATC position per SMPTE 12M)
+    //   - PAL-M: lines [13, 15] (NTSC-compatible positions)
+    // Timecode offset is controlled via section-level vitc.timecode_start (in HH:MM:SS:FF format)
     
     // For vits-pal / vits-ntsc:
     struct VITSSignal {
@@ -181,7 +185,20 @@ struct BiphaseVBIConfig {
 };
 
 /**
- * @brief VITC configuration for a section (consumer tape timecode)
+ * @brief VITC (Vertical Interval Time Code) configuration for a section
+ *
+ * VITC timecode is controlled at the section level. The pipeline must have a VITC generator enabled.
+ *
+ * Semantics:
+ * - timecode_start: HH:MM:SS:FF format, where FF is the frame number within the current second
+ * - If specified, this section's VITC starts at the given timecode
+ * - Subsequent sections continue timecode automatically (increments each frame)
+ * - To restart or jump timecode, specify timecode_start again in a later section
+ * - If no section specifies timecode_start, VITC starts from 00:00:00:00
+ *
+ * Line positions (in VITC generator config):
+ * - Are 0-indexed and field-relative
+ * - If empty, system defaults are used (PAL: [18,20], NTSC: [13,15], PAL-M: [13,15])
  */
 struct VITCConfig {
     std::optional<std::string> timecode_start;  // Format: HH:MM:SS:FF
