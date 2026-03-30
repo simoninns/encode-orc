@@ -62,11 +62,11 @@ double ColorBurstGenerator::calculate_palm_phase(int32_t field_number, int32_t l
     // PAL-M uses 525-line geometry (like NTSC) with PAL-M subcarrier timing
     // Model absolute line count as a double to preserve the half-line offset between fields
     const double lines_per_field = 262.5;
-    
-    // PAL-M cycles per line: subcarrier_freq / (field_rate * lines_per_field)
-    // field_rate = 59.94 Hz, lines_per_field = 262.5
-    // cycles_per_line = 3575611 / (59.94 * 262.5) ≈ 227.35
-    const double cycles_per_line = 227.35;  // PAL-M subcarrier cycles per line
+
+    // PAL-M line rate is 525 * (30000/1001) lines/second.
+    // Derive cycles/line from actual configured fSC to avoid phase-sequence drift.
+    const double line_rate_hz = 525.0 * (30000.0 / 1001.0);
+    const double cycles_per_line = subcarrier_freq_ / line_rate_hz;
     
     // Absolute lines elapsed before this line within the full sequence
     double prev_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line_number);
