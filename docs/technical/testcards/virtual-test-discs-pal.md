@@ -25,7 +25,7 @@ A comprehensive PAL CAV test disc featuring picture-number VBI encoding, VITS si
 
 ### Disc Structure Summary
 
-- **Lead-in:** 2 frames of `625_50_75_BARS`
+- **Lead-in:** 2 frames of `75_BARS`
 - **Chapter 1:** 19 PAL raw patterns, 50 frames each, each with a different audio stimulus
 - **Chapter 2:** Organ WAV playback over PAL bars
 - **Chapter 3:** Repeated MOV playback with alternating up/down log sweeps
@@ -33,7 +33,7 @@ A comprehensive PAL CAV test disc featuring picture-number VBI encoding, VITS si
 - **Chapter 5:** SMPTE bars with stepped dropout densities
 - **Chapter 6:** SMPTE bars with combined noise + dropout stress profiles
 - **Chapter 7:** Ice skating sequence with source audio
-- **Lead-out:** 2 frames of `625_50_75_BARS`
+- **Lead-out:** 2 frames of `75_BARS`
 
 ## GGV1066 PAL CLV Composite
 

@@ -1,6 +1,6 @@
 # Testcard Raw Y'CbCr 4:2:2 Assets
 
-The raw frame collections live in `assets/pal/raw/` and `assets/ntsc/raw/`. They contain single-frame **Y'CbCr 4:2:2** test material sized to the active picture area only.
+The raw frame collections live in `assets/720x576/stills/raw/` and `assets/720x480/stills/raw/`. They contain single-frame **Y'CbCr 4:2:2** test material sized to the active picture area only.
 
 ## Format Specification
 
@@ -18,19 +18,19 @@ The raw frame collections live in `assets/pal/raw/` and `assets/ntsc/raw/`. They
 
 ## Representative Files
 
-### PAL (`assets/pal/raw/`)
-- `625_50_75_BARS.raw`
-- `625_50_100_BARS.raw`
-- `625_50_PLUGE.raw`
-- `625_50_MULTIBURST.raw`
-- `625_50_Y_CB_CR_RAMPS.raw`
+### PAL (`assets/720x576/stills/raw/`)
+- `75_BARS.raw`
+- `100_BARS.raw`
+- `PLUGE.raw`
+- `MULTIBURST.raw`
+- `Y_CB_CR_RAMPS.raw`
 
-### NTSC (`assets/ntsc/raw/`)
-- `525_5994_75_BARS.raw`
-- `525_5994_100_BARS.raw`
-- `525_5994_PLUGE.raw`
-- `525_5994_MULTIBURST.raw`
-- `525_5994_Y_CB_CR_RAMPS.raw`
+### NTSC (`assets/720x480/stills/raw/`)
+- `75_BARS.raw`
+- `100_BARS.raw`
+- `PLUGE.raw`
+- `MULTIBURST.raw`
+- `Y_CB_CR_RAMPS.raw`
 
 The folders also contain ramps, greyscale steps, tartan patterns, legal/full-range ramps, and additional diagnostic images.
 

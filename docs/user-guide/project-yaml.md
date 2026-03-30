@@ -20,8 +20,8 @@ See [Installation and Asset Setup](installation.md) for information on how to in
 2. **Relative paths** are resolved relative to the directory containing the YAML file
    ```yaml
   # If YAML is at: /home/user/projects/my-project/project.yaml
-  # This resolves to: /home/user/projects/my-project/assets/pal/raw/625_50_75_BARS.raw
-  file: "assets/pal/raw/625_50_75_BARS.raw"
+  # This resolves to: /home/user/projects/my-project/assets/720x576/stills/raw/75_BARS.raw
+  file: "assets/720x576/stills/raw/75_BARS.raw"
    ```
 
 3. **${PROJECT_ROOT} variable** expands to the YAML file's directory
@@ -33,7 +33,7 @@ See [Installation and Asset Setup](installation.md) for information on how to in
 4. **${ENCODE_ORC_ASSETS} variable** expands to the installed assets directory
    ```yaml
    # Access system-installed testcard images (via Nix installation)
-  file: "${ENCODE_ORC_ASSETS}/pal/raw/625_50_75_BARS.raw"
+  file: "${ENCODE_ORC_ASSETS}/720x576/stills/raw/75_BARS.raw"
    ```
 
 5. **${ENCODE_ORC_OUTPUT_ROOT} variable** expands to the output root directory
@@ -82,7 +82,7 @@ Controls the location of installed testcard images and assets. Use this variable
 sections:
   - name: "Content"
     source:
-      file: "${ENCODE_ORC_ASSETS}/pal/raw/625_50_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/720x576/stills/raw/75_BARS.raw"
 ```
 
 **Variable expansion:**
@@ -141,7 +141,7 @@ sections:
     duration: 10
     source:
       type: "yuv422-image"
-      file: "assets/pal/raw/625_50_75_BARS.raw"
+      file: "assets/720x576/stills/raw/75_BARS.raw"
 ```
 
 ---
@@ -233,7 +233,7 @@ Output format and video system.
 - `"ntsc-yc"` - NTSC with separate luma/chroma channels
 - `"palm-yc"` - PAL-M with separate luma/chroma channels
 
-PAL-M uses NTSC-sized active video (720×480) but PAL-style color encoding. In practice that means PAL-M projects usually reference source assets from `assets/ntsc/...` or `${ENCODE_ORC_ASSETS}/ntsc/...`.
+PAL-M uses NTSC-sized active video (720×480) but PAL-style color encoding. In practice that means PAL-M projects usually reference source assets from `assets/720x480/...` or `${ENCODE_ORC_ASSETS}/720x480/...`.
 
 ### `writer` (optional)
 **Type:** String  
@@ -607,7 +607,7 @@ sections:
     duration: 1
     source:
       type: "yuv422-image"
-      file: "assets/pal/raw/625_50_75_BARS.raw"
+      file: "assets/720x576/stills/raw/75_BARS.raw"
     biphase-vbi:
       disc_area: "lead-in"
 ```
@@ -682,7 +682,7 @@ Static raw YUV422 image (10-bit or 8-bit per component).
 ```yaml
 source:
   type: "yuv422-image"
-  file: "assets/pal/raw/625_50_75_BARS.raw"
+  file: "assets/720x576/stills/raw/75_BARS.raw"
 ```
 
 **Requirements:**
@@ -702,13 +702,13 @@ Lossless PNG image file.
 ```yaml
 source:
   type: "png-image"
-  file: "assets/pal/wrwetzel-png/PAL-720x576-Check-Composite.png"
+  file: "assets/720x576/stills/png/Check-Composite.png"
 ```
 
 **Requirements:**
 - Standard PNG format (RGB or RGBA)
 - Resolution should match target video system
-- Typical built-in asset locations are `assets/pal/wrwetzel-png/` and `assets/ntsc/wrwetzel-png/`
+- Typical built-in asset locations are `assets/720x576/stills/png/` and `assets/720x480/stills/png/`
 - Section must specify `duration`
 
 **Advantages:** Easy to create, widely supported
@@ -722,7 +722,7 @@ QuickTime container with video codec.
 ```yaml
 source:
   type: "mov-file"
-  file: "assets/pal/mov/625-50-i_Moving-Zone-2H.mov"
+  file: "assets/720x576/video/mov_25_00/Moving-Zone-2H.mov"
   start_frame: 0    # Optional: starting frame (0-indexed)
 ```
 
@@ -746,7 +746,7 @@ MPEG-4 container with video codec.
 ```yaml
 source:
   type: "mp4-file"
-  file: "assets/ntsc/mp4/ntsc-ice-skating.mp4"
+  file: "assets/720x480/video/mp4_29_97/ice-skating.mp4"
   start_frame: 0    # Optional: starting frame (0-indexed)
 ```
 
@@ -1172,7 +1172,7 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "assets/pal/raw/625_50_75_BARS.raw"
+      file: "assets/720x576/stills/raw/75_BARS.raw"
     vitc:
       timecode_start: "00:00:00.00"
   
@@ -1180,7 +1180,7 @@ sections:
     duration: 50
     source:
       type: "yuv422-image"
-      file: "assets/pal/raw/625_50_100_BARS.raw"
+      file: "assets/720x576/stills/raw/100_BARS.raw"
     vitc:
       timecode_start: "00:00:00.00"
 ```
@@ -1265,7 +1265,7 @@ sections:
     duration: 250  # 10 seconds at 25fps
     source:
       type: "yuv422-image"
-      file: "assets/pal/raw/625_50_75_BARS.raw"
+      file: "assets/720x576/stills/raw/75_BARS.raw"
 ```
 
 ### NTSC with Effects
@@ -1310,7 +1310,7 @@ sections:
     duration: 300  # ~10 seconds at ~30fps
     source:
       type: "png-image"
-      file: "assets/ntsc/wrwetzel-png/NTSC-720x480-Check-Composite.png"
+      file: "assets/720x480/stills/png/Check-Composite.png"
 ```
 
 ### PAL-M Consumer Tape Example
@@ -1341,7 +1341,7 @@ sections:
     duration: 300
     source:
       type: "yuv422-image"
-      file: "assets/ntsc/raw/525_5994_75_BARS.raw"
+      file: "assets/720x480/stills/raw/75_BARS.raw"
     vitc:
       timecode_start: "00:00:00.00"
 ```
@@ -1388,7 +1388,7 @@ sections:
     duration: 1
     source:
       type: "yuv422-image"
-      file: "assets/pal/raw/625_50_75_BARS.raw"
+      file: "assets/720x576/stills/raw/75_BARS.raw"
     biphase-vbi:
       disc_area: "lead-in"
   
@@ -1397,7 +1397,7 @@ sections:
     duration: 250  # Frames 1-250
     source:
       type: "yuv422-image"
-      file: "assets/pal/raw/625_50_100_BARS.raw"
+      file: "assets/720x576/stills/raw/100_BARS.raw"
     biphase-vbi:
       disc_area: "programme-area"
       picture_start: 1  # Start at frame 1
@@ -1428,7 +1428,7 @@ sections:
     duration: 1
     source:
       type: "yuv422-image"
-      file: "assets/pal/raw/625_50_75_BARS.raw"
+      file: "assets/720x576/stills/raw/75_BARS.raw"
     biphase-vbi:
       disc_area: "lead-out"
 ```

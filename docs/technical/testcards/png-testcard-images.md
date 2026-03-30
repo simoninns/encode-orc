@@ -1,6 +1,6 @@
 # Testcard PNG Assets
 
-The PNG testcard collections live in `assets/pal/wrwetzel-png/` and `assets/ntsc/wrwetzel-png/`. These are single-frame images sized to the **active picture area** only and use normal RGB pixel data. The encoder converts PNG RGB to YUV using ITU-R BT.601 coefficients.
+The PNG testcard collections live in `assets/720x576/stills/png/` and `assets/720x480/stills/png/`. These are single-frame images sized to the **active picture area** only and use normal RGB pixel data. The encoder converts PNG RGB to YUV using ITU-R BT.601 coefficients.
 
 The files included in these folders were kindly provided by Bill Wetzel and permission has been granted to the project to distribute them for use with ld-decode and related projects under a GPLv3 license.
 
@@ -10,14 +10,14 @@ For more information about the testcard images (and additional images for other 
 
 ## Files
 ### PAL (720×576)
-- `PAL-720x576-Check-Composite.png` — composite test check pattern
-- `PAL-720x576-Color-Step-Lin-Magenta.png` — linear magenta color step
-- `PAL-720x576-Geometry-Checkers-32.png` — 32px checker geometry pattern
+- `Check-Composite.png` — composite test check pattern
+- `Color-Step-Lin-Magenta.png` — linear magenta color step
+- `Geometry-Checkers-32.png` — 32px checker geometry pattern
 
 ### NTSC (720×480)
-- `NTSC-720x480-Check-Composite.png` — composite test check pattern
-- `NTSC-720x480-Color-Step-Lin-Magenta.png` — linear magenta color step
-- `NTSC-720x480-Geometry-Checkers-32.png` — 32px checker geometry pattern
+- `Check-Composite.png` — composite test check pattern
+- `Color-Step-Lin-Magenta.png` — linear magenta color step
+- `Geometry-Checkers-32.png` — 32px checker geometry pattern
 
 ## Pixel format & decoding
 - **Color type**: RGB recommended. Palette/gray inputs are automatically converted to RGB; alpha is stripped.
@@ -51,12 +51,12 @@ sections:
     duration: 10
     source:
       type: "png-image"
-      file: "${ENCODE_ORC_ASSETS}/pal/wrwetzel-png/PAL-720x576-Check-Composite.png"
+      file: "${ENCODE_ORC_ASSETS}/720x576/stills/png/Check-Composite.png"
 ```
 
-NTSC is identical except `format: "ntsc-composite"` and the `file` path under `${ENCODE_ORC_ASSETS}/ntsc/wrwetzel-png/` (720×480).
+NTSC is identical except `format: "ntsc-composite"` and the `file` path under `${ENCODE_ORC_ASSETS}/720x480/stills/png/` (720×480).
 
-For PAL-M output, use `palm-composite` or `palm-yc` and feed it NTSC-sized PNG material from `${ENCODE_ORC_ASSETS}/ntsc/wrwetzel-png/`.
+For PAL-M output, use `palm-composite` or `palm-yc` and feed it NTSC-sized PNG material from `${ENCODE_ORC_ASSETS}/720x480/stills/png/`.
 
 ## Notes
 - Images contain only the active picture region; the encoder adds blanking/VBI according to the selected video system and standard.
