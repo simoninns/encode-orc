@@ -106,7 +106,7 @@ FieldSplitter::FieldPair FieldSplitter::split_frame(const FrameBuffer& frame,
     // Split audio (if present) into field audio samples
     if (frame.has_audio()) {
         const auto& frame_audio = frame.audio();
-        int32_t samples_per_field = (params.system == VideoSystem::PAL) ? 882 : 735;
+        int32_t samples_per_field = get_audio_samples_per_field(params.system);
         int32_t samples_per_frame = samples_per_field * 2;  // Two fields per frame
         int32_t required_audio_values = samples_per_frame * 2;  // Stereo interleaved
 

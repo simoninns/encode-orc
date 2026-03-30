@@ -21,6 +21,7 @@
 #include "field_effect.h"
 #include "video_parameters.h"
 #include "metadata.h"
+#include "source_video_standard.h"
 #include "logging.h"
 #include "yuv422_loader.h"
 #include "png_loader.h"
@@ -291,6 +292,131 @@ bool extract_mp4_audio_pcm(const std::string& filename, std::vector<int16_t>& ou
     return ok;
 }
 
+bool determine_source_standard_for_metadata(const encode_orc::PipelineMetadataConfig* metadata_config,
+                                           encode_orc::VideoSystem system,
+                                           encode_orc::SourceVideoStandard& source_standard,
+                                           std::string& error_message) {
+    using namespace encode_orc;
+
+    bool has_biphase_vbi = false;
+    bool has_vitc = false;
+    bool has_vits = false;
+
+    if (metadata_config != nullptr) {
+        for (const auto& gen : metadata_config->generators) {
+            if (!gen.enabled) {
+                continue;
+            }
+
+            if (gen.type == "biphase-vbi") {
+                has_biphase_vbi = true;
+            } else if (gen.type == "vitc") {
+                has_vitc = true;
+            } else if (gen.type == "vits" || gen.type == "vits-pal" || gen.type == "vits-ntsc") {
+                has_vits = true;
+            }
+        }
+    }
+
+    if (has_biphase_vbi && has_vitc) {
+        error_message = "Invalid metadata policy: cannot mix LaserDisc biphase-vbi with consumer-tape vitc";
+        return false;
+    }
+    if (has_vits && has_vitc) {
+        error_message = "Invalid metadata policy: cannot mix VITS generators with consumer-tape vitc";
+        return false;
+    }
+
+    if (has_biphase_vbi || has_vits) {
+        if (system == VideoSystem::PAL || system == VideoSystem::PAL_M) {
+            source_standard = SourceVideoStandard::IEC60857_1986;
+        } else {
+            source_standard = SourceVideoStandard::IEC60856_1986;
+        }
+    } else if (has_vitc) {
+        source_standard = SourceVideoStandard::ConsumerTape;
+    } else {
+        source_standard = SourceVideoStandard::None;
+    }
+
+    return true;
+}
+
+bool validate_generator_for_system_and_standard(const encode_orc::PipelineGeneratorConfig& gen_config,
+                                                encode_orc::VideoSystem system,
+                                                encode_orc::SourceVideoStandard source_standard,
+                                                std::string& error_message) {
+    using namespace encode_orc;
+
+    if (!gen_config.enabled) {
+        return true;
+    }
+
+    if (gen_config.type == "biphase-vbi") {
+        if (system == VideoSystem::PAL_M) {
+            error_message = "Generator 'biphase-vbi' is not supported for PAL-M. "
+                            "PAL-M first release supports consumer-tape VITC and PAL-style VITS only.";
+            return false;
+        }
+        if (!standard_supports_vbi(source_standard, system)) {
+            error_message = "Generator 'biphase-vbi' is not allowed by source standard '" +
+                source_video_standard_to_string(source_standard) + "' for system '" + video_system_to_string(system) + "'";
+            return false;
+        }
+        return true;
+    }
+
+    if (gen_config.type == "vitc") {
+        if (!standard_supports_vitc(source_standard, system)) {
+            error_message = "Generator 'vitc' is not allowed by source standard '" +
+                source_video_standard_to_string(source_standard) + "' for system '" + video_system_to_string(system) + "'";
+            return false;
+        }
+        return true;
+    }
+
+    if (gen_config.type == "vits") {
+        if (system == VideoSystem::PAL_M) {
+            error_message = "Generator 'vits' is ambiguous for PAL-M. Use 'vits-pal' explicitly for PAL-M projects.";
+            return false;
+        }
+        if (!standard_supports_vits(source_standard, system)) {
+            error_message = "Generator 'vits' is not allowed by source standard '" +
+                source_video_standard_to_string(source_standard) + "' for system '" + video_system_to_string(system) + "'";
+            return false;
+        }
+        return true;
+    }
+
+    if (gen_config.type == "vits-pal") {
+        if (system == VideoSystem::NTSC) {
+            error_message = "Generator 'vits-pal' can only be used with PAL or PAL-M output";
+            return false;
+        }
+        if (!standard_supports_vits(source_standard, system)) {
+            error_message = "Generator 'vits-pal' is not allowed by source standard '" +
+                source_video_standard_to_string(source_standard) + "' for system '" + video_system_to_string(system) + "'";
+            return false;
+        }
+        return true;
+    }
+
+    if (gen_config.type == "vits-ntsc") {
+        if (system == VideoSystem::PAL || system == VideoSystem::PAL_M) {
+            error_message = "Generator 'vits-ntsc' cannot be used with PAL or PAL-M output";
+            return false;
+        }
+        if (!standard_supports_vits(source_standard, system)) {
+            error_message = "Generator 'vits-ntsc' is not allowed by source standard '" +
+                source_video_standard_to_string(source_standard) + "' for system '" + video_system_to_string(system) + "'";
+            return false;
+        }
+        return true;
+    }
+
+    return true;
+}
+
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -486,6 +612,8 @@ int main(int argc, char* argv[]) {
         system = VideoSystem::PAL;
     } else if (config.output.format == "ntsc-composite" || config.output.format == "ntsc-yc") {
         system = VideoSystem::NTSC;
+    } else if (config.output.format == "palm-composite" || config.output.format == "palm-yc") {
+        system = VideoSystem::PAL_M;
     } else {
         ENCODE_ORC_LOG_ERROR("Unsupported format: {}", config.output.format);
         return 1;
@@ -614,6 +742,8 @@ int main(int argc, char* argv[]) {
     // Build video parameters (with optional overrides)
     VideoParameters params = (system == VideoSystem::PAL) ?
         VideoParameters::create_pal_composite() :
+        (system == VideoSystem::PAL_M) ?
+        VideoParameters::create_palm_composite() :
         VideoParameters::create_ntsc_composite();
 
     if (has_video_level_overrides) {
@@ -628,12 +758,16 @@ int main(int argc, char* argv[]) {
     // Handle filename for different output formats
     std::string output_filename = config.output.filename;
     std::string base_filename = config.output.filename;  // Base name for metadata
-    if (config.output.format == "pal-composite" || config.output.format == "ntsc-composite") {
+    if (config.output.format == "pal-composite" ||
+        config.output.format == "ntsc-composite" ||
+        config.output.format == "palm-composite") {
         // Add .tbc extension if not already present
         if (output_filename.length() < 4 || output_filename.substr(output_filename.length() - 4) != ".tbc") {
             output_filename += ".tbc";
         }
-    } else if (config.output.format == "pal-yc" || config.output.format == "ntsc-yc") {
+    } else if (config.output.format == "pal-yc" ||
+               config.output.format == "ntsc-yc" ||
+               config.output.format == "palm-yc") {
         // For Y/C formats, remove any .tbc extension (will be handled by Y/C writer)
         if (output_filename.length() >= 4 && output_filename.substr(output_filename.length() - 4) == ".tbc") {
             output_filename = output_filename.substr(0, output_filename.length() - 4);
@@ -643,7 +777,7 @@ int main(int argc, char* argv[]) {
     // Open audio writer if sound output is enabled
     std::unique_ptr<AudioWriter> audio_writer;
     bool sound_enabled = config.output.sound_format.has_value();
-    int32_t samples_per_field = (system == VideoSystem::PAL) ? 882 : 735;
+    int32_t samples_per_field = get_audio_samples_per_field(system);
     if (sound_enabled) {
         std::string audio_base = output_filename;
         if (audio_base.size() >= 4 && audio_base.substr(audio_base.size() - 4) == ".tbc") {
@@ -668,7 +802,9 @@ int main(int argc, char* argv[]) {
     std::unique_ptr<Writer> writer;
     std::unique_ptr<YCTBCWriter> yc_writer;
     
-    if (config.output.format == "pal-yc" || config.output.format == "ntsc-yc") {
+    if (config.output.format == "pal-yc" ||
+        config.output.format == "ntsc-yc" ||
+        config.output.format == "palm-yc") {
         // Use Y/C writer for separate Y and C output
         yc_writer = std::make_unique<YCTBCWriter>(YCTBCWriter::NamingMode::MODERN);
         if (!yc_writer->open(output_filename)) {
@@ -769,7 +905,7 @@ int main(int argc, char* argv[]) {
             // Parse timecode_start (HH:MM:SS.FF format)
             int32_t hh = 0, mm = 0, ss = 0, ff = 0;
             std::sscanf(section.vitc->timecode_start.value().c_str(), "%d:%d:%d.%d", &hh, &mm, &ss, &ff);
-            int32_t fps = (system == VideoSystem::PAL) ? 25 : 30;
+            int32_t fps = get_integer_fps(system);
             current_vitc_offset = (hh * 3600 + mm * 60 + ss) * fps + ff;
             vitc_frame_offset = current_vitc_offset;  // Update running offset
             ENCODE_ORC_LOG_DEBUG("Section '{}' VITC timecode start: {}:{}:{}.{} (offset: {})", 
@@ -914,9 +1050,29 @@ int main(int argc, char* argv[]) {
             // Instantiate metadata generators from YAML configuration
             std::vector<std::unique_ptr<MetadataGenerator>> generators;
             if (metadata_config != nullptr) {
+                SourceVideoStandard source_standard = SourceVideoStandard::None;
+                std::string source_policy_error;
+                if (!determine_source_standard_for_metadata(metadata_config, system, source_standard, source_policy_error)) {
+                    ENCODE_ORC_LOG_ERROR("Section '{}' metadata policy error: {}", section.name, source_policy_error);
+                    return 1;
+                }
+
+                ENCODE_ORC_LOG_DEBUG("Section '{}' metadata source standard policy: {}",
+                                     section.name, source_video_standard_to_string(source_standard));
+
                 for (const auto& gen_config : metadata_config->generators) {
                     if (!gen_config.enabled) {
                         continue;  // Skip disabled generators
+                    }
+
+                    std::string generator_policy_error;
+                    if (!validate_generator_for_system_and_standard(gen_config,
+                                                                   system,
+                                                                   source_standard,
+                                                                   generator_policy_error)) {
+                        ENCODE_ORC_LOG_ERROR("Section '{}' invalid metadata generator '{}': {}",
+                                             section.name, gen_config.type, generator_policy_error);
+                        return 1;
                     }
 
                     if (gen_config.type == "color-burst") {
@@ -1134,7 +1290,9 @@ int main(int argc, char* argv[]) {
                             .enable_luma_filter(enable_luma_filter);
             
             // Enable Y/C output if format is Y/C
-            if (config.output.format == "pal-yc" || config.output.format == "ntsc-yc") {
+            if (config.output.format == "pal-yc" ||
+                config.output.format == "ntsc-yc" ||
+                config.output.format == "palm-yc") {
                 pipeline_builder.enable_yc_output(true);
             }
 
@@ -1261,7 +1419,7 @@ int main(int argc, char* argv[]) {
                 section_frames = section.duration.value();
 
                 int32_t img_width = 720;
-                int32_t img_height = (system == VideoSystem::PAL) ? 576 : 480;
+                int32_t img_height = get_expected_active_height(system);
 
                 YUV422Loader yuv422_loader;
                 if (!yuv422_loader.open(yuv422_file, img_width, img_height)) {
@@ -1570,7 +1728,9 @@ int main(int argc, char* argv[]) {
     ENCODE_ORC_LOG_INFO("Successfully generated {} frames", total_frames);
     
     // Log output file(s)
-    if (config.output.format == "pal-yc" || config.output.format == "ntsc-yc") {
+    if (config.output.format == "pal-yc" ||
+        config.output.format == "ntsc-yc" ||
+        config.output.format == "palm-yc") {
         ENCODE_ORC_LOG_INFO("Output files: {}.tbcy, {}.tbcc", output_filename, output_filename);
     } else {
         ENCODE_ORC_LOG_INFO("Output file: {}", output_filename);

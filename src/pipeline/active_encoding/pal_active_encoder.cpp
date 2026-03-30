@@ -43,34 +43,70 @@ PALActiveEncoder::PALActiveEncoder(const VideoParameters& params,
 }
 
 int32_t PALActiveEncoder::calculate_v_switch(int32_t line_number, int32_t field_number, bool is_first_field) const {
-    // Convert field line number to frame line number (1-625 in PAL)
-    int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
-    
-    // Calculate absolute line number in 8-field sequence
-    int32_t field_id = field_number % 8;
-    int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
-    
-    // PAL V-switch alternates every line
-    return (prev_lines % 2 == 0) ? 1 : -1;
+    if (params_.system == VideoSystem::PAL_M) {
+        // PAL-M uses 525-line geometry (like NTSC) but with PAL-style V-switch
+        // Convert field line number to frame line number (1-525 in PAL-M)
+        int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
+        
+        // Calculate absolute line number for V-switch (every other line alternates)
+        // In PAL-M, the 8-field sequence is maintained for compatibility
+        int32_t field_id = field_number % 8;
+        int32_t prev_lines = ((field_id / 2) * 525) + ((field_id % 2) * 263) + (frame_line / 2);
+        
+        // PAL-M V-switch alternates every line
+        return (prev_lines % 2 == 0) ? 1 : -1;
+    } else {
+        // Standard PAL: 625-line geometry with V-switch alternation
+        // Convert field line number to frame line number (1-625 in PAL)
+        int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
+        
+        // Calculate absolute line number in 8-field sequence
+        int32_t field_id = field_number % 8;
+        int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
+        
+        // PAL V-switch alternates every line
+        return (prev_lines % 2 == 0) ? 1 : -1;
+    }
 }
 
 double PALActiveEncoder::calculate_phase(int32_t line_number, int32_t field_number, bool is_first_field) const {
-    // Convert field line number to frame line number (1-625 in PAL)
-    int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
-    
-    // Calculate absolute line number in 8-field sequence
-    int32_t field_id = field_number % 8;
-    int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
-    
-    // PAL subcarrier phase calculation (following ld-chroma-encoder):
-    // prevCycles = number of complete cycles since sequence start
-    // phase = 2π * (fSC * t + prevCycles) where prevCycles accumulates by 283.7516 per line
-    double prev_cycles = prev_lines * 283.7516;
-    
-    double phase_step = 2.0 * PI * (subcarrier_freq_ / sample_rate_);
-    double phase = (2.0 * PI * prev_cycles) + static_cast<double>(params_.active_video_start) * phase_step;
-    
-    return phase;
+    if (params_.system == VideoSystem::PAL_M) {
+        // PAL-M uses 525-line geometry (like NTSC) with PAL-M subcarrier timing
+        // Model absolute line count as a double to preserve the half-line offset between fields
+        // which produces the 4-field color framing sequence
+        const double lines_per_field = 262.5;
+        
+        // PAL-M cycles per line: subcarrier_freq / (field_rate * lines_per_field)
+        // field_rate = 59.94 Hz, lines_per_field = 262.5
+        // cycles_per_line = 3575611 / (59.94 * 262.5) ≈ 227.35
+        const double cycles_per_line = 227.35;  // PAL-M subcarrier cycles per line
+        
+        // Absolute lines elapsed before this line within the full sequence
+        double prev_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line_number);
+        
+        // Total subcarrier cycles elapsed before this sample
+        double prev_cycles = prev_lines * cycles_per_line;
+        
+        // Time term for this sample position within the line
+        double time_phase = 2.0 * PI * subcarrier_freq_ * static_cast<double>(params_.active_video_start) / sample_rate_;
+        return 2.0 * PI * prev_cycles + time_phase;
+    } else {
+        // Standard PAL: 625-line geometry with PAL phase calculation
+        // Convert field line number to frame line number (1-625 in PAL)
+        int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
+        
+        // Calculate absolute line number in 8-field sequence
+        int32_t field_id = field_number % 8;
+        int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
+        
+        // PAL: 283.7516 subcarrier cycles per line
+        double prev_cycles = prev_lines * 283.7516;
+        
+        double phase_step = 2.0 * PI * (subcarrier_freq_ / sample_rate_);
+        double phase = (2.0 * PI * prev_cycles) + static_cast<double>(params_.active_video_start) * phase_step;
+        
+        return phase;
+    }
 }
 
 uint16_t PALActiveEncoder::clamp_to_16bit(int32_t value) const {

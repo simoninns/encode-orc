@@ -23,6 +23,7 @@
 
           nativeBuildInputs = with pkgs; [
             cmake
+            ccache
             pkg-config
             makeWrapper
           ];
@@ -67,6 +68,11 @@
 
         devShells.default = pkgs.mkShell {
           inputsFrom = [ encode-orc ];
+          packages = with pkgs.python3Packages; [
+            mkdocs
+            mkdocs-material
+            mkdocs-awesome-nav
+          ];
         };
 
         apps.default = {

@@ -580,8 +580,10 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
     
     if (config.output.format != "pal-composite" && 
         config.output.format != "ntsc-composite" &&
+        config.output.format != "palm-composite" &&
         config.output.format != "pal-yc" && 
-        config.output.format != "ntsc-yc") {
+        config.output.format != "ntsc-yc" &&
+        config.output.format != "palm-yc") {
         error_message = "Invalid output format: " + config.output.format;
         return false;
     }
@@ -602,6 +604,94 @@ bool validate_yaml_config(const YAMLProjectConfig& config, std::string& error_me
     if (config.sections.empty()) {
         error_message = "At least one section is required";
         return false;
+    }
+
+    VideoSystem output_system = VideoSystem::PAL;
+    if (config.output.format == "pal-composite" || config.output.format == "pal-yc") {
+        output_system = VideoSystem::PAL;
+    } else if (config.output.format == "ntsc-composite" || config.output.format == "ntsc-yc") {
+        output_system = VideoSystem::NTSC;
+    } else {
+        output_system = VideoSystem::PAL_M;
+    }
+
+    auto validate_metadata_policy = [&](const PipelineMetadataConfig& metadata_cfg,
+                                       const std::string& scope_name) -> bool {
+        bool has_biphase_vbi = false;
+        bool has_vitc = false;
+        bool has_vits = false;
+        bool has_vits_pal = false;
+        bool has_vits_ntsc = false;
+
+        for (const auto& gen : metadata_cfg.generators) {
+            if (!gen.enabled) {
+                continue;
+            }
+
+            if (gen.type == "biphase-vbi") {
+                has_biphase_vbi = true;
+                if (output_system == VideoSystem::PAL_M) {
+                    error_message = "Generator 'biphase-vbi' is not supported for PAL-M in " + scope_name +
+                                    ". PAL-M currently supports consumer-tape VITC and PAL-style VITS only.";
+                    return false;
+                }
+            } else if (gen.type == "vitc") {
+                has_vitc = true;
+            } else if (gen.type == "vits") {
+                has_vits = true;
+                if (output_system == VideoSystem::PAL_M) {
+                    error_message = "Generator 'vits' is ambiguous for PAL-M in " + scope_name +
+                                    ". Use 'vits-pal' explicitly for PAL-M.";
+                    return false;
+                }
+            } else if (gen.type == "vits-pal") {
+                has_vits = true;
+                has_vits_pal = true;
+                if (output_system == VideoSystem::NTSC) {
+                    error_message = "Generator 'vits-pal' requires PAL or PAL-M output format in " + scope_name + ".";
+                    return false;
+                }
+            } else if (gen.type == "vits-ntsc") {
+                has_vits = true;
+                has_vits_ntsc = true;
+                if (output_system == VideoSystem::PAL || output_system == VideoSystem::PAL_M) {
+                    error_message = "Generator 'vits-ntsc' cannot be used with PAL or PAL-M output format in " + scope_name + ".";
+                    return false;
+                }
+            }
+        }
+
+        if (has_vits_pal && has_vits_ntsc) {
+            error_message = "Cannot mix 'vits-pal' and 'vits-ntsc' in " + scope_name + ".";
+            return false;
+        }
+
+        if (has_biphase_vbi && has_vitc) {
+            error_message = "Cannot mix 'biphase-vbi' (LaserDisc) with 'vitc' (consumer-tape) in " + scope_name + ".";
+            return false;
+        }
+
+        if (has_vits && has_vitc) {
+            error_message = "Cannot mix VITS generators with 'vitc' in " + scope_name + ".";
+            return false;
+        }
+
+        return true;
+    };
+
+    if (config.pipeline.metadata.has_value()) {
+        if (!validate_metadata_policy(config.pipeline.metadata.value(), "global pipeline.metadata")) {
+            return false;
+        }
+    }
+
+    for (const auto& section : config.sections) {
+        if (section.pipeline.has_value() && section.pipeline->metadata.has_value()) {
+            if (!validate_metadata_policy(section.pipeline->metadata.value(),
+                                          "section '" + section.name + "' pipeline.metadata")) {
+                return false;
+            }
+        }
     }
     
     // Validate generators: ensure no two generators share the same field line

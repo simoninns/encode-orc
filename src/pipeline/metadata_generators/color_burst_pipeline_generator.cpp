@@ -45,6 +45,14 @@ void ColorBurstPipelineGenerator::apply(StructuredField& field, const MetadataCo
                 params_.blanking_16b_ire,
                 burst_amplitude
             );
+        } else if (context.system == VideoSystem::PAL_M) {
+            burst_gen_->generate_palm_burst(
+                line_buffer,
+                line,
+                context.field_number,
+                params_.blanking_16b_ire,
+                burst_amplitude
+            );
         } else {
             burst_gen_->generate_ntsc_burst(
                 line_buffer,

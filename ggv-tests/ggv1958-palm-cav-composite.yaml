@@ -1,0 +1,694 @@
+name: "GGV1958 PAL-M CAV Composite"
+description: "PAL-M LaserDisc CAV virtual test disc"
+
+output:
+  filename: "${ENCODE_ORC_OUTPUT_ROOT}/ggv1958-palm-cav-composite"
+  format: "palm-composite"
+  sound_format: "pcm"
+
+laserdisc:
+  mode: "cav"
+
+pipeline:
+  preprocessing:
+    filters:
+      chroma:
+        enabled: true
+  
+  metadata:
+    generators:
+      - type: "vits-pal"
+        enabled: true
+        signals:
+          - line: 13
+            signal: "multiburst"
+          - line: 19
+            signal: "uk-national"
+          - line: 275
+            signal: "itu-combination"
+          - line: 281
+            signal: "itu-composite"
+      
+      - type: "color-burst"
+        enabled: true
+
+sections:
+  - name: "Lead-in"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "lead-in"
+      user_code: "1958"
+  
+  # Chapter 1: NTSC Raw Test Images (PAL-M output) (50 frames each)
+  - name: "525_5994_100_BARS"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_100_BARS.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 50
+    biphase-vbi:
+      disc_area: "programme-area"
+      picture_start: 1
+      chapter: 1
+  
+  - name: "525_5994_75_BARS"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_75_BARS.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 100
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_75_BARS_RED"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_75_BARS_RED.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 315
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_CHROMA_RAMP"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_CHROMA_RAMP.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 400
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_FULL_RAMP"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_FULL_RAMP.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 1000
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_GREY_10H_STEP"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_GREY_10H_STEP.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 2000
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_GREY_10V_STEP"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_GREY_10V_STEP.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 3150
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_GREY_5H_STEP"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_GREY_5H_STEP.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 5000
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_GREY_5V_STEP"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_GREY_5V_STEP.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 8000
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_LEGAL_RAMP"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_LEGAL_RAMP.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 10000
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_LUMA_RAMP"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_LUMA_RAMP.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 12500
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_LUMA_RAMP_DOWN"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_LUMA_RAMP_DOWN.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 15000
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_MULTIBURST"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_MULTIBURST.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 20
+      end_freq_hz: 20000
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_PLUGE"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_PLUGE.raw"
+    sound:
+      type: "square"
+      start_freq_hz: 440
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_SMPTE_BARS_001"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+    sound:
+      type: "sawtooth"
+      start_freq_hz: 220
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_TARTAN"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_TARTAN.raw"
+    sound:
+      type: "pink"
+      amplitude: 75
+      seed: 42
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_VALID_RAMPS"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_VALID_RAMPS.raw"
+    sound:
+      type: "white"
+      amplitude: 50
+      seed: 123
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_VERT_LUMA_RAMP"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_VERT_LUMA_RAMP.raw"
+    sound:
+      type: "brown"
+      amplitude: 75
+      seed: 456
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  - name: "525_5994_Y_CB_CR_RAMPS"
+    duration: 50
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_Y_CB_CR_RAMPS.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 100
+      end_freq_hz: 10000
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 1
+  
+  # Chapter 2: Audio Test - WAV file with silence padding
+  - name: "Organ_Test_WAV"
+    duration: 342
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+    sound:
+      type: "wav"
+      file: "${ENCODE_ORC_ASSETS}/sound/organ.wav"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 2
+  
+  # Chapter 3: MOV Files (each repeated 10 times)
+  - name: "525_5994_MOVING_ZONE_2H (1/10)"
+    source:
+      type: "mov-file"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      start_frame: 0
+    sound:
+      type: "sine"
+      start_freq_hz: 20
+      end_freq_hz: 20000
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 3
+  
+  - name: "525_5994_MOVING_ZONE_2H (2/10)"
+    source:
+      type: "mov-file"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      start_frame: 0
+    sound:
+      type: "sine"
+      start_freq_hz: 20000
+      end_freq_hz: 20
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 3
+  
+  - name: "525_5994_MOVING_ZONE_2H (3/10)"
+    source:
+      type: "mov-file"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      start_frame: 0
+    sound:
+      type: "sine"
+      start_freq_hz: 20
+      end_freq_hz: 20000
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 3
+  
+  - name: "525_5994_MOVING_ZONE_2H (4/10)"
+    source:
+      type: "mov-file"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      start_frame: 0
+    sound:
+      type: "sine"
+      start_freq_hz: 20000
+      end_freq_hz: 20
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 3
+  
+  - name: "525_5994_MOVING_ZONE_2H (5/10)"
+    source:
+      type: "mov-file"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      start_frame: 0
+    sound:
+      type: "sine"
+      start_freq_hz: 20
+      end_freq_hz: 20000
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 3
+  
+  - name: "525_5994_MOVING_ZONE_2H (6/10)"
+    source:
+      type: "mov-file"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      start_frame: 0
+    sound:
+      type: "sine"
+      start_freq_hz: 20000
+      end_freq_hz: 20
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 3
+  
+  - name: "525_5994_MOVING_ZONE_2H (7/10)"
+    source:
+      type: "mov-file"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      start_frame: 0
+    sound:
+      type: "sine"
+      start_freq_hz: 20
+      end_freq_hz: 20000
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 3
+  
+  - name: "525_5994_MOVING_ZONE_2H (8/10)"
+    source:
+      type: "mov-file"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      start_frame: 0
+    sound:
+      type: "sine"
+      start_freq_hz: 20000
+      end_freq_hz: 20
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 3
+  
+  - name: "525_5994_MOVING_ZONE_2H (9/10)"
+    source:
+      type: "mov-file"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      start_frame: 0
+    sound:
+      type: "sine"
+      start_freq_hz: 20
+      end_freq_hz: 20000
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 3
+  
+  - name: "525_5994_MOVING_ZONE_2H (10/10)"
+    source:
+      type: "mov-file"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/mov/525_5994_MOVING_ZONE_2H.mov"
+      start_frame: 0
+    sound:
+      type: "sine"
+      start_freq_hz: 20000
+      end_freq_hz: 20
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 3
+  
+  # Chapter 4: SMPTE Bars with Noise (SNR tests)
+  - name: "SMPTE_BARS_SNR_30dB"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 1000
+    pipeline:
+      effects:
+        - type: "noise"
+          enabled: true
+          snr_db: 30
+          seed: 42
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 4
+  
+  - name: "SMPTE_BARS_SNR_25dB"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 1000
+    pipeline:
+      effects:
+        - type: "noise"
+          enabled: true
+          snr_db: 25
+          seed: 43
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 4
+  
+  - name: "SMPTE_BARS_SNR_20dB"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 1000
+    pipeline:
+      effects:
+        - type: "noise"
+          enabled: true
+          snr_db: 20
+          seed: 44
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 4
+  
+  - name: "SMPTE_BARS_SNR_15dB"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 1000
+    pipeline:
+      effects:
+        - type: "noise"
+          enabled: true
+          snr_db: 15
+          seed: 45
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 4
+  
+  # Chapter 5: SMPTE Bars with Dropouts (density tests)
+  - name: "SMPTE_BARS_DROPOUT_0.001"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 500
+    pipeline:
+      effects:
+        - type: "dropout"
+          enabled: true
+          density: 0.001
+          multi_field_probability: 0.3
+          single_field_probability: 0.7
+          seed: 100
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 5
+  
+  - name: "SMPTE_BARS_DROPOUT_0.005"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 500
+    pipeline:
+      effects:
+        - type: "dropout"
+          enabled: true
+          density: 0.005
+          multi_field_probability: 0.3
+          single_field_probability: 0.7
+          seed: 101
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 5
+  
+  - name: "SMPTE_BARS_DROPOUT_0.01"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 500
+    pipeline:
+      effects:
+        - type: "dropout"
+          enabled: true
+          density: 0.01
+          multi_field_probability: 0.3
+          single_field_probability: 0.7
+          seed: 102
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 5
+  
+  - name: "SMPTE_BARS_DROPOUT_0.02"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 500
+    pipeline:
+      effects:
+        - type: "dropout"
+          enabled: true
+          density: 0.02
+          multi_field_probability: 0.3
+          single_field_probability: 0.7
+          seed: 103
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 5
+  
+  # Chapter 6: SMPTE Bars with Combined Noise and Dropouts
+  - name: "SMPTE_BARS_NOISE_DROPOUT_LIGHT"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 750
+    pipeline:
+      effects:
+        - type: "noise"
+          enabled: true
+          snr_db: 35
+          seed: 200
+        - type: "dropout"
+          enabled: true
+          density: 0.001
+          multi_field_probability: 0.3
+          single_field_probability: 0.7
+          seed: 201
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 6
+  
+  - name: "SMPTE_BARS_NOISE_DROPOUT_MODERATE"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 750
+    pipeline:
+      effects:
+        - type: "noise"
+          enabled: true
+          snr_db: 28
+          seed: 202
+        - type: "dropout"
+          enabled: true
+          density: 0.005
+          multi_field_probability: 0.3
+          single_field_probability: 0.7
+          seed: 203
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 6
+  
+  - name: "SMPTE_BARS_NOISE_DROPOUT_HEAVY"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 750
+    pipeline:
+      effects:
+        - type: "noise"
+          enabled: true
+          snr_db: 22
+          seed: 204
+        - type: "dropout"
+          enabled: true
+          density: 0.01
+          multi_field_probability: 0.3
+          single_field_probability: 0.7
+          seed: 205
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 6
+  
+  - name: "SMPTE_BARS_NOISE_DROPOUT_SEVERE"
+    duration: 125
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_SMPTE_BARS_001.raw"
+    sound:
+      type: "sine"
+      start_freq_hz: 750
+    pipeline:
+      effects:
+        - type: "noise"
+          enabled: true
+          snr_db: 18
+          seed: 206
+        - type: "dropout"
+          enabled: true
+          density: 0.02
+          multi_field_probability: 0.3
+          single_field_probability: 0.7
+          seed: 207
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 6
+  
+  # Chapter 7: ntsc-ice-skating.mp4 (with sound)
+  - name: "Ice Skating"
+    source:
+      type: "mp4-file"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/mp4/ntsc-ice-skating.mp4"
+      start_frame: 0
+    sound:
+      type: "source"
+    biphase-vbi:
+      disc_area: "programme-area"
+      chapter: 7
+  
+  - name: "Lead-out"
+    duration: 2
+    source:
+      type: "yuv422-image"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_75_BARS.raw"
+    biphase-vbi:
+      disc_area: "lead-out"
+      user_code: "1958"

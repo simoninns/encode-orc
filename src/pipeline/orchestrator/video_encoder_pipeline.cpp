@@ -77,7 +77,9 @@ std::unique_ptr<VideoEncoderPipeline> VideoEncoderPipeline::Builder::build() {
     // Create appropriate active video encoder based on system
     std::unique_ptr<ActiveVideoEncoder> active_encoder;
     
-    if (system_ == VideoSystem::PAL) {
+    if (system_ == VideoSystem::PAL || system_ == VideoSystem::PAL_M) {
+        // PAL and PAL-M both use PAL-style color encoding with V-switch behavior
+        // The difference is in frame/field geometry which is handled at the parameter level
         active_encoder = std::make_unique<PALActiveEncoder>(params_, enable_chroma_filter_, enable_luma_filter_);
     } else if (system_ == VideoSystem::NTSC) {
         active_encoder = std::make_unique<NTSCActiveEncoder>(params_, enable_chroma_filter_, enable_luma_filter_);
@@ -157,10 +159,12 @@ Field VideoEncoderPipeline::encode_field_from_yuv(const Field& field_yuv,
         vsync_lines = 5;          // Lines 0-4
         active_lines_start = 23;  // Line 23
         active_lines_end = field_height - 3;  // 3 lines from bottom (blanking)
-    } else {
+    } else if (uses_525_line_geometry(system)) {
         vsync_lines = 3;          // Lines 0-2
         active_lines_start = 21;  // Line 21
         active_lines_end = field_height - 2;  // 2 lines from bottom (blanking)
+    } else {
+        throw std::runtime_error("Unsupported video system in encode_field_from_yuv");
     }
     
     // Stage 1: Generate field structure (sync, blanking, color burst)

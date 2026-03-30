@@ -25,14 +25,6 @@ pipeline:
         enabled: true
         lines: [14, 19, 276, 281]
         start_frame_offset: 0
-      
-      - type: "vits-ntsc"
-        enabled: true
-        signals:
-          - line: 13
-            signal: "ntc7-composite"
-          - line: 275
-            signal: "vir"
   
   effects:
     - type: "noise"
@@ -46,7 +38,7 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc-raw/525_5994_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_75_BARS.raw"
     vitc:
       timecode_start: "00:00:00.00"
     sound:
@@ -60,7 +52,7 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc-raw/525_5994_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_75_BARS.raw"
     sound:
       type: "square"
       start_freq_hz: 660
@@ -72,7 +64,7 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc-raw/525_5994_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_75_BARS.raw"
     sound:
       type: "sawtooth"
       start_freq_hz: 30
@@ -85,7 +77,7 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc-raw/525_5994_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_75_BARS.raw"
     sound:
       type: "brown"
       amplitude: 58
@@ -96,7 +88,7 @@ sections:
     duration: 2
     source:
       type: "yuv422-image"
-      file: "${ENCODE_ORC_ASSETS}/ntsc-raw/525_5994_75_BARS.raw"
+      file: "${ENCODE_ORC_ASSETS}/ntsc/raw/525_5994_75_BARS.raw"
     sound:
       type: "white"
       amplitude: 52

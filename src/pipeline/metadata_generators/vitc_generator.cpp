@@ -66,7 +66,7 @@ void VITCGenerator::build_vitc_bits(VideoSystem system,
                                      std::vector<uint8_t>& bits) const {
     bits.assign(TOTAL_BITS, 0);
 
-    const int fps = (system == VideoSystem::PAL) ? 25 : 30;
+    const int fps = get_integer_fps(system);
     const int frames = total_frame % fps;
     const int total_seconds = total_frame / fps;
     const int seconds = total_seconds % 60;
@@ -233,7 +233,7 @@ void VITCGenerator::generate_line(VideoSystem system,
     build_vitc_bits(system, total_frame, is_second_field, bits);
 
     // Debug log the timecode
-    const int fps = (system == VideoSystem::PAL) ? 25 : 30;
+    const int fps = get_integer_fps(system);
     int32_t frames = total_frame % fps;
     int32_t total_seconds = total_frame / fps;
     int32_t seconds = total_seconds % 60;

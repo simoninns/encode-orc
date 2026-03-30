@@ -215,12 +215,9 @@ void YUV422Loader::get_expected_dimensions(const VideoParameters& params,
                                            int32_t& height) {
     // Active video region dimensions
     // Standard dimensions for common formats
-    if (params.system == VideoSystem::PAL) {
+    if (params.system == VideoSystem::PAL || uses_525_line_geometry(params.system)) {
         width = 720;
-        height = 576;
-    } else if (params.system == VideoSystem::NTSC) {
-        width = 720;
-        height = 480;
+        height = get_expected_active_height(params.system);
     } else {
         // Fallback to calculating from parameters
         width = params.active_video_end - params.active_video_start;

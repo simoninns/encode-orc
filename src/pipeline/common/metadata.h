@@ -140,6 +140,8 @@ struct CaptureMetadata {
         // Initialize video parameters based on system
         if (system == VideoSystem::PAL) {
             video_params = VideoParameters::create_pal_composite();
+        } else if (system == VideoSystem::PAL_M) {
+            video_params = VideoParameters::create_palm_composite();
         } else {
             video_params = VideoParameters::create_ntsc_composite();
         }

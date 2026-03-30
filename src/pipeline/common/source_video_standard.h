@@ -95,11 +95,10 @@ inline bool standard_supports_vbi(SourceVideoStandard standard, VideoSystem syst
  * Consumer tape uses VITC instead of VITS.
  */
 inline bool standard_supports_vits(SourceVideoStandard standard, VideoSystem system) {
-    // VITS is system-independent for LaserDisc
-    (void)system;
     switch (standard) {
-        case SourceVideoStandard::IEC60856_1986: return true;  // LaserDisc NTSC includes VITS
-        case SourceVideoStandard::IEC60857_1986: return true;  // LaserDisc PAL includes VITS
+        case SourceVideoStandard::IEC60856_1986: return system == VideoSystem::NTSC;
+        // PAL-M VITS follows PAL/IEC60857 policy.
+        case SourceVideoStandard::IEC60857_1986: return system == VideoSystem::PAL || system == VideoSystem::PAL_M;
         case SourceVideoStandard::ConsumerTape:  return false; // Consumer tape does not include VITS
         case SourceVideoStandard::None:
         default: return false;
