@@ -11,7 +11,10 @@ encode-orc
 
 # Compiled object files
 *.o
-*.obj
+# MkDocs generated site output (built and deployed by CI)
+site/
+
+# Example output TBCs
 *.lo
 *.so
 *.dylib

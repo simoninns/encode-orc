@@ -157,7 +157,7 @@ Project name for identification and logging.
 name: "PAL Test Pattern"
 ```
 
-### `description` (required)
+### `description` (optional)
 **Type:** String
 
 Human-readable description of the project purpose.
@@ -181,18 +181,21 @@ Configures the encoding pipeline stages. See [Pipeline Configuration](#pipeline-
 
 List of video sections to encode. See [Sections Configuration](#sections-configuration).
 
-### `laserdisc` (optional)
+### `processing` (optional)
 **Type:** Object
 
-LaserDisc-specific metadata configuration.
+Controls encoder threading.
 
 ```yaml
-laserdisc:
-  mode: "cav"  # or "clv"
+processing:
+  threads: auto
 ```
 
 **Fields:**
-- `mode`: Either `"cav"` (Constant Angular Velocity with picture numbers) or `"clv"` (Constant Linear Velocity with timecode)
+- `threads`: Either `auto` or an integer
+  - `auto` uses the detected hardware thread count minus one, with a minimum of 1 worker
+  - `0` or a negative integer is treated the same as `auto`
+  - A positive integer uses that many encoding threads
 
 ---
 
@@ -211,8 +214,8 @@ output:
 ```
 
 Results in:
-- Composite: `my-video.tbc` + `my-video.tbc.db`
-- Y/C: `my-video.tbcy`, `my-video.tbcc` + `my-video.tbc.db`
+- Composite: `my-video.tbc` + `my-video.tbc.db` when using the default `tbc` writer
+- Y/C: `my-video.tbcy`, `my-video.tbcc` + `my-video.tbc.db` when using the default `tbc` writer
 
 ### `format` (required)
 **Type:** String  
@@ -315,7 +318,7 @@ pipeline:
 - **Purpose:** Smooths luma transitions
 - **When to use:** For stylized looks or specific test scenarios
 
-### `metadata` (required)
+### `metadata` (optional)
 **Type:** Object
 
 Configures metadata generators that embed information into the video signal.
@@ -334,13 +337,13 @@ pipeline:
       - type: "biphase-vbi"
         enabled: true
         lines: [16, 17, 18, 328, 329, 330]
-        format: "picture-number"
       
       - type: "vitc"
         enabled: true
-        lines: [19, 331]
-        start_frame_offset: 0
+        lines: [19, 21]
 ```
+
+The `metadata` block itself is optional. Projects that only need picture generation, filtering, or effects can omit it.
 
 ### Generator Types
 
@@ -366,17 +369,15 @@ Encodes LaserDisc metadata (picture numbers or timecode) using biphase modulatio
 - type: "biphase-vbi"
   enabled: true
   lines: [16, 17, 18, 328, 329, 330]  # Field 1 and Field 2 VBI lines
-  format: "picture-number"              # or "timecode"
 ```
 
 **Fields:**
 - `enabled`: Enable/disable generator
-- `lines`: Array of absolute line numbers (0-indexed) to encode VBI data
+- `lines`: Array of absolute line numbers (1-indexed) to encode VBI data
   - PAL: Lines 16-18 (field 1), 328-330 (field 2)
   - NTSC: Lines 16-18 (field 1), 278-280 (field 2)
-- `format`: Data format
-  - `"picture-number"` - CAV frame numbering
-  - `"timecode"` - CLV timecode (HH:MM:SS.FF)
+
+The parser accepts an optional `format` field for compatibility, but the current encoder derives CAV vs CLV behavior from the section-level `biphase-vbi` configuration such as `picture_start` and `timecode_start`.
 
 **Used with:** LaserDisc encoding projects  
 **See also:** Section-level `biphase-vbi` configuration
@@ -390,19 +391,39 @@ Vertical Interval Timecode - embeds frame numbers and timecode in VBI.
 ```yaml
 - type: "vitc"
   enabled: true
-  lines: [19, 331]           # VBI lines for VITC
-  start_frame_offset: 0      # Starting frame number
+  lines: [19, 21]            # Optional custom VITC lines
 ```
 
 **Fields:**
 - `enabled`: Enable/disable generator
-- `lines`: Array of absolute line numbers for VITC encoding
-- `start_frame_offset`: Starting frame number for timecode calculation
+- `lines`: Optional array of 1-indexed field-relative line numbers
+  - If omitted, the encoder uses defaults based on the video system
+  - PAL default: lines 19 and 21 in each field
+  - NTSC default: lines 14 and 16 in each field
+  - PAL-M default: lines 14 and 16 in each field
 
-**Common line numbers:**
-- PAL: Lines 19, 20, 331, 332
-- NTSC: Lines 14, 19, 276, 281
-- PAL-M: Use NTSC-style line numbers because PAL-M uses 525-line geometry
+The current YAML encoding path uses section-level `vitc.timecode_start` to set timecode continuity.
+
+---
+
+#### `vits` Generator
+
+Built-in VITS preset generator.
+
+```yaml
+- type: "vits"
+  enabled: true
+```
+
+This generator emits a fixed preset rather than taking a `signals` list.
+
+- PAL output:
+  - Field 1: line 19 `multiburst`, line 20 `uk-national`
+  - Field 2: line 332 `itu-composite`, line 333 `itu-combination`
+- NTSC output:
+  - Field 1: line 19 `ntc7-composite`, line 20 `ntc7-combination`
+  - Field 2: line 282 `ntc7-combination`, line 283 `ntc7-composite`
+- PAL-M: not allowed; use `vits-pal` explicitly
 
 ---
 
@@ -472,14 +493,22 @@ NTSC Vertical Interval Test Signals.
 - `"ntc7-composite"` - NTC-7 composite test signal
 - `"ntc7-combination"` - NTC-7 combination test signal
 - `"vir"` - Vertical Interval Reference (VIR) signal for color stability
-- `"multiburst"` - Frequency burst pattern
 
 **Use case:** NTSC decoder testing and color reference
+
+### Generator Restrictions
+
+- `biphase-vbi` and `vitc` cannot be enabled together in the same metadata block
+- Any VITS generator (`vits`, `vits-pal`, `vits-ntsc`) cannot be enabled together with `vitc` in the same metadata block
+- `vits-pal` and `vits-ntsc` cannot be mixed in the same metadata block
+- PAL-M rejects `biphase-vbi`
+- PAL-M rejects generic `vits`; use `vits-pal`
+- A field line can only be used by one enabled generator within the same metadata block
 
 ---
 
 ### `effects` (optional)
-**Type:** Object
+**Type:** Array
 
 Simulates analog artifacts and signal degradation.
 
@@ -597,9 +626,11 @@ Duration in **frames** (not seconds).
 - `yuv422-image` sources (static images)
 - `png-image` sources (static images)
 
-**Optional/ignored for:**
-- `mov-file` sources (duration determined by video file)
-- `mp4-file` sources (duration determined by video file)
+**Optional for:**
+- `mov-file` sources
+- `mp4-file` sources
+
+If `duration` is omitted for a MOV or MP4 section, the encoder probes the file and uses all remaining frames from `start_frame` to the end of the clip. If `duration` is present, only that many frames are encoded.
 
 **Frame counts:**
 - PAL: 25 frames/second
@@ -613,9 +644,20 @@ Example: 10 seconds PAL = 250 frames
 Defines input media source. See [Source Types](#source-types).
 
 ### `sound` (optional)
-**Type:** Array
+**Type:** Object
 
 Audio sources for this section. See [Sound Configuration](#sound-configuration).
+
+### `pipeline` (optional)
+**Type:** Object
+
+Section-level pipeline override. This replaces the corresponding global subsection when present.
+
+- `section.pipeline.metadata` overrides global `pipeline.metadata` for that section
+- `section.pipeline.preprocessing` overrides global `pipeline.preprocessing` for that section
+- `section.pipeline.effects` overrides global `pipeline.effects` for that section
+
+Use this when a single section needs different generators, filters, or effects than the rest of the project.
 
 ### `biphase-vbi` (optional)
 **Type:** Object
@@ -693,7 +735,7 @@ source:
 - H.264
 - Other ffmpeg-compatible codecs
 
-**Duration:** Determined by video file length
+**Duration:** Optional. If omitted, the encoder uses all remaining frames from `start_frame` to the end of the file.
 
 ---
 
@@ -717,7 +759,7 @@ source:
 - H.265 (HEVC)
 - Other ffmpeg-compatible codecs
 
-**Duration:** Determined by video file length
+**Duration:** Optional. If omitted, the encoder uses all remaining frames from `start_frame` to the end of the file.
 
 ---
 
@@ -1003,15 +1045,12 @@ sound:
 **Default:** If no `sound` field is specified, the section will have silence.
 
 ---
-- Sample rate: 48 kHz recommended
-- Channels: Mono or stereo
-- Audio loops if video is longer than audio file
-
----
 
 ## Biphase VBI Configuration
 
 Section-level LaserDisc metadata configuration. Used with `biphase-vbi` generator.
+
+The section-level block can also be written as the legacy alias `laserdisc:`. New projects should prefer `biphase-vbi:`.
 
 ```yaml
 sections:
@@ -1039,12 +1078,14 @@ LaserDisc disc region identifier.
 
 ### `spec` (optional)
 **Type:** String  
-**Values:** "standard" | "amendment-2"
+**Values:** `"standard"` | `"amendment-2"`
 
 Selects the IEC encoding rules used for the six VBI values (3 per field).
 
-- "standard" - IEC 60856/60857 base specification
-- "amendment-2" - Applies the amendment 2 CLV picture-number correction (NTSC)
+- `"standard"` - IEC 60856/60857 base specification
+- `"amendment-2"` - Applies the amendment 2 CLV picture-number correction (NTSC)
+
+The parser also accepts the compatibility spelling `"amendment2"` and normalizes it to `"amendment-2"`.
 
 ### `user_code` (optional)
 **Type:** String (hex)  
@@ -1249,8 +1290,7 @@ pipeline:
         enabled: true
       - type: "vitc"
         enabled: true
-        lines: [14, 276]
-        start_frame_offset: 0
+        lines: [14, 16]
   
   effects:
     - type: "noise"
@@ -1295,8 +1335,6 @@ pipeline:
         enabled: true
       - type: "vitc"
         enabled: true
-        lines: [14, 19, 276, 281]
-        start_frame_offset: 0
 
 sections:
   - name: "Bars"
@@ -1320,9 +1358,6 @@ output:
   filename: "output/laserdisc-cav"
   format: "pal-composite"
 
-laserdisc:
-  mode: "cav"
-
 pipeline:
   preprocessing:
     filters:
@@ -1334,7 +1369,6 @@ pipeline:
       - type: "biphase-vbi"
         enabled: true
         lines: [16, 17, 18, 328, 329, 330]
-        format: "picture-number"
       
       - type: "vits-pal"
         enabled: true
@@ -1420,8 +1454,7 @@ pipeline:
     generators:
       - type: "vitc"
         enabled: true
-        lines: [19, 20, 331, 332]
-        start_frame_offset: 0
+        lines: [19, 21]
       - type: "color-burst"
         enabled: true
 
@@ -1432,10 +1465,9 @@ sections:
       type: "png-image"
       file: "images/title.png"
     sound:
-      - type: "sine"
-        start_freq_hz: 1000
-        end_freq_hz: 1000
-        hz_per_field: 0
+      type: "sine"
+      start_freq_hz: 1000
+      end_freq_hz: 1000
   
   - name: "Main Content"
     duration: 500  # 20 seconds
@@ -1444,6 +1476,6 @@ sections:
       file: "video/main.mp4"
       start_frame: 0
     sound:
-      - type: "wav"
-        file: "audio/soundtrack.wav"
+      type: "wav"
+      file: "audio/soundtrack.wav"
 ```
