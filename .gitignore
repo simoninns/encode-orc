@@ -14,7 +14,7 @@ encode-orc
 # MkDocs generated site output (built and deployed by CI)
 site/
 
-# Example output TBCs
+# Library binaries
 *.lo
 *.so
 *.dylib
@@ -67,3 +67,6 @@ tmp/
 Testing
 Testing/Temporary
 ggv-output/
+
+# Temporary documentation files
+planning-docs/
