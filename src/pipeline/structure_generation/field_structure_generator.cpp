@@ -273,7 +273,7 @@ void FieldStructureGenerator::generate_sync_line(uint16_t* line_buffer,
     // For BR_BR lines: Line is at sync level, add short blanking pulses ONLY after each BR
     if (first_pulse == SyncPulseType::BROAD && second_pulse == SyncPulseType::BROAD) {
         int32_t br_duration = static_cast<int32_t>(broad_sync * 1e-6 / sample_duration);
-        int32_t blanking_pulse_duration = static_cast<int32_t>(2.3e-6 / sample_duration); // Short blanking pulse
+        int32_t blanking_pulse_duration = static_cast<int32_t>(normal_sync * 1e-6 / sample_duration); // 4.7µs gap per CCIR 624 (hsync width, not eq-pulse width)
         
         // First blanking pulse (after first BR, before color burst area)
         for (int32_t i = br_duration; i < br_duration + blanking_pulse_duration && i < half_line; ++i) {
