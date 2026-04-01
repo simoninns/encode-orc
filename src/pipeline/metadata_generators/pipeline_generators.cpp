@@ -46,6 +46,16 @@ void ColorBurstMetadataGenerator::apply(Field& field, const MetadataContext& con
     int32_t center_level = context.is_c_field_for_yc ? 32768 : params_.blanking_16b_ire;
     
     for (int32_t line = first_burst_line; line <= last_line; line++) {
+        // For PAL, suppress colour burst on line 6 for field phases 1, 4, 5, and 8.
+        // These are the V-switching identification fields where ld-decode expects
+        // no burst in the colour burst window (samples ~99-139) on line 6.
+        if (system_ == VideoSystem::PAL && line == 6) {
+            int32_t phase_id = (context.field_number % 8) + 1;
+            if (phase_id == 1 || phase_id == 4 || phase_id == 5 || phase_id == 8) {
+                continue;
+            }
+        }
+
         uint16_t* line_buffer = field.line_data(line);
         
         if (system_ == VideoSystem::PAL) {

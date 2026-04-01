@@ -161,9 +161,10 @@ struct CaptureMetadata {
             if (system == VideoSystem::NTSC) {
                 field.field_phase_id = ((i + 2) % 4) + 1; // NTSC: 1..4 with +2 offset
             } else {
-                // Align PAL 8-field sequence to match ld-decode captures: 3..8,1..2
-                // Convert to 1..8 indexing with a +3 modulo offset
-                field.field_phase_id = ((i + 3) % 8) + 1;
+                // PAL 8-field sequence starts at phase 1 so that is_first_field
+                // (odd phases = true, even phases = false) matches ld-decode's map4
+                // lookup table: (True,False)->1, (False,True)->2, (True,True)->3, ...
+                field.field_phase_id = (i % 8) + 1;
             }
             field.file_loc = i * video_params.field_width * video_params.field_height;
             field.disk_loc = static_cast<double>(i);

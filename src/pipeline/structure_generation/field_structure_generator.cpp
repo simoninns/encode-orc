@@ -138,6 +138,16 @@ void FieldStructureGenerator::add_color_burst_to_field(
     
     // Add color burst to all lines
     for (int32_t line = 0; line < actual_field_height; ++line) {
+        // For PAL, suppress colour burst on line 6 for field phases 1, 4, 5, and 8.
+        // These are the V-switching identification fields; ld-decode uses the absence
+        // of burst on line 6 to determine the correct field phase ID.
+        if (system == VideoSystem::PAL && line == 6) {
+            int32_t phase_id = (field_number % 8) + 1;
+            if (phase_id == 1 || phase_id == 4 || phase_id == 5 || phase_id == 8) {
+                continue;
+            }
+        }
+
         uint16_t* line_buffer = field.line_data(line);
         
         if (force_center_level.has_value()) {
