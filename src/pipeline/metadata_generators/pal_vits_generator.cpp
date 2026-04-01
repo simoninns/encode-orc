@@ -73,6 +73,8 @@ int32_t PALVITSGenerator::get_v_switch(int32_t field_number, int32_t line_number
     
     int32_t field_id = field_number % 8;
     int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
+    // Correct V-switch polarity for field phases 1 and 5 (field_id 0 and 4)
+    if (field_id % 4 == 0) prev_lines++;
     
     // V-switch alternates every line
     return (prev_lines % 2) == 0 ? 1 : -1;

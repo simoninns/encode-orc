@@ -86,6 +86,8 @@ int32_t ColorBurstGenerator::get_pal_v_switch(int32_t field_number, int32_t line
     
     int32_t field_id = field_number % 8;
     int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
+    // Correct V-switch polarity for field phases 1 and 5 (field_id 0 and 4)
+    if (field_id % 4 == 0) prev_lines++;
     
     // V-switch alternates every line
     return (prev_lines % 2) == 0 ? 1 : -1;
@@ -99,6 +101,8 @@ int32_t ColorBurstGenerator::get_palm_v_switch(int32_t field_number, int32_t lin
     // For PAL-M, maintain the 8-field sequence compatibility
     int32_t field_id = field_number % 8;
     int32_t prev_lines = ((field_id / 2) * 525) + ((field_id % 2) * 263) + (frame_line / 2);
+    // Correct V-switch polarity for field phases 1 and 5 (field_id 0 and 4)
+    if (field_id % 4 == 0) prev_lines++;
     
     // V-switch alternates every line
     return (prev_lines % 2) == 0 ? 1 : -1;
@@ -226,6 +230,8 @@ void ColorBurstGenerator::generate_pal_burst(uint16_t* line_buffer, int32_t line
     int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
     int32_t field_id = field_number % 8;
     int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
+    // Correct V-switch polarity for field phases 1 and 5 (field_id 0 and 4)
+    if (field_id % 4 == 0) prev_lines++;
     int32_t v_switch = (prev_lines % 2 == 0) ? 1 : -1;
     double burst_phase_offset = v_switch * (135.0 * PI / 180.0);
     
@@ -292,6 +298,8 @@ void ColorBurstGenerator::generate_palm_burst(uint16_t* line_buffer, int32_t lin
     int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
     int32_t field_id = field_number % 8;
     int32_t prev_lines = ((field_id / 2) * 525) + ((field_id % 2) * 263) + (frame_line / 2);
+    // Correct V-switch polarity for field phases 1 and 5 (field_id 0 and 4)
+    if (field_id % 4 == 0) prev_lines++;
     int32_t v_switch = (prev_lines % 2 == 0) ? 1 : -1;
     double burst_phase_offset = v_switch * (135.0 * PI / 180.0);
     
