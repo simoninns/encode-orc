@@ -51,18 +51,23 @@ int32_t PALVITSGenerator::ire_to_sample(double ire) const {
 }
 
 double PALVITSGenerator::calculate_phase(int32_t field_number, int32_t line_number, int32_t sample) const {
-    // Calculate absolute line number in PAL 8-field sequence
-    bool is_first_field = (field_number % 2) == 0;
-    int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
-    
-    int32_t field_id = field_number % 8;
-    int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
-    
-    // PAL: 283.7516 subcarrier cycles per line
-    double prev_cycles = prev_lines * 283.7516;
-    
+    // PAL has 312.5 lines per field. Use floating-point arithmetic to preserve
+    // the half-line inter-field offset that drives the 8-field colour framing sequence.
+    const double lines_per_field = 312.5;
+
+    // PAL line rate is 625 * 25 lines/second.
+    // Derive cycles/line from actual configured fSC to avoid phase-sequence drift.
+    const double line_rate_hz = 625.0 * 25.0;
+    const double cycles_per_line = subcarrier_freq_ / line_rate_hz;
+
+    // Absolute lines elapsed before this line within the full sequence
+    double prev_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line_number);
+
+    // Total subcarrier cycles elapsed before this sample
+    double prev_cycles = prev_lines * cycles_per_line;
+
     // Phase for this sample
-    double time_phase = 2.0 * PI * subcarrier_freq_ * sample / sample_rate_;
+    double time_phase = 2.0 * PI * subcarrier_freq_ * static_cast<double>(sample) / sample_rate_;
     return 2.0 * PI * prev_cycles + time_phase;
 }
 
