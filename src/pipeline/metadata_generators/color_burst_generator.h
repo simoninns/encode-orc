@@ -109,14 +109,6 @@ private:
     double calculate_palm_phase(int32_t field_number, int32_t line_number, int32_t sample) const;
     
     /**
-     * @brief Calculate PAL V-switch for a given field and line
-     * @param field_number Field number
-     * @param line_number Line number within field
-     * @return +1 or -1 for V-switch
-     */
-    int32_t get_pal_v_switch(int32_t field_number, int32_t line_number) const;
-    
-    /**
      * @brief Calculate PAL-M V-switch for a given field and line
      * @param field_number Field number
      * @param line_number Line number within field

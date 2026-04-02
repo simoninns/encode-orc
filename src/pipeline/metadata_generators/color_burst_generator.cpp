@@ -8,7 +8,6 @@
  */
 
 #include "color_burst_generator.h"
-#include "pal_phase_math.h"
 #include "ntsc_phase_math.h"
 
 namespace encode_orc {
@@ -55,11 +54,6 @@ double ColorBurstGenerator::calculate_pal_phase(int32_t field_number, int32_t li
 double ColorBurstGenerator::calculate_palm_phase(int32_t field_number, int32_t line_number, int32_t sample) const {
     // PAL-M shares the 525-line geometry of NTSC; pass its own fSC to the helper.
     return ntsc_subcarrier_phase(field_number, line_number, sample, subcarrier_freq_, sample_rate_);
-}
-
-int32_t ColorBurstGenerator::get_pal_v_switch(int32_t field_number, int32_t line_number) const {
-    (void)line_number;  // V-switch is constant per field, line_number not needed
-    return pal_v_switch_from_field(field_number);
 }
 
 int32_t ColorBurstGenerator::get_palm_v_switch(int32_t field_number, int32_t line_number) const {
@@ -194,7 +188,12 @@ void ColorBurstGenerator::generate_pal_burst(uint16_t* line_buffer, int32_t line
     int32_t burst_start = params_.colour_burst_start;
     int32_t burst_end = params_.colour_burst_end;
 
-    int32_t v_switch = pal_v_switch_from_field(field_number);
+    // PAL burst V-switch alternates every line (same sequence as active video).
+    bool is_first_field = (field_number % 2) == 0;
+    int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
+    int32_t field_id = field_number % 8;
+    int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
+    int32_t v_switch = (prev_lines % 2 == 0) ? 1 : -1;
     double burst_phase_offset = v_switch * (135.0 * PI / 180.0);
     
     // Envelope shaping: 3 cycles rise/fall with cosine S-curve

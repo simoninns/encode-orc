@@ -25,12 +25,12 @@ active lines spatially between the active lines of the first field.
 
 PAL uses a subcarrier frequency of:
 
-$$f_{SC} = \frac{283 + \frac{3}{4} + \frac{1}{625 \times 4}}{1} \times f_H
+$$f_{SC} = \left(\frac{1135}{4} + \frac{1}{625}\right) \times f_H
          \approx 4{,}433{,}618.75\ \text{Hz}$$
 
 where $f_H$ is the line rate.  This gives:
 
-$$\text{cycles per line} = \frac{f_{SC}}{f_H} \approx 283.7516$$
+$$\text{cycles per line} = \frac{f_{SC}}{f_H} = \frac{1135}{4} + \frac{1}{625} \approx 283.7516$$
 
 Over 312 whole lines the subcarrier does not land on a repeating phase, but over
 **312.5 line-periods** (half the 625-line frame) it accumulates:
@@ -48,17 +48,16 @@ i.e., $−36°$) error.
 ## The ld-decode 313-Line Field Buffer
 
 ld-decode stores every decoded field — whether it is a first field or a second field — in
-a fixed-height buffer of **313 lines** (plus line 0 as a header), regardless of the
-nominal 312.5-line duration:
+a fixed-height buffer of **313 lines**, regardless of the nominal 312.5-line duration:
 
-- **First fields** (odd fields): carry 312 active lines; line 313 is padded with a
-  blanking-level line.
-- **Second fields** (even fields): carry 313 active lines (the half-line "extra" is
-  absorbed into the first active line).
-
-This is a purely representational choice by ld-decode to give every field a uniform
-buffer size.  It does **not** mean that a PAL second field is actually 313 lines long in
-the broadcast signal.
+- **Both first and second fields** are stored with exactly 313 lines.
+- **Line 313** (the last line) of the first field buffer contains the half-line at the
+  PAL field boundary: the first half is the end of field 1's equalising pulse, and the
+  second half is the start of the field 2 broad vsync pulse.  ld-decode captures the
+  raw signal as-is, so this interfield half-line appears naturally in both adjacent field
+  buffers.
+- There is **no blanking padding** inserted between field 1 and field 2 — the 625-line
+  frame content is stored continuously across both field buffers.
 
 ### TBC line indexing
 
@@ -79,94 +78,83 @@ for the phase-ID determination to work.
 
 ## PAL 8-Field Colour Phase Sequence and V-Switch
 
-The PAL colour-carrier applies a line-by-line $\pm 135°$ V-component phase alternation
-(the "V-switch") to suppress cross-colour patterning.  Over the 8-field cycle the
-V-switch polarity, combined with the accumulated subcarrier phase, produces eight distinct
-burst phasors that ld-decode votes on to identify the field position within the sequence.
+The PAL colour-carrier applies a line-by-line $\pm V$ phase alternation (the "V-switch")
+to suppress cross-colour patterning.  On each successive line the sign of the encoded V
+component is flipped: the burst phasor moves between $+135°$ and $-135°$ from the U-axis,
+and the active-picture chroma modulation follows the same alternation.
 
-### Phase IDs and V-switch polarity
+The V-switch sequence repeats every two lines, but because the 8-field cycle is 5,000
+lines long (8 × 625), the starting polarity at any given field depends on the field's
+position in the 8-field sequence.  ld-decode identifies that position by voting on the
+burst polarity at four fixed lines per field.
 
-The table below gives the V-switch polarity required at the ld-decode vote lines for each
-PAL phase ID.  "Rising" means `Re(burst phasor) > 0` under ld-decode's internal fsc
-reference; "Falling" means `Re(burst phasor) < 0`.  The `m4 == 2` inversion applied
-inside `determine_field_number()` is already accounted for.
+### Phase IDs and burst polarity at ld-decode vote lines
 
-| phase_id | Field type | Vote rows (TBC index) | Expected polarity | V-switch |
-|----------|------------|-----------------------|-------------------|----------|
-| 1 | First  | 9, 13, 17, 21  | Rising  | +1 |
-| 2 | Second | 10, 14, 18, 22 | Falling | −1 |
-| 3 | First  | 9, 13, 17, 21  | Rising  | +1 |
-| 4 | Second | 10, 14, 18, 22 | Falling | −1 |
-| 5 | First  | 9, 13, 17, 21  | Falling | −1 |
-| 6 | Second | 10, 14, 18, 22 | Rising  | +1 |
-| 7 | First  | 9, 13, 17, 21  | Falling | −1 |
-| 8 | Second | 10, 14, 18, 22 | Rising  | +1 |
+| phase_id | Field type | Vote rows (TBC index) | Burst phasor |
+|----------|------------|-----------------------|--------------|
+| 1 | First  | 9, 13, 17, 21  | $+135°$ |
+| 2 | Second | 10, 14, 18, 22 | $-135°$ |
+| 3 | First  | 9, 13, 17, 21  | $+135°$ |
+| 4 | Second | 10, 14, 18, 22 | $-135°$ |
+| 5 | First  | 9, 13, 17, 21  | $-135°$ |
+| 6 | Second | 10, 14, 18, 22 | $+135°$ |
+| 7 | First  | 9, 13, 17, 21  | $-135°$ |
+| 8 | Second | 10, 14, 18, 22 | $+135°$ |
 
-The V-switch polarity is **constant for the entire duration of a field** — there is no
-mid-field polarity transition.
-
----
-
-## Why a Line-Counting Formula Fails
-
-A naive implementation counts half-lines to determine where in the V-switch cycle each
-line falls:
-
-```cpp
-// Incorrect — do not use
-int32_t field_id   = field_number % 8;
-int32_t prev_lines = ((field_id / 2) * 625)
-                   + ((field_id % 2) * 313)   // ← should be 312.5, not 313
-                   + (frame_line / 2);
-int32_t v_switch   = (prev_lines % 2 == 0) ? 1 : -1;
-```
-
-The term `(field_id % 2) * 313` attempts to add 313 whole lines for second fields in
-each frame pair.  A PAL second field is only **312.5** lines long, so this introduces a
-$+0.5$-line error for every second field.  At the subcarrier rate this corresponds to:
-
-$$\Delta\phi = 2\pi \times \frac{f_{SC}}{f_S} \times 0.5\ \text{lines in samples}
-\approx 2\pi \times 141.9\ \text{cycles}
-\approx -36°\ \text{net burst phase error}$$
-
-Combined with an additional sign correction term that was added to compensate for an
-unrelated earlier bug, four of the eight phase IDs (3, 4, 7, and 8) end up with inverted
-V-switch polarity, causing ld-decode to report a "phaseID sequence mismatch" on every
-field.  Phase 4 and phase 8 also exhibit a single vote-line anomaly (rows 17 and 18
-respectively) where the burst polarity is ≈180° opposite to the other three vote rows,
-indicating that the V-switch transition was occurring mid-field rather than at the field
-boundary.
+The vote-line polarity is consistent within each field because the V-switch alternates
+line-by-line starting from a well-defined position at the top of each field, and the four
+vote lines are all even-spaced (every 4 lines) so they all fall on the same half of the
+alternation cycle within a given field.
 
 ---
 
 ## How encode-orc Handles the V-Switch
 
-Because the V-switch polarity is a per-field constant that is fully defined by the PAL
-standard and verified against real ld-decode TBCs, encode-orc uses a direct lookup table
-(LUT) keyed on `field_number % 8` rather than accumulating line counts:
+The V-switch is computed identically for both the colour burst and the active-picture
+chroma modulation.  Both must use the same per-line sequence — any mismatch between them
+causes the chroma decoder's delay-line cancellation to fail, producing visible
+line-by-line colour errors in the decoded output.
+
+### Per-line formula
+
+The frame line number is derived from the field-relative line number and the
+`is_first_field` flag, then used to count the total lines elapsed since the start of the
+8-field sequence:
 
 ```cpp
-// v_switch_lut[field_number % 8]  →  +1 (Rising) or −1 (Falling)
-// Indices 0–7 correspond to phase IDs 1–8.
-static const int32_t pal_v_switch_lut[8] = {
-//  ph1  ph2  ph3  ph4  ph5  ph6  ph7  ph8
-     +1,  -1,  +1,  -1,  -1,  +1,  -1,  +1
-};
-int32_t v_switch = pal_v_switch_lut[field_number % 8];
-double  burst_phase_offset = v_switch * (135.0 * PI / 180.0);
+// frame_line: 1-indexed PAL frame line number within the 8-field cycle
+int32_t frame_line = is_first_field ? (line_number * 2 + 1)
+                                    : (line_number * 2 + 2);
+
+// Count half-lines elapsed before this frame line across the 8-field sequence.
+// Each 8-field cycle covers 4 frames × 625 lines = 5000 lines total.
+// Within the 8 fields: fields pair up into frames; field_id/2 gives the frame index.
+int32_t field_id   = field_number % 8;
+int32_t prev_lines = ((field_id / 2) * 625)      // lines from whole frames
+                   + ((field_id % 2) * 313)       // lines from the current first field
+                   + (frame_line / 2);            // lines before this frame line
+
+// V-switch alternates every line
+int32_t v_switch = (prev_lines % 2 == 0) ? +1 : -1;
 ```
 
-This LUT is applied uniformly in:
+This formula is applied in:
 
 | Location | Purpose |
 |----------|---------|
-| `ColorBurstGenerator::generate_pal_burst()` | Colour-burst generation in VBlank lines |
-| `ColorBurstGenerator::get_pal_v_switch()`   | V-switch query used by burst field-structure code |
-| `PALActiveEncoder::calculate_v_switch()`    | V-switch for active-picture chroma lines |
+| `PALActiveEncoder::calculate_v_switch()`    | V-switch for active-picture chroma encoding |
+| `ColorBurstGenerator::generate_pal_burst()` | Burst phasor angle ($\pm135°$) for each line |
+### Why burst and active-video must use the same formula
 
-By fixing the V-switch at the field level the mid-field polarity transition anomaly is
-also eliminated: every line in a field uses the same V-switch sign, matching the
-behaviour of a real PAL encoder.
+The PAL chroma decoder (e.g. the delay-line decoder in decode-orc) recovers U and V by
+adding and subtracting adjacent lines:
+
+$$U = \frac{C_n + C_{n-1}}{2}, \quad V = \frac{C_n - C_{n-1}}{2}$$
+
+This cancellation only works when the burst reference used by the decoder tracks the same
+V-switch sequence as the modulated chroma.  If the burst and the active-video chroma use
+different V-switch sequences, the decoder sees a spurious alternating-line error that
+manifests as horizontal colour stripes in the decoded image.
 
 ---
 
@@ -179,7 +167,11 @@ behaviour of a real PAL encoder.
   16-bit unsigned integers (0x0000 = sync tip, 0xFFFF = peak white).
 - Line 0 is a header/blanking line; active video begins at line 1.
 - Colour burst appears in lines 9–22 (covering both the VBlank vote region and the
-  pre-active area); the burst V-switch polarity follows the LUT above.
+  pre-active area); the burst phasor alternates per-line using the same V-switch
+  formula as the active-picture encoder.
+- On line 6 of field phases 1, 4, 5, and 8 the colour burst is suppressed entirely.
+  ld-decode uses the absence of burst on line 6 as an additional signal for determining
+  the PAL 8-field phase ID.
 
 ### Y/C TBC (`.tbcc` and `.tbcy`)
 
@@ -231,8 +223,7 @@ Alternatively, passing the TBC through ld-recode and then ld-decode should produ
 ## References
 
 - EBU Tech 3299 / ITU-R BT.470 — PAL colour framing and 8-field sequence specification.
-- [GitHub issue #26](https://github.com/simoninns/encode-orc/issues/26) — full
-  investigation log including phasor angle tables, root-cause analysis, and the derivation
-  of the LUT above.
+- [GitHub issue #26](https://github.com/simoninns/encode-orc/issues/26) — investigation
+  log covering V-switch polarity, burst phasor angles, and field-phase identification.
 - `lddecode/core.py` (`compute_line_bursts`, `determine_field_number`) — ld-decode
   source defining the voting convention that encode-orc must satisfy.

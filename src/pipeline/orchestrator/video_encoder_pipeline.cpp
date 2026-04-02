@@ -149,7 +149,7 @@ Field VideoEncoderPipeline::encode_field_from_yuv(const Field& field_yuv,
                                                   bool is_first_field,
                                                   const VBIData* vbi_data,
                                                   int32_t vitc_frame_offset) {
-    // Get field height (field1: 312/262, field2: 313/263)
+    // Get field height (PAL: both fields 313; NTSC: field1 262, field2 263)
     int32_t field_height = is_first_field ? params_.field1_height : params_.field2_height;
     VideoSystem system = active_encoder_->get_video_system();
     

@@ -19,26 +19,6 @@ static constexpr double PAL_LINES_PER_FIELD = 312.5;
 static constexpr double PAL_LINE_RATE_HZ    = 625.0 * 25.0;
 
 /**
- * @brief Return the PAL V-switch polarity (+1 or -1) for a given field.
- *
- * PAL V-switch polarity is constant for an entire field and repeats every
- * 8 fields. The values are cross-checked against ld-decode's
- * determine_field_number() voting convention (m4==2 inversion already
- * accounted for). See: https://github.com/simoninns/encode-orc/issues/26
- *
- * @param field_number  0-based absolute field index
- * @return +1 or -1
- */
-inline int32_t pal_v_switch_from_field(int32_t field_number)
-{
-    static constexpr int32_t lut[8] = {
-    //  ph1  ph2  ph3  ph4  ph5  ph6  ph7  ph8
-         +1,  -1,  +1,  -1,  -1,  +1,  -1,  +1
-    };
-    return lut[field_number % 8];
-}
-
-/**
  * @brief Calculate the raw subcarrier phase angle at a given sample position
  *        within the PAL 8-field colour framing sequence.
  *

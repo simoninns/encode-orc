@@ -107,7 +107,7 @@ struct VideoParameters {
         params.sample_rate = 17734475.0;  // Exact 4×fSC for ld-decode compatibility
         params.field_width = 1135;
         params.field_height = 313;  // Default (for backward compatibility)
-        params.field1_height = 312; // First field (odd field): 312 lines
+        params.field1_height = 313; // First field (odd field): 313 lines (same as field 2; line 313 is the interfield half-line)
         params.field2_height = 313; // Second field (even field): 313 lines
         params.colour_burst_start = 98;
         params.colour_burst_end = 138;

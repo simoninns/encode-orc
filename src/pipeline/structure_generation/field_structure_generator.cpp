@@ -86,7 +86,7 @@ StructuredField FieldStructureGenerator::create_field_structure_without_burst(
     
     // Determine actual field height for this field
     // NTSC: Field 1 has 262 lines, Field 2 has 263 lines
-    // PAL: Field 1 has 312 lines, Field 2 has 313 lines
+    // PAL: Both fields have 313 lines; field 1's last line is the interfield half-line
     int32_t actual_field_height = is_first_field ? 
                                   params_.field1_height : 
                                   params_.field2_height;
@@ -218,11 +218,12 @@ FieldStructureGenerator::get_sync_pattern_for_line(
         return {SPT::NORMAL, SPT::NONE};
         
     } else {
-        // PAL: 625 lines total, fields are 312/313 lines
-        // Field 1 (first_field=true): frame lines 1-312 (0-indexed field: 0-311)
+        // PAL: 625 lines total, both fields stored as 313 lines
+        // Field 1 (first_field=true): frame lines 1-313 (0-indexed field: 0-312)
         // Field 2 (first_field=false): frame lines 313-625 (0-indexed field: 0-312)
+        // Line 313 (index 312) of field 1 is the interfield half-line boundary
         if (is_first_field) {
-            absolute_frame_line = field_line + 1;  // Lines 1-312
+            absolute_frame_line = field_line + 1;  // Lines 1-313
         } else {
             absolute_frame_line = field_line + 313;  // Lines 313-625
         }
