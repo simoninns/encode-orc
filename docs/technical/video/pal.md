@@ -51,13 +51,14 @@ ld-decode stores every decoded field — whether it is a first field or a second
 a fixed-height buffer of **313 lines**, regardless of the nominal 312.5-line duration:
 
 - **Both first and second fields** are stored with exactly 313 lines.
-- **Line 313** (the last line) of the first field buffer contains the half-line at the
-  PAL field boundary: the first half is the end of field 1's equalising pulse, and the
-  second half is the start of the field 2 broad vsync pulse.  ld-decode captures the
-  raw signal as-is, so this interfield half-line appears naturally in both adjacent field
-  buffers.
-- There is **no blanking padding** inserted between field 1 and field 2 — the 625-line
-  frame content is stored continuously across both field buffers.
+- The 625 lines of a PAL frame are stored entirely as-is across the two field buffers.
+  **Line 313** of the first field buffer contains the half-line at the PAL field
+  boundary (the interfield equalising/broad-vsync boundary); it is not duplicated into
+  the second field buffer.  Line 1 of the second field buffer is simply the next
+  continuous line of the signal.
+- There is **no blanking padding** and no shared half-line between field 1 and field 2 —
+  the two 313-line buffers together account for 626 TBC lines, but the 626th line of a
+  frame is line 1 of the next frame and appears as such in the following frame's buffer.
 
 ### TBC line indexing
 
@@ -225,5 +226,8 @@ Alternatively, passing the TBC through ld-recode and then ld-decode should produ
 - EBU Tech 3299 / ITU-R BT.470 — PAL colour framing and 8-field sequence specification.
 - [GitHub issue #26](https://github.com/simoninns/encode-orc/issues/26) — investigation
   log covering V-switch polarity, burst phasor angles, and field-phase identification.
+- [GitHub issue #27](https://github.com/simoninns/encode-orc/issues/27) — correction to
+  the ld-decode field buffer description: the half-line boundary is not shared between
+  field buffers.
 - `lddecode/core.py` (`compute_line_bursts`, `determine_field_number`) — ld-decode
   source defining the voting convention that encode-orc must satisfy.
