@@ -9,6 +9,7 @@
 
 #include "ntsc_vits_generator.h"
 #include "color_burst_generator.h"
+#include "ntsc_phase_math.h"
 #include "logging.h"
 #include <algorithm>
 #include <cstring>
@@ -51,21 +52,7 @@ int32_t NTSCVITSGenerator::ire_to_sample(double ire) const {
 }
 
 double NTSCVITSGenerator::calculate_phase(int32_t field_number, int32_t line_number, int32_t sample) const {
-    // Calculate absolute line number in NTSC
-    // NTSC has 262.5 lines per field (525 total lines)
-    bool is_first_field = (field_number % 2) == 0;
-    int32_t frame_line = is_first_field ? (line_number * 2) : (line_number * 2 + 1);
-    
-    int32_t absolute_line = (field_number * 262) + frame_line;
-    
-    // NTSC: Subcarrier at 3.579545 MHz, 227.5 cycles per line (approximately)
-    // Precise calculation: fSC / line_rate
-    double cycles_per_line = subcarrier_freq_ / (30000.0 / 1001.0 / 525.0);
-    double prev_cycles = absolute_line * cycles_per_line;
-    
-    // Phase for this sample
-    double time_phase = 2.0 * PI * subcarrier_freq_ * sample / sample_rate_;
-    return 2.0 * PI * prev_cycles + time_phase;
+    return ntsc_subcarrier_phase(field_number, line_number, sample, subcarrier_freq_, sample_rate_);
 }
 
 void NTSCVITSGenerator::generate_sync_pulse(uint16_t* line_buffer) {

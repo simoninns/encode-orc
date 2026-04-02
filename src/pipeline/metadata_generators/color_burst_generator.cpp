@@ -8,6 +8,8 @@
  */
 
 #include "color_burst_generator.h"
+#include "pal_phase_math.h"
+#include "ntsc_phase_math.h"
 
 namespace encode_orc {
 
@@ -25,21 +27,7 @@ ColorBurstGenerator::ColorBurstGenerator(const VideoParameters& params)
 }
 
 double ColorBurstGenerator::calculate_ntsc_phase(int32_t field_number, int32_t line_number, int32_t sample) const {
-    // NTSC has 262.5 lines per field. Model absolute line count as a double
-    // to preserve the half-line offset between fields, which produces the
-    // 4-field color framing sequence (±90° per field).
-    const double lines_per_field = 262.5;
-    const double cycles_per_line = 227.5;  // NTSC subcarrier cycles per line
-
-    // Absolute lines elapsed before this line within the full sequence
-    double prev_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line_number);
-
-    // Total subcarrier cycles elapsed before this sample
-    double prev_cycles = prev_lines * cycles_per_line;
-
-    // Time term for this sample position within the line
-    double time_phase = 2.0 * PI * subcarrier_freq_ * static_cast<double>(sample) / sample_rate_;
-    return 2.0 * PI * prev_cycles + time_phase;
+    return ntsc_subcarrier_phase(field_number, line_number, sample, subcarrier_freq_, sample_rate_);
 }
 
 double ColorBurstGenerator::calculate_pal_phase(int32_t field_number, int32_t line_number, int32_t sample) const {
@@ -65,38 +53,13 @@ double ColorBurstGenerator::calculate_pal_phase(int32_t field_number, int32_t li
 }
 
 double ColorBurstGenerator::calculate_palm_phase(int32_t field_number, int32_t line_number, int32_t sample) const {
-    // PAL-M uses 525-line geometry (like NTSC) with PAL-M subcarrier timing
-    // Model absolute line count as a double to preserve the half-line offset between fields
-    const double lines_per_field = 262.5;
-
-    // PAL-M line rate is 525 * (30000/1001) lines/second.
-    // Derive cycles/line from actual configured fSC to avoid phase-sequence drift.
-    const double line_rate_hz = 525.0 * (30000.0 / 1001.0);
-    const double cycles_per_line = subcarrier_freq_ / line_rate_hz;
-    
-    // Absolute lines elapsed before this line within the full sequence
-    double prev_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line_number);
-    
-    // Total subcarrier cycles elapsed before this sample
-    double prev_cycles = prev_lines * cycles_per_line;
-    
-    // Phase for this sample
-    double time_phase = 2.0 * PI * subcarrier_freq_ * sample / sample_rate_;
-    return 2.0 * PI * prev_cycles + time_phase;
+    // PAL-M shares the 525-line geometry of NTSC; pass its own fSC to the helper.
+    return ntsc_subcarrier_phase(field_number, line_number, sample, subcarrier_freq_, sample_rate_);
 }
 
 int32_t ColorBurstGenerator::get_pal_v_switch(int32_t field_number, int32_t line_number) const {
-    // PAL V-switch polarity is constant for the entire field.
-    // Using a LUT indexed by field_number % 8 (0 = phase 1 … 7 = phase 8).
-    // Values cross-checked against ld-decode's determine_field_number() voting
-    // convention (m4==2 inversion already accounted for).
-    // See: https://github.com/simoninns/encode-orc/issues/26
-    static const int32_t pal_v_switch_lut[8] = {
-    //  ph1  ph2  ph3  ph4  ph5  ph6  ph7  ph8
-         +1,  -1,  +1,  -1,  -1,  +1,  -1,  +1
-    };
     (void)line_number;  // V-switch is constant per field, line_number not needed
-    return pal_v_switch_lut[field_number % 8];
+    return pal_v_switch_from_field(field_number);
 }
 
 int32_t ColorBurstGenerator::get_palm_v_switch(int32_t field_number, int32_t line_number) const {
@@ -230,14 +193,8 @@ void ColorBurstGenerator::generate_pal_burst(uint16_t* line_buffer, int32_t line
     
     int32_t burst_start = params_.colour_burst_start;
     int32_t burst_end = params_.colour_burst_end;
-    
-    // PAL V-switch polarity LUT — constant per field, indexed by field_number % 8.
-    // See: https://github.com/simoninns/encode-orc/issues/26
-    static const int32_t pal_v_switch_lut[8] = {
-    //  ph1  ph2  ph3  ph4  ph5  ph6  ph7  ph8
-         +1,  -1,  +1,  -1,  -1,  +1,  -1,  +1
-    };
-    int32_t v_switch = pal_v_switch_lut[field_number % 8];
+
+    int32_t v_switch = pal_v_switch_from_field(field_number);
     double burst_phase_offset = v_switch * (135.0 * PI / 180.0);
     
     // Envelope shaping: 3 cycles rise/fall with cosine S-curve

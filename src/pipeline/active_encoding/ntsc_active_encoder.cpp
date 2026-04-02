@@ -8,6 +8,7 @@
  */
 
 #include "ntsc_active_encoder.h"
+#include "ntsc_phase_math.h"
 #include <cmath>
 #include <algorithm>
 #include <cstring>
@@ -43,18 +44,11 @@ NTSCActiveEncoder::NTSCActiveEncoder(const VideoParameters& params,
 }
 
 double NTSCActiveEncoder::calculate_phase(int32_t line_number, int32_t field_number) const {
-    // NTSC uses 262.5 lines per field and 227.5 cycles per line
-    // to achieve proper 4-field color framing
-    const double lines_per_field = 262.5;
-    const double cycles_per_line = 227.5;
-
-    double absolute_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line_number);
-    double prev_cycles = absolute_lines * cycles_per_line;
-
-    double phase_step = 2.0 * PI * (subcarrier_freq_ / sample_rate_);
-    double phase = (2.0 * PI * prev_cycles) + static_cast<double>(params_.active_video_start) * phase_step;
-    
-    return phase;
+    // Delegate to the shared helper; pass active_video_start as the sample index
+    // so the phase is aligned to the start of active video.
+    return ntsc_subcarrier_phase(field_number, line_number,
+                                 params_.active_video_start,
+                                 subcarrier_freq_, sample_rate_);
 }
 
 uint16_t NTSCActiveEncoder::clamp_to_16bit(int32_t value) const {

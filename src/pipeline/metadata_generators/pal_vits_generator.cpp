@@ -9,6 +9,7 @@
 
 #include "pal_vits_generator.h"
 #include "color_burst_generator.h"
+#include "pal_phase_math.h"
 #include "logging.h"
 #include <algorithm>
 #include <cstring>
@@ -51,24 +52,7 @@ int32_t PALVITSGenerator::ire_to_sample(double ire) const {
 }
 
 double PALVITSGenerator::calculate_phase(int32_t field_number, int32_t line_number, int32_t sample) const {
-    // PAL has 312.5 lines per field. Use floating-point arithmetic to preserve
-    // the half-line inter-field offset that drives the 8-field colour framing sequence.
-    const double lines_per_field = 312.5;
-
-    // PAL line rate is 625 * 25 lines/second.
-    // Derive cycles/line from actual configured fSC to avoid phase-sequence drift.
-    const double line_rate_hz = 625.0 * 25.0;
-    const double cycles_per_line = subcarrier_freq_ / line_rate_hz;
-
-    // Absolute lines elapsed before this line within the full sequence
-    double prev_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line_number);
-
-    // Total subcarrier cycles elapsed before this sample
-    double prev_cycles = prev_lines * cycles_per_line;
-
-    // Phase for this sample
-    double time_phase = 2.0 * PI * subcarrier_freq_ * static_cast<double>(sample) / sample_rate_;
-    return 2.0 * PI * prev_cycles + time_phase;
+    return pal_subcarrier_phase(field_number, line_number, sample, subcarrier_freq_, sample_rate_);
 }
 
 int32_t PALVITSGenerator::get_v_switch(int32_t field_number, int32_t line_number) const {

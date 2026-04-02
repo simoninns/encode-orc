@@ -8,6 +8,8 @@
  */
 
 #include "pal_active_encoder.h"
+#include "pal_phase_math.h"
+#include "ntsc_phase_math.h"
 #include <cmath>
 #include <algorithm>
 #include <cstring>
@@ -58,64 +60,28 @@ int32_t PALActiveEncoder::calculate_v_switch(int32_t line_number, int32_t field_
         // PAL-M V-switch alternates every line
         return (prev_lines % 2 == 0) ? 1 : -1;
     } else {
-        // Standard PAL: V-switch polarity is constant for the entire field.
-        // Using a LUT indexed by field_number % 8 (0 = phase 1 … 7 = phase 8).
-        // Values cross-checked against ld-decode's determine_field_number() voting
-        // convention (m4==2 inversion already accounted for).
+        // Standard PAL: V-switch polarity is constant per field.
         // See: https://github.com/simoninns/encode-orc/issues/26
-        static const int32_t pal_v_switch_lut[8] = {
-        //  ph1  ph2  ph3  ph4  ph5  ph6  ph7  ph8
-             +1,  -1,  +1,  -1,  -1,  +1,  -1,  +1
-        };
-        (void)line_number;  // V-switch is constant per field
+        (void)line_number;
         (void)is_first_field;
-        return pal_v_switch_lut[field_number % 8];
+        return pal_v_switch_from_field(field_number);
     }
 }
 
 double PALActiveEncoder::calculate_phase(int32_t line_number, int32_t field_number, bool is_first_field) const {
     (void)is_first_field;  // Field geometry is now captured by field_number * 312.5 / 262.5
     if (params_.system == VideoSystem::PAL_M) {
-        // PAL-M uses 525-line geometry (like NTSC) with PAL-M subcarrier timing
-        // Model absolute line count as a double to preserve the half-line offset between fields
-        // which produces the 4-field color framing sequence
-        const double lines_per_field = 262.5;
-
-        // PAL-M line rate is 525 * (30000/1001) lines/second.
-        // Derive cycles/line from actual configured fSC to avoid phase-sequence drift.
-        const double line_rate_hz = 525.0 * (30000.0 / 1001.0);
-        const double cycles_per_line = subcarrier_freq_ / line_rate_hz;
-        
-        // Absolute lines elapsed before this line within the full sequence
-        double prev_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line_number);
-        
-        // Total subcarrier cycles elapsed before this sample
-        double prev_cycles = prev_lines * cycles_per_line;
-        
-        // Time term for this sample position within the line
-        double time_phase = 2.0 * PI * subcarrier_freq_ * static_cast<double>(params_.active_video_start) / sample_rate_;
-        return 2.0 * PI * prev_cycles + time_phase;
+        // PAL-M shares the 525-line geometry of NTSC — delegate to the shared helper;
+        // pass active_video_start as the sample index to align to start of active video.
+        return ntsc_subcarrier_phase(field_number, line_number,
+                                     params_.active_video_start,
+                                     subcarrier_freq_, sample_rate_);
     } else {
-        // Standard PAL has 312.5 lines per field. Use floating-point arithmetic to
-        // preserve the half-line inter-field offset that drives the 8-field colour
-        // framing sequence (same approach as calculate_palm_phase / PAL-M branch).
-        const double lines_per_field = 312.5;
-
-        // PAL line rate is 625 * 25 lines/second.
-        // Derive cycles/line from actual configured fSC to avoid phase-sequence drift.
-        const double line_rate_hz = 625.0 * 25.0;
-        const double cycles_per_line = subcarrier_freq_ / line_rate_hz;
-
-        // Absolute lines elapsed before this line within the full sequence
-        double prev_lines = static_cast<double>(field_number) * lines_per_field + static_cast<double>(line_number);
-
-        // Total subcarrier cycles elapsed before this sample
-        double prev_cycles = prev_lines * cycles_per_line;
-
-        double phase_step = 2.0 * PI * (subcarrier_freq_ / sample_rate_);
-        double phase = (2.0 * PI * prev_cycles) + static_cast<double>(params_.active_video_start) * phase_step;
-
-        return phase;
+        // Standard PAL — delegate to the shared helper; pass active_video_start as
+        // the sample index so the phase is aligned to the start of active video.
+        return pal_subcarrier_phase(field_number, line_number,
+                                    params_.active_video_start,
+                                    subcarrier_freq_, sample_rate_);
     }
 }
 
