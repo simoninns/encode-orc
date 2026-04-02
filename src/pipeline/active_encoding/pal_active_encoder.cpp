@@ -58,18 +58,18 @@ int32_t PALActiveEncoder::calculate_v_switch(int32_t line_number, int32_t field_
         // PAL-M V-switch alternates every line
         return (prev_lines % 2 == 0) ? 1 : -1;
     } else {
-        // Standard PAL: 625-line geometry with V-switch alternation
-        // Convert field line number to frame line number (1-625 in PAL)
-        int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
-        
-        // Calculate absolute line number in 8-field sequence
-        int32_t field_id = field_number % 8;
-        int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
-        // Correct V-switch polarity for field phases 1 and 5 (field_id 0 and 4)
-        if (field_id % 4 == 0) prev_lines++;
-        
-        // PAL V-switch alternates every line
-        return (prev_lines % 2 == 0) ? 1 : -1;
+        // Standard PAL: V-switch polarity is constant for the entire field.
+        // Using a LUT indexed by field_number % 8 (0 = phase 1 … 7 = phase 8).
+        // Values cross-checked against ld-decode's determine_field_number() voting
+        // convention (m4==2 inversion already accounted for).
+        // See: https://github.com/simoninns/encode-orc/issues/26
+        static const int32_t pal_v_switch_lut[8] = {
+        //  ph1  ph2  ph3  ph4  ph5  ph6  ph7  ph8
+             +1,  -1,  +1,  -1,  -1,  +1,  -1,  +1
+        };
+        (void)line_number;  // V-switch is constant per field
+        (void)is_first_field;
+        return pal_v_switch_lut[field_number % 8];
     }
 }
 
