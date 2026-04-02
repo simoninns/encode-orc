@@ -61,15 +61,10 @@ int32_t PALActiveEncoder::calculate_v_switch(int32_t line_number, int32_t field_
         return (prev_lines % 2 == 0) ? 1 : -1;
     } else {
         // Standard PAL: V-switch alternates every line in the active picture.
-        // Convert field-relative line number to frame line number (1-625 in PAL).
-        int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
-
-        // Count absolute lines from the start of the 8-field sequence.
-        int32_t field_id = field_number % 8;
-        int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
-
-        // V-switch alternates every line.
-        return (prev_lines % 2 == 0) ? 1 : -1;
+        // line_number is the field-buffer row index (TBC row), which is what
+        // pal_v_switch expects as its tbc_row argument.
+        int32_t phase_id = (field_number % 8) + 1;
+        return pal_v_switch(phase_id, line_number, is_first_field);
     }
 }
 

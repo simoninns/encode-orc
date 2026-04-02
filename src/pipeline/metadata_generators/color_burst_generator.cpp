@@ -9,6 +9,7 @@
 
 #include "color_burst_generator.h"
 #include "ntsc_phase_math.h"
+#include "pal_phase_math.h"
 
 namespace encode_orc {
 
@@ -190,10 +191,8 @@ void ColorBurstGenerator::generate_pal_burst(uint16_t* line_buffer, int32_t line
 
     // PAL burst V-switch alternates every line (same sequence as active video).
     bool is_first_field = (field_number % 2) == 0;
-    int32_t frame_line = is_first_field ? (line_number * 2 + 1) : (line_number * 2 + 2);
-    int32_t field_id = field_number % 8;
-    int32_t prev_lines = ((field_id / 2) * 625) + ((field_id % 2) * 313) + (frame_line / 2);
-    int32_t v_switch = (prev_lines % 2 == 0) ? 1 : -1;
+    int32_t phase_id = (field_number % 8) + 1;
+    int32_t v_switch = pal_v_switch(phase_id, line_number, is_first_field);
     double burst_phase_offset = v_switch * (135.0 * PI / 180.0);
     
     // Envelope shaping: 3 cycles rise/fall with cosine S-curve

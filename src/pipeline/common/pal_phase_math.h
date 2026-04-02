@@ -54,6 +54,42 @@ inline double pal_subcarrier_phase(int32_t field_number,
     return TWO_PI * prev_cycles + time_phase;
 }
 
+/**
+ * @brief LUT-based PAL V-switch polarity at any TBC row.
+ *
+ * Replaces the accumulated-line-count formula that used an incorrect 313
+ * constant (instead of the correct 312.5) for second-field offsets.  Using
+ * 313 (odd) instead of 312 (even) flipped the parity bit for every second
+ * field, rotating the colour burst by 180° and mis-detecting phase IDs 2, 3,
+ * 6, and 7.
+ *
+ * The table gives the V-switch sign at the first ld-decode vote row for each
+ * phase: TBC row 9 for first fields, TBC row 10 for second fields.  Lines
+ * above and below that reference alternate with normal ±1 parity.
+ *
+ * Values measured from real-disc ld-decode TBC captures and verified against
+ * the PAL 8-field colour framing specification.
+ *
+ * @param phase_id       1-indexed PAL 8-field phase ID (1..8)
+ * @param tbc_row        TBC buffer row index (0-based field-line index, NOT interlaced frame line number)
+ * @param is_first_field true for first fields (field_number % 2 == 0)
+ * @return +1 (Rising) or -1 (Falling)
+ */
+inline int32_t pal_v_switch(int32_t phase_id, int32_t tbc_row, bool is_first_field)
+{
+    // V-switch sign at the first vote row for each of the 8 phases.
+    // φ:  1    2    3    4    5    6    7    8
+    static constexpr int8_t kRefSign[8] = {
+        +1,  -1,  +1,  -1,  -1,  +1,  -1,  +1
+    };
+
+    const int32_t ref_row = is_first_field ? 9 : 10;
+    const int32_t base    = kRefSign[phase_id - 1];
+    const int32_t delta   = tbc_row - ref_row;
+    // Alternates every line; ((delta % 2) + 2) % 2 is sign-safe mod-2.
+    return (((delta % 2) + 2) % 2 == 0) ? base : -base;
+}
+
 } // namespace encode_orc
 
 #endif // ENCODE_ORC_PAL_PHASE_MATH_H
