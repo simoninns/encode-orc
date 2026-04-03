@@ -67,8 +67,10 @@ inline double pal_subcarrier_phase(int32_t field_number,
  * phase: TBC row 9 for first fields, TBC row 10 for second fields.  Lines
  * above and below that reference alternate with normal ±1 parity.
  *
- * Values measured from real-disc ld-decode TBC captures and verified against
- * the PAL 8-field colour framing specification.
+ * Values derived analytically: for each field_number 0..7, compute
+ * pal_subcarrier_phase(fn, ref_row, burst_gate_start) + v * 135° and pick
+ * the v ∈ {+1,-1} such that cos(total) ≥ 0 iff ld-decode's
+ * determine_field_number() requires rising=True for that phase.
  *
  * @param phase_id       1-indexed PAL 8-field phase ID (1..8)
  * @param tbc_row        TBC buffer row index (0-based field-line index, NOT interlaced frame line number)
@@ -78,9 +80,13 @@ inline double pal_subcarrier_phase(int32_t field_number,
 inline int32_t pal_v_switch(int32_t phase_id, int32_t tbc_row, bool is_first_field)
 {
     // V-switch sign at the first vote row for each of the 8 phases.
+    // Derived analytically: for each field_number 0..7, compute
+    //   pal_subcarrier_phase(fn, ref_row, burst_gate_start) + v * 135°
+    // and choose v such that cos(total) matches the rising/falling polarity
+    // required by ld-decode's determine_field_number() logic.
     // φ:  1    2    3    4    5    6    7    8
     static constexpr int8_t kRefSign[8] = {
-        +1,  -1,  +1,  -1,  -1,  +1,  -1,  +1
+        +1,  -1,  -1,  +1,  +1,  -1,  -1,  +1
     };
 
     const int32_t ref_row = is_first_field ? 9 : 10;
