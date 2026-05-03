@@ -241,7 +241,6 @@ private:
     double multi_field_prob_ = 0.20;    ///< Probability of multi-field dropouts (scratches)
     double single_field_prob_ = 0.80;   ///< Probability of single-field dropouts (disc degradation)
     std::vector<MultiFieldDropout> multi_field_dropouts_;
-    int32_t last_processed_field_ = -1;
     std::vector<std::tuple<int32_t, int32_t, int32_t>> last_field_dropouts_; ///< (line, startx, endx)
     std::map<int32_t, std::vector<std::tuple<int32_t, int32_t, int32_t>>> field_dropouts_; ///< Dropouts per field
     mutable std::mutex dropout_mutex_;  ///< Mutex to protect field_dropouts_ map for multi-threading
@@ -256,7 +255,6 @@ private:
         int32_t edge_len;
     };
     std::vector<CachedDropout> cached_y_dropouts_;  ///< Cached dropouts from Y field for YC mode
-    int32_t cached_y_field_number_ = -1;             ///< Field number of cached Y dropouts
     
     /**
      * @brief Apply cached dropouts from Y field to C field

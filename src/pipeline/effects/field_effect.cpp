@@ -114,7 +114,7 @@ void NoiseGenerator::apply(Field& field, const FieldEffectContext& context) {
 // ============================================================================
 
 DropoutSimulator::DropoutSimulator(double density, uint32_t seed)
-    : density_(density), seed_(seed), last_processed_field_(-1) {}
+    : density_(density), seed_(seed) {}
 
 void DropoutSimulator::apply(Field& field, const FieldEffectContext& context) {
     if (!enabled_) return;
